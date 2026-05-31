@@ -22,6 +22,7 @@ source/stock-analysis-audit-prompt.md
 - 投资类型判定
 - 护城河和管理层审计
 - 估值与机会成本
+- 被误解资产审计
 - 逆向排雷
 - 最终裁决
 - 输出模板
@@ -64,6 +65,8 @@ source/stock-analysis-audit-prompt.md
 - 默认 Lite 初筛。
 - 默认基准为纳斯达克 100、中证红利和相关 10 年期国债收益率。
 - 公司身份不明确时先停止追问。
+- 增加“被误解资产审计”作为逆向排雷的对称补充：逆向排雷用于从好故事里找坏事实；被误解资产审计用于从坏叙事里找隐藏资产、旧标签错配和新利润池。
+- 在被误解资产审计下加入“铁证清单”：现金流-利润剪刀差、逆周期回购、新增长曲线定量火苗、行业寒冬清场效应，以及核心伤口是癌症还是感冒。
 - Agent Skill 版本假设可用工具，但仍要求数据不足时停止或降级。
 - Chatbot 版本不假设联网，明确要求用户补数据。
 
@@ -93,3 +96,4 @@ source/stock-analysis-audit-prompt.md
 - 修改分类阈值：同步 `chatbot/07-red-team-and-verdict.md` 与 `references/classification-rules.md`。
 - 修改输出模板：同步 `chatbot/02-lite-screening.md`、`chatbot/07-red-team-and-verdict.md` 与 `references/output-templates.md`。
 - 修改数据纪律：同步 `chatbot/00-system-prompt.md`、`chatbot/03-data-intake.md` 与 `references/data-contract.md`。
+- 修改被误解资产审计：同步 `source/stock-analysis-audit-prompt.md`、`references/workflow.md`、`references/classification-rules.md`、`references/output-templates.md`、`chatbot/02-lite-screening.md` 与 `chatbot/07-red-team-and-verdict.md`。

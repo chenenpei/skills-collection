@@ -62,20 +62,29 @@ Data quality: [High / Medium / Low]
 - Evidence now:
 - Valuation/verdict impact:
 
-## 8. Top Three Risks
+## 8. Potential Misunderstanding
+
+- Market's main reason for disliking the stock:
+- Is it cyclical, narrative-driven, transition pain, or structural decline:
+- Possible stale label or hidden asset:
+- Evidence from the latest 2-4 quarters:
+- Quick iron evidence check: [cash-flow/profit scissors / buybacks / segment spark / clearing mechanism / cancer-or-cold]
+- What would disprove the hidden-upside case:
+
+## 9. Top Three Risks
 
 1.
 2.
 3.
 
-## 9. Preliminary Verdict
+## 10. Preliminary Verdict
 
 - Verdict:
 - Supporting evidence:
 - Opposing evidence:
 - Key falsification metric:
 
-## 10. Data Needed for Further Work
+## 11. Data Needed for Further Work
 
 -
 ```
@@ -131,7 +140,30 @@ Data quality: [High / Medium / Low]
 | Destroyer | Mechanism | Evidence now | Leading indicator | Valuation/classification impact |
 |---|---|---|---|---|
 
-## 8. Investment Type Classification
+## 8. Hidden Upside Check
+
+| Question | Evidence | Implication |
+|---|---|---|
+| Market's main reason for disliking the company |  |  |
+| Short-term cycle, narrative bias, transition pain, or structural decline |  |  |
+| Old label vs current profit driver |  |  |
+| Hidden asset or second profit pool |  |  |
+| Latest 2-4 quarter evidence |  |  |
+| Evidence that would prove value trap |  |  |
+
+Bottom line: [market misunderstanding / no credible hidden upside / inconclusive]
+
+## 9. Hidden Upside Evidence
+
+| Evidence gate | What to check | Evidence | Verdict impact |
+|---|---|---|---|
+| Cash-flow/profit scissors | Net income falls or headlines are bad while OCF/FCF is flat or rising; distinguish durable bargaining power from one-time working-capital tricks |  |  |
+| Counter-cyclical buybacks | Repurchases occur at depressed valuation and diluted share count actually declines; exclude SBC-offset or stressed debt-funded buybacks |  |  |
+| New growth curve spark | Segment revenue, backlog, orders, ARR, NDR, capacity utilization, customers, or unit economics show early acceleration |  |  |
+| Industry winter as clearing mechanism | Weak competitors exit or lose share while the company gains share, bargaining power, or strategic supply |  |  |
+| Cancer or cold | Classify the wound as cyclical delay, transition pain, clearing price war, permanent technical substitution, or business model failure |  |  |
+
+## 10. Investment Type Classification
 
 - Primary classification:
 - Necessary conditions:
@@ -139,7 +171,7 @@ Data quality: [High / Medium / Low]
 - Veto conditions triggered:
 - Sector exceptions:
 
-## 9. Moat and Management
+## 11. Moat and Management
 
 | Dimension | Rating | Supporting evidence | Opposing evidence |
 |---|---|---|---|
@@ -154,7 +186,7 @@ Data quality: [High / Medium / Low]
 
 Management conclusion: [Excellent / Acceptable / Questionable / Poor / Insufficient data]
 
-## 10. Valuation and Opportunity Cost
+## 12. Valuation and Opportunity Cost
 
 | Metric | Stock | Nasdaq 100 | CSI Dividend | 10Y government bond | Comment |
 |---|---:|---:|---:|---:|---|
@@ -165,7 +197,7 @@ Management conclusion: [Excellent / Acceptable / Questionable / Poor / Insuffici
 | Drawdown risk |  |  |  |  |  |
 | Research burden |  |  |  |  |  |
 
-## 11. Inversion and Red Team
+## 13. Inversion and Red Team
 
 | Risk scenario | Trigger | Evidence now | Probability | Impact | Leading indicator |
 |---|---|---|---|---|---|
@@ -174,7 +206,7 @@ Strongest bear case:
 
 Fact-based rebuttal:
 
-## 12. Circle of Competence
+## 14. Circle of Competence
 
 - Understands business model:
 - Understands industry variables:
@@ -182,7 +214,7 @@ Fact-based rebuttal:
 - Can distinguish temporary from structural bad news:
 - Has information or experience advantage:
 
-## 13. Action Framework
+## 15. Action Framework
 
 - Action:
 - Position limit if applicable:
@@ -190,7 +222,7 @@ Fact-based rebuttal:
 - Reduce condition:
 - Exit condition:
 
-## 14. Falsification
+## 16. Falsification
 
 - Key falsification metric:
 - Re-audit trigger:
