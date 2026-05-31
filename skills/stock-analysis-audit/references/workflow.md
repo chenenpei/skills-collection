@@ -41,12 +41,22 @@ Steps:
 3. Build a 5-10 year financial table when possible.
 4. Analyze revenue, margins, cash conversion, FCF, ROE/ROIC, share dilution, and balance sheet risk.
 5. Apply sector-specific metrics.
-6. Classify investment type using `classification-rules.md`.
-7. Audit moat and management.
-8. Analyze valuation and opportunity cost.
-9. Run red-team risks and inversion.
-10. Check circle of competence.
-11. Produce final verdict using `output-templates.md`.
+6. Run a profit-pool destruction check before valuation or positive classification.
+7. Classify investment type using `classification-rules.md`.
+8. Audit moat and management.
+9. Analyze valuation and opportunity cost.
+10. Run red-team risks and inversion.
+11. Check circle of competence.
+12. Produce final verdict using `output-templates.md`.
+
+## Profit-Pool Destruction Check
+
+Before treating growth as durable or valuation as attractive, answer:
+
+- Who does not need to profit from this product but can destroy its economics?
+- Could an ecosystem owner, platform, hardware/OS vendor, upstream supplier, foundation model provider, channel, or regulator make the product free, bundled, technically obsolete, or uneconomic?
+- What are 3-5 mechanisms that could drive long-term excess profits toward zero?
+- Are those mechanisms already visible in leading indicators such as gross margin, usage cost, churn, ARPU, CAC, channel take rate, system bundling, free alternatives, or model/API dependency?
 
 ## Business Model Questions
 

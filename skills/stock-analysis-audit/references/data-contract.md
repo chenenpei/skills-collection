@@ -59,6 +59,15 @@ Technology and SaaS:
 - Churn when available
 - Rule of 40 when applicable
 
+AI applications and platform-dependent software:
+
+- Distribution control: app stores, super apps, search, social platforms, cloud marketplaces, or hardware/OS entry points
+- Free, bundled, open-source, or subsidized substitutes
+- Foundation model, API, cloud compute, chip, data, and channel dependency
+- Inference or compute unit cost versus usage-based revenue
+- Ability to pass through usage costs without hurting retention or conversion
+- LTV/CAC, renewal, churn, ARPU, and paid conversion when available
+
 Financials:
 
 - ROE

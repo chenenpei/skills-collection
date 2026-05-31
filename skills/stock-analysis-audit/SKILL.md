@@ -58,11 +58,12 @@ Do not load the entire `source/` file into context for routine analysis; use `re
 
 3. Run the appropriate workflow.
    - Lite: company identity, data quality, business model, key financial snapshot, valuation/opportunity cost, top risks, preliminary verdict.
-   - Deep: cross-cycle financials, industry-specific metrics, classification, moat, management, valuation, red-team risks, circle-of-competence, final verdict.
+   - Deep: cross-cycle financials, industry-specific metrics, profit-pool destruction check, classification, moat, management, valuation, red-team risks, circle-of-competence, final verdict.
 
 4. Use classification discipline.
    - Classify with necessary conditions, M/N supporting evidence, veto conditions, and industry exceptions.
    - Do not let one attractive metric hide a major flaw.
+   - Before positive classification, check who can destroy the product or profit pool without needing to profit from that product.
 
 5. Produce a clear final verdict.
    - Choose exactly one: Reject, Watchlist, Medium-Term Revaluation Opportunity, High-Quality Company at Reasonable Price, High Conviction Candidate.

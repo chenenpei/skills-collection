@@ -55,20 +55,27 @@ Data quality: [High / Medium / Low]
 | Dividend yield |  |  |  |
 | 10-year government yield |  |  |  |
 
-## 7. Top Three Risks
+## 7. Profit Pool Destruction Check
+
+- Who can destroy the product without needing to profit from it:
+- Mechanism:
+- Evidence now:
+- Valuation/verdict impact:
+
+## 8. Top Three Risks
 
 1.
 2.
 3.
 
-## 8. Preliminary Verdict
+## 9. Preliminary Verdict
 
 - Verdict:
 - Supporting evidence:
 - Opposing evidence:
 - Key falsification metric:
 
-## 9. Data Needed for Further Work
+## 10. Data Needed for Further Work
 
 -
 ```
@@ -119,7 +126,12 @@ Data quality: [High / Medium / Low]
 - Company performance:
 - Red flags:
 
-## 7. Investment Type Classification
+## 7. Profit Pool Destruction Check
+
+| Destroyer | Mechanism | Evidence now | Leading indicator | Valuation/classification impact |
+|---|---|---|---|---|
+
+## 8. Investment Type Classification
 
 - Primary classification:
 - Necessary conditions:
@@ -127,7 +139,7 @@ Data quality: [High / Medium / Low]
 - Veto conditions triggered:
 - Sector exceptions:
 
-## 8. Moat and Management
+## 9. Moat and Management
 
 | Dimension | Rating | Supporting evidence | Opposing evidence |
 |---|---|---|---|
@@ -142,7 +154,7 @@ Data quality: [High / Medium / Low]
 
 Management conclusion: [Excellent / Acceptable / Questionable / Poor / Insufficient data]
 
-## 9. Valuation and Opportunity Cost
+## 10. Valuation and Opportunity Cost
 
 | Metric | Stock | Nasdaq 100 | CSI Dividend | 10Y government bond | Comment |
 |---|---:|---:|---:|---:|---|
@@ -153,7 +165,7 @@ Management conclusion: [Excellent / Acceptable / Questionable / Poor / Insuffici
 | Drawdown risk |  |  |  |  |  |
 | Research burden |  |  |  |  |  |
 
-## 10. Inversion and Red Team
+## 11. Inversion and Red Team
 
 | Risk scenario | Trigger | Evidence now | Probability | Impact | Leading indicator |
 |---|---|---|---|---|---|
@@ -162,7 +174,7 @@ Strongest bear case:
 
 Fact-based rebuttal:
 
-## 11. Circle of Competence
+## 12. Circle of Competence
 
 - Understands business model:
 - Understands industry variables:
@@ -170,7 +182,7 @@ Fact-based rebuttal:
 - Can distinguish temporary from structural bad news:
 - Has information or experience advantage:
 
-## 12. Action Framework
+## 13. Action Framework
 
 - Action:
 - Position limit if applicable:
@@ -178,7 +190,7 @@ Fact-based rebuttal:
 - Reduce condition:
 - Exit condition:
 
-## 13. Falsification
+## 14. Falsification
 
 - Key falsification metric:
 - Re-audit trigger:

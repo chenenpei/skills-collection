@@ -53,10 +53,12 @@ Veto conditions:
 - SBC or dilution materially erodes shareholder return
 - Valuation requires many years of high growth to be reasonable
 - Leverage limits resilience under stress
+- A high-probability, high-impact asymmetric destroyer already shows evidence of weakening the long-term profit pool
 
 Sector exceptions:
 
 - For SaaS, high-growth technology, biotech, and early platforms, do not mechanically require current FCF or ROE. Use retention, unit economics, gross margin, revenue quality, SBC, dilution, and path to cash generation instead.
+- For AI applications and platform-dependent software, do not treat high revenue growth as high-quality SaaS unless inference cost, channel take rate, model/API dependency, CAC, and retention show durable unit economics.
 - For financials, use ROE, P/B, asset quality, capital adequacy, and provisioning quality instead of ordinary-company FCF.
 
 Required answer: Can the company maintain high capital returns, or is it only showing attractive mature-period numbers?
@@ -88,6 +90,7 @@ Veto conditions:
 - Debt maturity pressure may force low-price financing, share issuance, or core asset sales
 - Management repeatedly makes capital allocation decisions that harm shareholder return
 - Inversion shows a high-probability, high-impact risk with visible evidence
+- The thesis depends on a profit pool that can be made free, bundled, obsolete, or uneconomic by a player that does not need to profit from this product
 
 Sector exceptions:
 
@@ -141,4 +144,6 @@ High Conviction Candidate requires all:
 - Valuation provides meaningful safety margin
 - Opportunity cost is clearly better than benchmark indexes
 - No visible fire in inversion risks
+- No high-probability, high-impact asymmetric destroyer with current evidence
+- For AI applications and platform-dependent software, unit economics prove compute, channel, model/API, CAC, and retention risks are not consuming long-term excess profits
 - User is inside the circle of competence
