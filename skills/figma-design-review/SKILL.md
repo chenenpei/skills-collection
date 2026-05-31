@@ -140,7 +140,7 @@ Pass only:
 
 Do not pass your full conversation history.
 
-Use the reviewer prompt in `design-reviewer.md`.
+Use the reviewer prompt in `references/design-reviewer.md`.
 
 ### 5. Reviewer subagent output
 

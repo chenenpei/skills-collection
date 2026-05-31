@@ -30,9 +30,9 @@ Read only what is needed:
 - For final report shapes: `references/output-templates.md`
 - For tool use and stop conditions: `references/tool-policy.md`
 
-For Lite analysis, read `data-contract.md`, `workflow.md`, `output-templates.md`, and `tool-policy.md`.
+For Lite analysis, read `references/data-contract.md`, `references/workflow.md`, `references/output-templates.md`, and `references/tool-policy.md`.
 
-For Deep analysis, also read `classification-rules.md`.
+For Deep analysis, also read `references/classification-rules.md`.
 
 ## Bundled Prompt Kit (same directory)
 

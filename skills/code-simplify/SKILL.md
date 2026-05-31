@@ -1,8 +1,7 @@
 ---
-
-## name: code-simplify
-
-description: Review recent code changes for reuse, code quality, and efficiency issues, then fix them directly. Use this whenever the user asks to simplify or clean up a diff, refactor recent edits, review and fix hacky code, or improve code quality/performance after making changes, including prompts like "code simplify", "simplify recent changes", "review and fix this diff", "clean up this change", "简化这次改动", "检查复用问题", and "看代码质量和性能". Default to review + fix unless the user explicitly asks for findings only.
+name: code-simplify
+description: Reviews recent code changes for reuse, code quality, and efficiency issues, then fixes them directly. Use when the user asks to simplify or clean up a diff, refactor recent edits, review hacky code, or improve code quality after changes, including "code simplify", "simplify recent changes", "简化这次改动", or "检查复用问题". Defaults to review plus fix unless the user asks for findings only.
+---
 
 # Code Simplify
 
