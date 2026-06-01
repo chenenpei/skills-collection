@@ -64,8 +64,8 @@ Do not load the entire `source/` file into context for routine analysis; use `re
    - Classify with necessary conditions, M/N supporting evidence, veto conditions, and industry exceptions.
    - Do not let one attractive metric hide a major flaw.
    - Before positive classification, check who can destroy the product or profit pool without needing to profit from that product.
-   - Before Reject, Watchlist, or Value Trap conclusions, check whether the market is using a stale label that misses hidden assets, ecosystem lock-in, capital allocation change, or a new profit pool.
-   - Hidden upside requires hard evidence: cash-flow/profit scissors, real buyback-driven share count reduction, segment/backlog/order sparks, industry clearing effects, or proof that the wound is cyclical rather than structural.
+   - Before Reject, Watchlist, or Value Trap conclusions, check whether the market is using an outdated business classification that misses hidden assets, ecosystem lock-in, capital allocation change, or a new profit pool.
+   - Hidden upside requires hard evidence: net-income/cash-flow divergence, real buyback-driven share count reduction, segment/backlog/order evidence, industry clearing effects, or proof that the impairment is cyclical rather than structural.
 
 5. Produce a clear final verdict.
    - Choose exactly one: Reject, Watchlist, Medium-Term Revaluation Opportunity, High-Quality Company at Reasonable Price, High Conviction Candidate.

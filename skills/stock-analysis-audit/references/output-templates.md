@@ -66,10 +66,10 @@ Data quality: [High / Medium / Low]
 
 - Market's main reason for disliking the stock:
 - Is it cyclical, narrative-driven, transition pain, or structural decline:
-- Possible stale label or hidden asset:
+- Possible outdated business classification or underappreciated asset:
 - Evidence from the latest 2-4 quarters:
-- Quick iron evidence check: [cash-flow/profit scissors / buybacks / segment spark / clearing mechanism / cancer-or-cold]
-- What would disprove the hidden-upside case:
+- Quick evidence check: [net-income/cash-flow divergence / buybacks / segment-level growth evidence / competitive consolidation / cyclical-vs-structural impairment]
+- What would disprove the underappreciated-upside case:
 
 ## 9. Top Three Risks
 
@@ -146,22 +146,22 @@ Data quality: [High / Medium / Low]
 |---|---|---|
 | Market's main reason for disliking the company |  |  |
 | Short-term cycle, narrative bias, transition pain, or structural decline |  |  |
-| Old label vs current profit driver |  |  |
-| Hidden asset or second profit pool |  |  |
+| Outdated business classification vs current profit driver |  |  |
+| Underappreciated asset or second profit pool |  |  |
 | Latest 2-4 quarter evidence |  |  |
 | Evidence that would prove value trap |  |  |
 
-Bottom line: [market misunderstanding / no credible hidden upside / inconclusive]
+Bottom line: [market misunderstanding / no credible underappreciated upside / inconclusive]
 
 ## 9. Hidden Upside Evidence
 
 | Evidence gate | What to check | Evidence | Verdict impact |
 |---|---|---|---|
-| Cash-flow/profit scissors | Net income falls or headlines are bad while OCF/FCF is flat or rising; distinguish durable bargaining power from one-time working-capital tricks |  |  |
+| Net-income/cash-flow divergence | Net income falls or headlines are negative while OCF/FCF is flat or rising; distinguish durable bargaining power from one-time working-capital changes |  |  |
 | Counter-cyclical buybacks | Repurchases occur at depressed valuation and diluted share count actually declines; exclude SBC-offset or stressed debt-funded buybacks |  |  |
-| New growth curve spark | Segment revenue, backlog, orders, ARR, NDR, capacity utilization, customers, or unit economics show early acceleration |  |  |
-| Industry winter as clearing mechanism | Weak competitors exit or lose share while the company gains share, bargaining power, or strategic supply |  |  |
-| Cancer or cold | Classify the wound as cyclical delay, transition pain, clearing price war, permanent technical substitution, or business model failure |  |  |
+| Early quantitative evidence of a new growth driver | Segment revenue, backlog, orders, ARR, NDR, capacity utilization, customers, or unit economics show early acceleration |  |  |
+| Downturn-driven competitive consolidation | Weak competitors exit or lose share while the company gains share, bargaining power, or strategic supply |  |  |
+| Cyclical vs structural impairment | Classify the impairment as cyclical delay, transition pain, competition-consolidating price war, permanent technical substitution, or business model failure |  |  |
 
 ## 10. Investment Type Classification
 

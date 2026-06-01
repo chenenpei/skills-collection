@@ -83,13 +83,13 @@ Supporting evidence, at least 5/8:
 - Core operating indicators did not keep deteriorating over the latest 2-4 quarters
 - Market concern has an observable path to relief
 
-Hidden upside evidence checklist:
+Underappreciated upside evidence checklist:
 
-- Cash-flow/profit scissors: bad headlines or falling net income, while operating cash flow or FCF is flat or rising for durable reasons.
+- Net-income/cash-flow divergence: negative headlines or falling net income, while operating cash flow or FCF is flat or rising for durable reasons.
 - Counter-cyclical buybacks: management buys depressed shares and diluted share count actually declines.
-- New growth curve spark: segment revenue, backlog, orders, ARR, NDR, capacity utilization, customers, or unit economics show early acceleration.
-- Industry winter as clearing mechanism: weaker competitors exit or lose share while the company gains market share, bargaining power, or strategic supply.
-- Cancer or cold: the core wound is cyclical demand delay, transition pain, or clearing price war rather than permanent technical substitution or business model failure.
+- Early quantitative evidence of a new growth driver: segment revenue, backlog, orders, ARR, NDR, capacity utilization, customers, or unit economics show early acceleration.
+- Downturn-driven competitive consolidation: weaker competitors exit or lose share while the company gains market share, bargaining power, or strategic supply.
+- Cyclical vs structural impairment: the core impairment is cyclical demand delay, transition pain, or clearing price war rather than permanent technical substitution or business model failure.
 
 Veto conditions:
 
@@ -110,7 +110,7 @@ Required answer: Is the market misunderstanding the business, or seeing deterior
 
 ## D. Value Trap
 
-Before using this classification, complete the Hidden Upside Check. If the company has credible evidence of a stale market label, hidden asset, second profit pool, or improving capital allocation, explain why those positives are insufficient before classifying it as a value trap.
+Before using this classification, complete the Hidden Upside Check. If the company has credible evidence of outdated market classification, underappreciated assets, a second profit pool, or improving capital allocation, explain why those positives are insufficient before classifying it as a value trap.
 
 If any 3 apply and the Hidden Upside Check fails, prioritize this classification:
 
@@ -122,7 +122,7 @@ If any 3 apply and the Hidden Upside Check fails, prioritize this classification
 - Technical substitution risk is visible
 - Shareholder return mainly comes from financial engineering instead of operating quality
 
-Required answer: Is the cheap valuation simply fair pricing for future decline, or did the analysis miss a hidden asset, new profit pool, or stale-label mismatch?
+Required answer: Is the cheap valuation simply fair pricing for future decline, or did the analysis miss an underappreciated asset, a new profit pool, or a business-classification mismatch?
 
 ## E. Overpriced Excellent Company
 

@@ -62,40 +62,40 @@ Before treating growth as durable or valuation as attractive, answer:
 
 ## Hidden Upside Check
 
-Before classifying a disliked stock as a value trap or issuing a Reject verdict, test whether the market may be pricing the company with a stale or incomplete label.
+Before classifying a disliked stock as a value trap or issuing a Reject verdict, test whether the market may be pricing the company with an outdated or incomplete business classification.
 
 Answer:
 
 - What is the market's main reason for disliking the company?
 - Is that reason a short-term cycle, narrative bias, transition pain, or permanent structural decline?
-- Is there a mismatch between the old label and the current profit driver?
-- Does the company have an underappreciated hidden asset such as ecosystem access, sticky user relationships, data, distribution, supply-chain position, service/software revenue, separable assets, improved capital allocation, or a new profit pool?
+- Is there a mismatch between the outdated business classification and the current profit driver?
+- Does the company have underappreciated positive evidence such as ecosystem access, sticky user relationships, data, distribution, supply-chain position, service/software revenue, separable assets, improved capital allocation, or a new profit pool?
 - Have the latest 2-4 quarters shown early evidence that the market has not repriced yet?
 - If the market is wrong, where exactly is it wrong?
 - If the analyst is wrong, what evidence proves this is only a value trap?
 
 ## Hidden Upside Evidence Checklist
 
-Do not accept a hidden-upside thesis based on management storytelling. Look for hard evidence:
+Do not accept an underappreciated-upside thesis based on unsupported management claims. Look for verifiable evidence:
 
-1. Cash-flow/profit scissors:
-   - Bad headlines or falling net income, while operating cash flow or FCF is flat or rising.
+1. Net-income/cash-flow divergence:
+   - Negative headlines or falling net income, while operating cash flow or FCF is flat or rising.
    - Explain whether the cash strength comes from durable bargaining power, working-capital advantage, prepaid demand, or only from one-time payables stretch, investment cuts, or business shrinkage.
 
 2. Counter-cyclical buybacks and real share count reduction:
    - Management repurchases aggressively when valuation is depressed, and diluted shares actually decline.
    - Do not treat buybacks as positive if they only offset SBC, are debt-funded under stress, or fail to reduce share count.
 
-3. Quantitative spark in a new growth curve:
+3. Early quantitative evidence of a new growth driver:
    - Segment revenue, backlog, orders, ARR, NDR, capacity utilization, customer count, or unit economics show early acceleration.
-   - Reject PowerPoint-only transformation claims without financial statement or operating metric evidence.
+   - Reject unsupported transformation claims without financial statement or operating metric evidence.
 
-4. Industry winter as clearing mechanism:
+4. Downturn-driven competitive consolidation:
    - Weak competitors exit, lose access to funding, cut R&D, or lose customers while the company gains share, bargaining power, or strategic supply.
-   - If the whole profit pool is permanently shrinking, it is not clearing; it is decline.
+   - If the industry profit pool is permanently shrinking, the condition is structural decline rather than competitive consolidation.
 
-5. Cancer or cold:
-   - Classify the core wound as cyclical demand delay, transition pain, clearing price war, permanent technical substitution, or business model failure.
+5. Cyclical vs structural impairment:
+   - Classify the core impairment as cyclical demand delay, transition pain, clearing price war, permanent technical substitution, or business model failure.
    - Only cyclical delay, transition pain, or clearing price war can support hidden upside without stronger contrary evidence.
 
 ## Business Model Questions
