@@ -13,7 +13,7 @@ skills-lock.json
 # Market screener CLI
 skills/market-screener/cli/node_modules/
 skills/market-screener/cli/dist/
-data/cache/
+skills/market-screener/cli/data/cache/
 
 # Editor / IDE
 .idea/
