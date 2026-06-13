@@ -1,8 +1,9 @@
-import { DEFAULT_CACHE_DIR, DEFAULT_FIXTURES_DIR } from "../paths.js";
+import { DEFAULT_CACHE_DIR, DEFAULT_FIXTURES_DIR, DEFAULT_SPEC_DIR } from "../paths.js";
 import { createCnEastMoneyAdapter } from "./cn-eastmoney.js";
 import { createFixtureAdapter } from "./fixture.js";
+import { enrichLiveUniverse } from "./live-pipeline.js";
 import { createUsYahooAdapter } from "./us-yahoo.js";
-import type { MarketDataAdapter } from "./types.js";
+import type { EnrichOptions, MarketDataAdapter } from "./types.js";
 import type { Market } from "../engine/types.js";
 import type { SecurityRecord } from "../engine/kill-gates.js";
 
@@ -22,6 +23,10 @@ export function createLiveAdapter(cacheDir = DEFAULT_CACHE_DIR): MarketDataAdapt
         records.push(...(await usAdapter.loadUniverse(["US"])));
       }
       return records;
+    },
+
+    async enrichRecords(records: SecurityRecord[], opts: EnrichOptions): Promise<SecurityRecord[]> {
+      return enrichLiveUniverse(records, { ...opts, cacheDir }, DEFAULT_SPEC_DIR);
     },
   };
 }
