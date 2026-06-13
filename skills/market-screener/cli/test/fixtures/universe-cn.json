@@ -1,0 +1,51 @@
+[
+  {
+    "ticker": "600519",
+    "market": "CN",
+    "companyName": "Kweichow Moutai",
+    "currency": "CNY",
+    "status": "active",
+    "marketCap": 2000000000000,
+    "listingAgeYears": 20,
+    "gicsCode": "302010",
+    "industryProxy": "Beverages",
+    "metrics": {
+      "roe_5y_avg": { "value": 0.32, "dataConfidence": "high" },
+      "gross_margin_3y_stable": { "value": 0.91, "dataConfidence": "high" },
+      "fcf_conversion_5y": { "value": 0.95, "dataConfidence": "high" },
+      "net_debt_to_ebitda": { "value": 0.3, "dataConfidence": "high" },
+      "roic_5y_avg": { "value": 0.28, "dataConfidence": "high" },
+      "gross_margin_vs_industry": { "value": 0.35, "dataConfidence": "high" },
+      "operating_margin_vs_industry": { "value": 0.25, "dataConfidence": "high" },
+      "revenue_3y_cagr": { "value": 0.12, "dataConfidence": "high" },
+      "debt_to_equity": { "value": 0.15, "dataConfidence": "high" },
+      "roe_ttm": { "value": 0.30, "dataConfidence": "high" },
+      "gross_margin": { "value": 0.91, "dataConfidence": "high" },
+      "fcf_yield": { "value": 0.04, "dataConfidence": "high" },
+      "revenue": { "value": 120000000000, "dataConfidence": "high" },
+      "net_income": { "value": 60000000000, "dataConfidence": "high" },
+      "operating_cash_flow": { "value": 65000000000, "dataConfidence": "high" }
+    },
+    "revenueYoyHistory": [0.08, 0.10, 0.12],
+    "ocfNegativeYears": 0,
+    "netLossWidening": false,
+    "nonStandardAudit": false,
+    "latestFinancialMonthsOld": 4
+  },
+  {
+    "ticker": "000001",
+    "market": "CN",
+    "companyName": "Tiny ST Co",
+    "currency": "CNY",
+    "status": "ST",
+    "marketCap": 500000000,
+    "listingAgeYears": 1,
+    "gicsCode": "401010",
+    "metrics": {},
+    "revenueYoyHistory": [-0.1, -0.2, -0.3],
+    "ocfNegativeYears": 2,
+    "netLossWidening": true,
+    "nonStandardAudit": true,
+    "latestFinancialMonthsOld": 24
+  }
+]
