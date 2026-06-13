@@ -64,6 +64,10 @@ gates:
     condition: missing_count_gte_3
     fields: [revenue, net_income, market_cap, operating_cash_flow]
     reason_slug: kill_key_fields_missing
+    note: >
+      CLI flags flag_key_fields_unavailable when all tracked financial fields are
+      absent (quote-only live tier) instead of excluding — prefer wide in until
+      financial enrichment is available.
 
   - id: data_stale_flag_only
     phase: shared

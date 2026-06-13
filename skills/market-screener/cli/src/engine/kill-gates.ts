@@ -82,7 +82,11 @@ export function applyKillGates(
     return excluded("kill_listing_age_below_floor", flags, dataConfidence);
   }
 
-  if (record.revenueYoyHistory.slice(-3).every((y) => y < 0)) {
+  // Vacuous truth: [].every(...) is true — skip when history is insufficient.
+  if (
+    record.revenueYoyHistory.length >= 3 &&
+    record.revenueYoyHistory.slice(-3).every((y) => y < 0)
+  ) {
     return excluded("kill_revenue_decline_3y_consecutive", flags, dataConfidence);
   }
 
@@ -94,8 +98,14 @@ export function applyKillGates(
     return excluded("kill_non_standard_audit", flags, dataConfidence);
   }
 
-  if (countMissingKeyFields(record.metrics) >= 3) {
-    return excluded("kill_key_fields_missing", flags, "low");
+  const missingKeyFields = countMissingKeyFields(record.metrics);
+  if (missingKeyFields >= 3) {
+    // Quote-only live adapters supply no financials — flag, do not exclude (wide in).
+    dataConfidence = "low";
+    flags.push("flag_key_fields_unavailable");
+  } else if (missingKeyFields >= 2) {
+    dataConfidence = "low";
+    flags.push("flag_key_fields_partial");
   }
 
   if (record.latestFinancialMonthsOld > 18) {

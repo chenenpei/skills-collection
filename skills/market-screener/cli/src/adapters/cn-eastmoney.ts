@@ -7,13 +7,19 @@ const CLIST_BASE = "https://push2.eastmoney.com/api/qt/clist/get";
 const A_SHARE_FS =
   "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048";
 const CLIST_FIELDS = "f12,f14,f20,f116,f127";
+/** East Money caps each page well below requested pz; paginate explicitly. */
+const PAGE_SIZE = 100;
+const REQUEST_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (compatible; market-screener/0.1)",
+  Referer: "https://quote.eastmoney.com/",
+};
 
 type EastMoneyRow = Record<string, number | string | undefined>;
 
-function buildListUrl(): string {
+function buildListUrl(page: number, pageSize: number): string {
   const params = new URLSearchParams({
-    pn: "1",
-    pz: "5000",
+    pn: String(page),
+    pz: String(pageSize),
     po: "1",
     np: "1",
     fltt: "2",
@@ -51,16 +57,39 @@ function mapRowToSecurityRecord(row: EastMoneyRow): SecurityRecord {
   });
 }
 
+async function fetchPage(page: number): Promise<{ rows: EastMoneyRow[]; total: number }> {
+  const res = await fetch(buildListUrl(page, PAGE_SIZE), { headers: REQUEST_HEADERS });
+  if (!res.ok) throw new Error(`EastMoney list failed: ${res.status}`);
+
+  const body = (await res.json()) as { data?: { diff?: EastMoneyRow[]; total?: number } };
+  const rows = body.data?.diff ?? [];
+  const total = body.data?.total ?? rows.length;
+  return { rows, total };
+}
+
 export function createCnEastMoneyAdapter(_opts: { cacheDir: string }): MarketDataAdapter {
   return {
     async loadUniverse(markets: Market[]): Promise<SecurityRecord[]> {
       if (!markets.includes("CN")) return [];
 
-      const res = await fetch(buildListUrl());
-      if (!res.ok) throw new Error(`EastMoney list failed: ${res.status}`);
+      const records: SecurityRecord[] = [];
+      let page = 1;
+      let total = Number.POSITIVE_INFINITY;
 
-      const body = (await res.json()) as { data?: { diff?: EastMoneyRow[] } };
-      return (body.data?.diff ?? []).map(mapRowToSecurityRecord);
+      while (records.length < total) {
+        const { rows, total: reportedTotal } = await fetchPage(page);
+        total = reportedTotal;
+
+        if (rows.length === 0) break;
+
+        for (const row of rows) {
+          records.push(mapRowToSecurityRecord(row));
+        }
+
+        page += 1;
+      }
+
+      return records;
     },
   };
 }

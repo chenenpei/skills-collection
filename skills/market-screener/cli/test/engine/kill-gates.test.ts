@@ -66,6 +66,12 @@ describe("applyKillGates", () => {
     expect(applyKillGates(killGates, record).killReason).toBe("kill_listing_age_below_floor");
   });
 
+  it("does not exclude revenue decline when YoY history is insufficient", () => {
+    const result = applyKillGates(killGates, { ...baseRecord(), revenueYoyHistory: [] });
+    expect(result.excluded).toBe(false);
+    expect(result.killReason).toBeUndefined();
+  });
+
   it("excludes 3y consecutive revenue decline", () => {
     const record = { ...baseRecord(), revenueYoyHistory: [-0.05, -0.03, -0.02] };
     expect(applyKillGates(killGates, record).killReason).toBe(
@@ -84,7 +90,7 @@ describe("applyKillGates", () => {
     );
   });
 
-  it("excludes when 3+ key fields missing", () => {
+  it("flags all key financial fields missing without excluding (quote-only live tier)", () => {
     const result = applyKillGates(killGates, {
       ...baseRecord(),
       metrics: {
@@ -94,8 +100,21 @@ describe("applyKillGates", () => {
       },
     });
     expect(result).toMatchObject({
-      excluded: true,
-      killReason: "kill_key_fields_missing",
+      excluded: false,
+      funnelFlags: ["flag_key_fields_unavailable"],
+      dataConfidence: "low",
+    });
+  });
+
+  it("passes quote-only adapter defaults through universe kill gates", () => {
+    const result = applyKillGates(killGates, {
+      ...baseRecord(),
+      metrics: {},
+      revenueYoyHistory: [],
+    });
+    expect(result).toMatchObject({
+      excluded: false,
+      funnelFlags: ["flag_key_fields_unavailable"],
       dataConfidence: "low",
     });
   });
