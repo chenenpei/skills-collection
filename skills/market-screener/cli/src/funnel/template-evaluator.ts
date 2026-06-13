@@ -27,31 +27,41 @@ function toThresholdRule(rule: Record<string, unknown>): ThresholdRule {
   return threshold;
 }
 
-function shouldSkipSupportingRule(
+type SupportingSkipReason = "missing" | "conditional";
+
+function getSupportingSkipReason(
   rule: Record<string, unknown>,
   record: SecurityRecord,
   metric: MetricValue | undefined
-): boolean {
+): SupportingSkipReason | undefined {
   if (rule.if_unprofitable === "skip") {
     const netIncome = record.metrics.net_income?.value;
-    if (netIncome !== undefined && netIncome < 0) return true;
+    if (netIncome !== undefined && netIncome < 0) return "conditional";
   }
   if (rule.if_fcf_negative === "skip") {
     const fcf = record.metrics.fcf_margin?.value ?? record.metrics.free_cash_flow?.value;
-    if (fcf !== undefined && fcf < 0) return true;
+    if (fcf !== undefined && fcf < 0) return "conditional";
   }
   if (metric?.value === undefined && rule.missing === "skip") {
-    return true;
+    return "missing";
   }
-  return false;
+  return undefined;
 }
 
 function evalRuleList(
   rules: Array<Record<string, unknown>>,
   record: SecurityRecord
-): { passCount: number; total: number; snapshot: Record<string, MetricValue> } {
+): {
+  passCount: number;
+  total: number;
+  snapshot: Record<string, MetricValue>;
+  missingSkipCount: number;
+  otherSkipCount: number;
+} {
   let passCount = 0;
   let total = 0;
+  let missingSkipCount = 0;
+  let otherSkipCount = 0;
   const snapshot: Record<string, MetricValue> = {};
 
   for (const rule of rules) {
@@ -59,7 +69,15 @@ function evalRuleList(
     if (!metric) continue;
 
     const mv = record.metrics[metric];
-    if (shouldSkipSupportingRule(rule, record, mv)) continue;
+    const skipReason = getSupportingSkipReason(rule, record, mv);
+    if (skipReason === "missing") {
+      missingSkipCount += 1;
+      continue;
+    }
+    if (skipReason === "conditional") {
+      otherSkipCount += 1;
+      continue;
+    }
 
     total += 1;
     const result = evaluateThreshold(mv, toThresholdRule(rule), record.market);
@@ -67,7 +85,31 @@ function evalRuleList(
     if (result.passed) passCount += 1;
   }
 
-  return { passCount, total, snapshot };
+  return { passCount, total, snapshot, missingSkipCount, otherSkipCount };
+}
+
+/** Downgrade supportingMin only when fewer metrics are evaluable solely due to missing: skip. */
+function resolveSupportingPass(
+  passCount: number,
+  total: number,
+  supportingMin: number,
+  missingSkipCount: number,
+  otherSkipCount: number
+): boolean {
+  if (total === 0) return false;
+  if (total >= supportingMin) {
+    return passCount >= supportingMin;
+  }
+
+  const gap = supportingMin - total;
+  const downgradeEligible =
+    otherSkipCount === 0 && missingSkipCount > 0 && gap <= missingSkipCount;
+
+  if (downgradeEligible) {
+    return passCount >= total;
+  }
+
+  return false;
 }
 
 export function evaluateTemplateTrack(
@@ -97,15 +139,19 @@ export function evaluateTemplateTrack(
   }
 
   const supportingRules = (trackDef.supporting as Array<Record<string, unknown>>) ?? [];
-  const { passCount, total, snapshot: supportingSnapshot } = evalRuleList(
-    supportingRules,
-    record
-  );
+  const { passCount, total, snapshot: supportingSnapshot, missingSkipCount, otherSkipCount } =
+    evalRuleList(supportingRules, record);
   Object.assign(snapshot, supportingSnapshot);
 
   const passIf = (trackDef.pass_if as string) ?? "";
   const { supportingMin } = parsePassLogic(passIf);
-  const passed = passCount >= supportingMin;
+  const passed = resolveSupportingPass(
+    passCount,
+    total,
+    supportingMin,
+    missingSkipCount,
+    otherSkipCount
+  );
 
   const auditHints = ((template.audit_hints as string[]) ?? []).slice();
   const funnelFlags = ((trackDef.funnel_flags as string[]) ?? []).slice();

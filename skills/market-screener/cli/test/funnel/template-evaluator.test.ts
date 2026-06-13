@@ -38,11 +38,14 @@ const strongSaasRecord = (): SecurityRecord => ({
 describe("evaluateTemplateTrack", () => {
   let techSaas: SectorTemplateSpec & Record<string, unknown>;
   let consumer: SectorTemplateSpec & Record<string, unknown>;
+  let manufacturing: SectorTemplateSpec & Record<string, unknown>;
 
   beforeAll(async () => {
     const bundle = await loadSpecBundle(SPEC_DIR);
     techSaas = bundle.templates.tech_saas as SectorTemplateSpec & Record<string, unknown>;
     consumer = bundle.templates.consumer as SectorTemplateSpec & Record<string, unknown>;
+    manufacturing = bundle.templates.manufacturing as SectorTemplateSpec &
+      Record<string, unknown>;
   });
 
   const strongConsumerRecord = (): SecurityRecord => ({
@@ -93,5 +96,59 @@ describe("evaluateTemplateTrack", () => {
     const record = strongConsumerRecord();
     record.metrics.gross_margin_3y_max_decline_pp = { value: 8, dataConfidence: "high" };
     expect(evaluateTemplateTrack(consumer, "quality", record).passed).toBe(false);
+  });
+
+  const sparseManufacturingRecord = (): SecurityRecord => ({
+    ticker: "301626",
+    market: "CN",
+    companyName: "Sparse Mfg",
+    currency: "CNY",
+    status: "active",
+    marketCap: 5e9,
+    listingAgeYears: 10,
+    metrics: {
+      roic_5y_avg: { value: 0.16, dataConfidence: "high" },
+      fcf_conversion_5y: { value: 1.0, dataConfidence: "high" },
+      gross_margin_3y_max_decline_pp: { value: 3, dataConfidence: "high" },
+      net_debt_to_ebitda: { value: 1.0, dataConfidence: "high" },
+      roe_5y_avg: { value: 0.18, dataConfidence: "high" },
+      revenue_3y_cagr: { value: 0.1, dataConfidence: "high" },
+      gross_margin: { value: 0.37, dataConfidence: "high" },
+      revenue: { value: 1e9, dataConfidence: "high" },
+      net_income: { value: 1e8, dataConfidence: "high" },
+      operating_cash_flow: { value: 2e8, dataConfidence: "high" },
+    },
+    revenueYoyHistory: [0.05, 0.04, 0.03],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 6,
+  });
+
+  it("downgrades manufacturing supporting bar when gap is only missing: skip", () => {
+    const result = evaluateTemplateTrack(manufacturing, "quality", sparseManufacturingRecord());
+    expect(result).toMatchObject({
+      passed: true,
+      passedTrack: "quality",
+      supportingPassCount: 3,
+      supportingTotal: 3,
+    });
+  });
+
+  it("fails manufacturing quality when evaluable supporting metrics do not all pass", () => {
+    const record = sparseManufacturingRecord();
+    record.metrics.revenue_3y_cagr = { value: 0.01, dataConfidence: "high" };
+    expect(evaluateTemplateTrack(manufacturing, "quality", record).passed).toBe(false);
+  });
+
+  it("fails manufacturing quality when enough supporting metrics are evaluable but below min", () => {
+    const record = sparseManufacturingRecord();
+    record.metrics = {
+      ...record.metrics,
+      capex_to_revenue: { value: 0.1, dataConfidence: "high" },
+      inventory_turnover_vs_industry: { value: -0.05, dataConfidence: "high" },
+      revenue_3y_cagr: { value: 0.01, dataConfidence: "high" },
+    };
+    expect(evaluateTemplateTrack(manufacturing, "quality", record).passed).toBe(false);
   });
 });
