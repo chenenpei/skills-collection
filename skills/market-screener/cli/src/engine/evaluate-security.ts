@@ -17,8 +17,11 @@ export interface PassingCandidate {
   market: SecurityRecord["market"];
   company_name: string;
   currency: string;
+  industry_proxy?: string;
   routed_templates: string[];
   routing_confidence: RouteResult["routingConfidence"];
+  routing_method: RouteResult["routingMethod"];
+  matched_rule?: string;
   passed_track: FunnelTrack;
   sub_template?: string;
   metric_snapshot: TemplateEvalResult["metricSnapshot"];
@@ -85,8 +88,11 @@ export function bestPassingCandidate(
       market: record.market,
       company_name: record.companyName,
       currency: record.currency,
+      industry_proxy: record.industryProxy,
       routed_templates: route.templates.map((t) => t.id),
       routing_confidence: route.routingConfidence,
+      routing_method: route.routingMethod,
+      matched_rule: route.matchedRule,
       passed_track: entry.result.passedTrack,
       sub_template: entry.subTemplate,
       metric_snapshot: entry.result.metricSnapshot,

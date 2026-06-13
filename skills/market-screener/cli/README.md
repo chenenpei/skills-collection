@@ -87,6 +87,19 @@ Live E2E asserts enriched candidates (`candidates >= 1`, non-empty `metric_snaps
 | `deferred.yaml` | Always (may be empty) |
 | `excluded.yaml` | Kill gates on **enriched** universe |
 | `prefilter-excluded.yaml` | Live only, when quote prefilter skips exist |
+| `routing-diagnostics.yaml` | Always (routing summary for Kill survivors) |
+| `funnel-diagnostics.yaml` | Always (full funnel stage counts + reason breakdown) |
+
+### Funnel replay report
+
+After a run, print a readable Markdown funnel replay (prefilter/kill reason shares, routing distribution, sector pass rates):
+
+```bash
+npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN
+npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN --write report.md
+```
+
+Works from `funnel-diagnostics.yaml` when present; otherwise reconstructs from `prefilter-excluded.yaml`, `excluded.yaml`, and `routing-diagnostics.yaml`.
 
 ## Tests
 

@@ -57,5 +57,23 @@ describe("runFunnel", () => {
       ticker: "000001",
       kill_reason: "kill_status_excluded",
     });
+
+    const diagnostics = parseYaml(
+      await fs.readFile(path.join(outDir, "CN/routing-diagnostics.yaml"), "utf8")
+    ) as {
+      summary: { total_routed: number; fallback_rate: number };
+    };
+    expect(diagnostics.summary.total_routed).toBe(1);
+    expect(diagnostics.summary.fallback_rate).toBeGreaterThanOrEqual(0);
+
+    const funnelDiagnostics = parseYaml(
+      await fs.readFile(path.join(outDir, "CN/funnel-diagnostics.yaml"), "utf8")
+    ) as {
+      stages: { kill_survivors: number; sector_passed: number };
+      sector_by_template: Record<string, { routed: number }>;
+    };
+    expect(funnelDiagnostics.stages.kill_survivors).toBe(1);
+    expect(funnelDiagnostics.stages.sector_passed).toBe(1);
+    expect(Object.keys(funnelDiagnostics.sector_by_template).length).toBeGreaterThan(0);
   });
 });

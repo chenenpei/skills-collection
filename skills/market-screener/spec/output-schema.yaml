@@ -24,6 +24,17 @@ artifacts:
       fail universe profile gates (status, market cap floor, listing age). Same kill
       reason slugs as kill-gates.yaml universe phase. Written only when non-empty.
 
+  routing_diagnostics:
+    filename: routing-diagnostics.yaml
+    description: >
+      Per-market sector routing method distribution (routing section of funnel-diagnostics).
+
+  funnel_diagnostics:
+    filename: funnel-diagnostics.yaml
+    description: >
+      Full funnel replay stats: prefilter/kill reason breakdown, routing distribution,
+      sector template pass rates, and stage counts for post-run analysis.
+
 candidates_schema:
   run_metadata:
     required: [run_id, executed_at, quarter, market_scope, universe_count, candidate_count]
@@ -53,7 +64,9 @@ candidates_schema:
       gics_label: string
       industry_proxy: string    # provider label when true GICS unavailable
       routed_templates: array   # e.g. [tech_saas] or [tech_saas, manufacturing]
-      routing_confidence: high | ambiguous_union
+      routing_confidence: high | ambiguous_union | low
+      routing_method: gics | cn_industry_map | industry_proxy | fallback
+      matched_rule: string      # e.g. l1:电子, l2:电子/消费电子, gics:4520
       passed_track: quality | mispricing
       sub_template: string      # e.g. banks, insurance — when applicable
       metric_snapshot:
@@ -100,6 +113,49 @@ prefilter_excluded_schema:
       ticker: string
       market: CN | US
       kill_reason: string       # kill_status_excluded | kill_market_cap_below_floor | kill_listing_age_below_floor
+
+routing_diagnostics_schema:
+  run_metadata:
+    same_as: candidates_schema.run_metadata
+
+  summary:
+    required: [total_routed, by_method, by_template, fallback_rate]
+    fields:
+      total_routed: integer
+      by_method: object
+      by_template: object
+      fallback_rate: number
+
+  unmapped_samples:
+    type: array
+    max_items: 50
+    item_fields: [ticker, industry_proxy]
+
+funnel_diagnostics_schema:
+  run_metadata:
+    same_as: candidates_schema.run_metadata
+
+  stages:
+    required:
+      - quote_universe
+      - prefilter_excluded
+      - enriched_in_run
+      - kill_excluded
+      - kill_survivors
+      - sector_passed
+      - sector_filtered
+      - candidates
+      - deferred
+
+  prefilter_by_reason: object
+  kill_by_reason: object
+  routing:
+    same_as: routing_diagnostics_schema.summary
+  sector_by_template:
+    type: object
+    note: template id → routed, passed_any_track, pass_rate
+  unmapped_samples:
+    same_as: routing_diagnostics_schema.unmapped_samples
 
 metric_snapshot_conventions:
   data_confidence_per_field: optional  # high | medium | low

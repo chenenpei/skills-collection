@@ -1,15 +1,13 @@
 import path from "node:path";
-import type { SecurityRecord } from "../engine/kill-gates.js";
 import { getUniverseProfileFailureReason } from "../engine/universe-profile.js";
 import type { SpecBundle } from "../spec/types.js";
 import { funnelSoftCapFromBundle } from "../spec/conventions.js";
-import { buildRunMetadata } from "../output/metadata.js";
 import { writeYamlArtifact } from "../output/write-artifacts.js";
 import {
-  bestPassingCandidate,
-  routeSecurityRecord,
-  type PassingCandidate,
-} from "./evaluate-security.js";
+  FunnelDiagnosticsCollector,
+  routingDiagnosticsFromFunnel,
+} from "./funnel-diagnostics.js";
+import { type PassingCandidate } from "./evaluate-security.js";
 import { applyKillGates, type SecurityRecord } from "./kill-gates.js";
 import { rankCandidates, splitBySoftCap } from "./ranker.js";
 import type { Market } from "./types.js";
@@ -45,10 +43,13 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
     );
     const excluded: unknown[] = [];
     const passed: PassingCandidate[] = [];
+    const diagnostics = new FunnelDiagnosticsCollector();
+    diagnostics.recordPrefilterExcluded(opts.bundle, marketPrefilterExcluded);
 
     for (const record of marketUniverse) {
       const kill = applyKillGates(opts.bundle.killGates, record);
       if (kill.excluded) {
+        diagnostics.recordKillExcluded(kill.killReason);
         excluded.push({
           ticker: record.ticker,
           market: record.market,
@@ -59,8 +60,7 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
         continue;
       }
 
-      const route = routeSecurityRecord(opts.bundle, record);
-      const best = bestPassingCandidate(opts.bundle, record, kill, route);
+      const best = diagnostics.recordKillSurvivor(opts.bundle, record, kill);
       if (best) passed.push(best);
     }
 
@@ -85,31 +85,42 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
     }));
 
     const { primary, deferred } = splitBySoftCap(rankedRecords, softCap);
-    const meta = buildRunMetadata({
+    const universeCount = marketUniverse.length + marketPrefilterExcluded.length;
+    const funnelDiagnostics = diagnostics.finalize({
       bundle: opts.bundle,
       quarter: opts.quarter,
-      marketScope: market,
-      universeCount: marketUniverse.length + marketPrefilterExcluded.length,
+      market,
+      universeCount,
+      enrichedInRun: marketUniverse.length,
+      prefilterExcluded: marketPrefilterExcluded.length,
       candidateCount: primary.length,
       deferredCount: deferred.length,
     });
 
     const base = path.join(opts.outputDir, market);
     await writeYamlArtifact(path.join(base, "candidates.yaml"), {
-      run_metadata: meta,
+      run_metadata: funnelDiagnostics.run_metadata,
       candidates: primary,
     });
     await writeYamlArtifact(path.join(base, "deferred.yaml"), {
-      run_metadata: meta,
+      run_metadata: funnelDiagnostics.run_metadata,
       deferred,
     });
     await writeYamlArtifact(path.join(base, "excluded.yaml"), {
-      run_metadata: meta,
+      run_metadata: funnelDiagnostics.run_metadata,
       excluded,
     });
+    await writeYamlArtifact(
+      path.join(base, "funnel-diagnostics.yaml"),
+      funnelDiagnostics
+    );
+    await writeYamlArtifact(
+      path.join(base, "routing-diagnostics.yaml"),
+      routingDiagnosticsFromFunnel(funnelDiagnostics)
+    );
     if (marketPrefilterExcluded.length > 0) {
       await writeYamlArtifact(path.join(base, "prefilter-excluded.yaml"), {
-        run_metadata: meta,
+        run_metadata: funnelDiagnostics.run_metadata,
         prefilter_excluded: marketPrefilterExcluded.map((record) => ({
           ticker: record.ticker,
           market: record.market,

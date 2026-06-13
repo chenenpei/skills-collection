@@ -72,14 +72,25 @@ async function main(): Promise<void> {
     const base = path.join(outRoot, quarter, market);
     const excludedPath = path.join(base, "excluded.yaml");
     const candidatesPath = path.join(base, "candidates.yaml");
+    const diagnosticsPath = path.join(base, "routing-diagnostics.yaml");
+    const funnelDiagnosticsPath = path.join(base, "funnel-diagnostics.yaml");
 
     if (!fs.existsSync(excludedPath)) {
       throw new Error(`Missing ${excludedPath}`);
+    }
+    if (!fs.existsSync(diagnosticsPath)) {
+      throw new Error(`Missing ${diagnosticsPath}`);
+    }
+    if (!fs.existsSync(funnelDiagnosticsPath)) {
+      throw new Error(`Missing ${funnelDiagnosticsPath}`);
     }
 
     const excludedDoc = parseYaml(fs.readFileSync(excludedPath, "utf8")) as {
       excluded: Array<{ kill_reason: string }>;
       run_metadata?: { universe_count?: number };
+    };
+    const diagnosticsDoc = parseYaml(fs.readFileSync(diagnosticsPath, "utf8")) as {
+      summary?: { fallback_rate?: number; total_routed?: number; by_method?: Record<string, number> };
     };
     const candidatesDoc = fs.existsSync(candidatesPath)
       ? (parseYaml(fs.readFileSync(candidatesPath, "utf8")) as {
@@ -98,6 +109,16 @@ async function main(): Promise<void> {
     console.log("candidates:", candidatesDoc.candidates.length);
     console.log("excluded:", excludedDoc.excluded.length);
     console.log("kill reasons:", reasons);
+
+    const fallbackRate = diagnosticsDoc.summary?.fallback_rate;
+    if (fallbackRate !== undefined) {
+      console.log("routing fallback_rate:", (fallbackRate * 100).toFixed(1) + "%");
+      if (market === "CN" && fallbackRate > 0.05) {
+        console.warn(
+          `Warning: ${market} routing fallback_rate ${(fallbackRate * 100).toFixed(1)}% exceeds 5% — review cn-industry-map.yaml`
+        );
+      }
+    }
 
     if (candidatesDoc.candidates.length < 1) {
       throw new Error(
