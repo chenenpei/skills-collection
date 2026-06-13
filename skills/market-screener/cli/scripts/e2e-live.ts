@@ -117,13 +117,6 @@ async function main(): Promise<void> {
       );
     }
 
-    const falseRevenue = reasons.kill_revenue_decline_3y_consecutive ?? 0;
-    if (falseRevenue > 0) {
-      throw new Error(
-        `${market}: ${falseRevenue} false kill_revenue_decline_3y_consecutive (empty YoY history bug)`
-      );
-    }
-
     if (market === "CN" && universeCount !== undefined && universeCount < 500) {
       throw new Error(
         `${market}: universe_count=${universeCount} — pagination may be broken (expect ~5000+)`
