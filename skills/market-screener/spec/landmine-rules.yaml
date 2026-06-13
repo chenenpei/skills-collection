@@ -1,0 +1,64 @@
+# Landmine price calculation — Phase 2 silent period
+# Input: audit-summary.yaml shortlist_for_landmine
+# Output: landmines.yaml
+# Execution: human places GTC limit or price alert in broker app (never automated buy)
+
+version: "0.1.0"
+
+cli:
+  command: screener landmine
+  args:
+    - --from PATH          # audit-summary.yaml
+    - --output PATH        # landmines.yaml
+    - --quarter YYYY-QN    # optional metadata
+
+input:
+  source: audit-summary.yaml
+  field: shortlist_for_landmine
+  optional_enrichment:
+    - candidates.yaml metric_snapshot
+    - current_price_from_data_adapter
+
+formulas:
+  quality_track:
+    slug: landmine_quality_bull_mean_70pct
+    description: High-quality compounder — 30% discount to bull-case fair value
+    fair_value_bull_mean:
+      pe_path: forward_eps * pe_5y_median_or_peer_median
+      ps_path: forward_revenue_per_share * ps_5y_median_or_peer_median
+      pick: more_reliable_per_deep_report  # SaaS lean PS; consumer/manufacturing lean PE
+    landmine_price: fair_value_bull_mean * 0.70
+
+  mispricing_track:
+    slug: landmine_mispricing_min_discount
+    description: Already cheap — do not anchor only to bull mean if far below spot
+    fair_value_bull_mean:
+      same_as: quality_track.fair_value_bull_mean
+    landmine_price: min(current_price * 0.85, fair_value_bull_mean * 0.70)
+
+  financials_banks:
+    slug: landmine_financials_ptbv
+    landmine_price: tangible_book_per_share * ptbv_5y_median * 0.75
+
+  financials_insurance_other:
+    slug: landmine_financials_pb
+    landmine_price: book_value_per_share * pb_5y_median * 0.75
+
+  cyclicals:
+    slug: landmine_cyclicals_mid_cycle
+    landmine_price: mid_cycle_eps * target_pe * 0.70
+    target_pe: 12
+    ref: templates/cyclicals.yaml
+
+routing:
+  use_passed_track_from: audit-summary or candidates.yaml
+  override_by_sector:
+    financials_banks: financials_banks
+    financials_insurance: financials_insurance_other
+    financials_other: financials_insurance_other
+    cyclicals: cyclicals
+
+human_execution:
+  order_type: GTC_limit_or_price_alert
+  automated_broker_order: false
+  note: User places orders manually in broker app

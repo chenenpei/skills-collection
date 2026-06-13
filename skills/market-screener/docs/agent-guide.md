@@ -1,0 +1,155 @@
+# Agent 使用指南 — Market Screener
+
+本指南面向编排 **季度批量漏斗 → Deep 审计 → landmine 限价 → 到价纪律** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
+
+**MVP 状态：** `screener` CLI 尚未实现；Agent 可按本指南手工编排，或等 CLI 落地后改为调用命令。
+
+---
+
+## 1. 何时跑（季度调度）
+
+**原则：** CN 与 US **同一天**跑 `--markets CN,US`，但必须在 **两市场该期披露 substantially complete** 之后；以 **较晚的 anchor** 为准，再取 **该日之后的第一个周末**。
+
+详见 `spec/schedule.yaml`（status: confirmed）。
+
+| 周期 | CN anchor | US anchor（季末 +45 天） | 通常更晚 | 大约执行窗口 |
+|------|-----------|-------------------------|----------|--------------|
+| Q1 + A股年报/一季报 | 4/30 | ~5/15 | US | 5 月中下旬第一个周末 |
+| Q2 + A股半年报 | 8/31 | ~8/15 | CN | 9 月初第一个周末 |
+| Q3 + A股三季报 | 10/31 | ~11/15 | US | 11 月中下旬第一个周末 |
+
+- **每年 3 次季度定时运行**；美股 Q4/10-K（~2 月中旬）不单独跑批， freshness 并进下一轮 Q1 窗口。
+- **禁止**在 `later_anchor` 之前跑漏斗；若用户要求提前跑，警告数据未齐并说明 `data_confidence: low` 风险。
+
+Phase 2 占位：`screener schedule --year YYYY` 打印解析日期。
+
+---
+
+## 2. 季度运行命令序列（Phase 1）
+
+### Step 1 — 定量漏斗
+
+```bash
+screener run --markets CN,US --quarter 2026-Q2 --output ./funnel-output/2026-Q2/
+```
+
+产出（每市场）：
+
+- `CN/candidates.yaml` — rank 1–25（软顶，Package M）
+- `CN/deferred.yaml` — 通过漏斗但 rank > 25
+- `CN/excluded.yaml` — Kill Gate 排除
+- `US/` 同上
+
+Agent 若无 CLI：按 `spec/` 规则说明本轮应用 **Package M** 收紧后的 sector templates。
+
+### Step 2 — Deep 审计（stock-analysis-audit）
+
+- **范围：** 每市场 `candidates.yaml` 的 **rank 1–20**（默认 `--deep-limit 20`）
+- **全量 Deep：** 仅当用户明确要求 `--deep-all`
+- **执行：** **parallel_by_market** — CN 与 US 各开一个 session 并行
+- **报告路径：** `funnel-output/{quarter}/audit/{market}/{ticker}.md`
+
+对每只 candidate，调用 **stock-analysis-audit Deep**，并在 prompt 中附加：
+
+```markdown
+对 {ticker}（{market}）执行 Deep 审计。
+
+漏斗上下文（需交叉验证，非最终证据）：
+- passed_track: {quality|mispricing}
+- routed_templates: [...]
+- routing_confidence: {high|ambiguous_union}
+- metric_snapshot: ...
+- audit_hints: ...
+
+若 metric_snapshot 与 Deep 数据冲突，以 Deep 为准并说明。
+```
+
+rank 21–25 写入 `audit-summary.yaml` 的 `deep_deferred`，本季不 Deep。
+
+### Step 3 — 定性筛选 & audit-summary
+
+阅读 Deep 报告，产出 `funnel-output/{quarter}/audit-summary.yaml`：
+
+- `shortlist_for_landmine` — 进入等待期并设置 landmine 限价
+- `rejected_after_deep` — Deep 否决
+- `deep_deferred` — 因 limit 未 Deep
+
+Deep 合格输出标准见 stock-analysis-audit `docs/agent-guide.md`。
+
+---
+
+## 3. 等待期 — landmine 限价（Phase 2）
+
+```bash
+screener landmine --from funnel-output/2026-Q2/audit-summary.yaml \
+  --output funnel-output/2026-Q2/landmines.yaml
+```
+
+公式见 `spec/landmine-rules.yaml`：
+
+- **Quality track：** `landmine_price = fair_value_bull_mean × 0.70`
+- **Mispricing track：** `landmine_price = min(current_price × 0.85, fair_value_bull_mean × 0.70)`
+- **金融 / 周期：** 见同文件 sector overrides
+
+**执行：** 用户根据 `landmines.yaml` 在券商 App **人工**挂 GTC 限价单或到价提醒。CLI **never** 下单。
+
+---
+
+## 4. 到价纪律（Phase 3）
+
+MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
+
+| 场景 | slug | 纪律 |
+|------|------|------|
+| A — 个股独立下跌 | `trigger_isolated_drop` | **禁止立刻买**；24h 定性复核；宁可等一季财报 |
+| B — 宏观恐慌 | `trigger_macro_panic` | 24h 确认后 **40–50% 首批仓位**；剩余仓位等下一财报季 |
+| 不确定 | `trigger_ambiguous` | **默认按场景 A** |
+
+Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自动比价，仍不自动买）。
+
+---
+
+## 5. 与 stock-analysis-audit 的分工
+
+| 阶段 | market-screener | stock-analysis-audit |
+|------|-----------------|---------------------|
+| 全市场定量 | `screener run` + `spec/templates/` | 不参与 |
+| 单票 Deep | 编排 + audit_hints | Deep workflow |
+| 到价后复核 | trigger-discipline | 可选再 Deep |
+
+---
+
+## 6. 质量检查（Agent 自检）
+
+季度运行结束应存在：
+
+- [ ] `candidates.yaml` / `deferred.yaml` / `excluded.yaml`（CN、US）
+- [ ] `audit/{market}/*.md`（Deep，每市场 ≤20）
+- [ ] `audit-summary.yaml`
+- [ ] `landmines.yaml`（若有 shortlist）
+- [ ] 未在 anchor 前跑漏斗
+- [ ] 未自动下单
+
+---
+
+## 7. Phase 2 占位（勿在 MVP 承诺）
+
+- `screener schedule` — 解析季度运行日期
+- `screener alert` — landmine 触达告警
+- Cursor Automation — 定时提醒（非自动交易）
+
+---
+
+## 8. Spec 索引
+
+| 文件 | 内容 |
+|------|------|
+| `spec/index.yaml` | Manifest |
+| `spec/schedule.yaml` | 何时跑 |
+| `spec/kill-gates.yaml` | 共享 Kill Gate |
+| `spec/routing-map.yaml` | 行业路由 |
+| `spec/conventions.yaml` | 阈值语法 |
+| `spec/templates/*.yaml` | Sector 漏斗（Package M） |
+| `spec/landmine-rules.yaml` | landmine 限价公式 |
+| `spec/trigger-discipline.yaml` | 场景 A/B |
+| `spec/output-schema.yaml` | YAML 契约 |

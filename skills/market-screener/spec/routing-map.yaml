@@ -1,0 +1,144 @@
+# GICS L2/L3 (or Yahoo industry proxy) → sector funnel template
+# Ambiguous entries run parallel templates; pass if ANY track passes (dedupe by ticker)
+
+version: "0.1.0"
+
+classifier:
+  primary: gics_level_2_or_3
+  proxy: yahoo_industry
+  proxy_map_ref: industry_proxy_map
+
+routing_confidence:
+  high: single_template
+  ambiguous_union: parallel_templates_pass_if_any
+
+# GICS sub-industry codes (representative; extend as adapters expose codes)
+mappings:
+  # Financials — GICS 40
+  - gics_prefix: "4010"
+    template: financials
+    sub_template: banks
+    confidence: high
+  - gics_prefix: "4020"
+    template: financials
+    sub_template: other_financials
+    confidence: high
+  - gics_prefix: "4030"
+    template: financials
+    sub_template: insurance
+    confidence: high
+
+  # Energy & Materials — Cyclicals
+  - gics_prefix: "1010"
+    template: cyclicals
+    confidence: high
+  - gics_prefix: "1510"
+    template: cyclicals
+    confidence: high
+
+  # Industrials — ambiguous manufacturing vs cyclicals
+  - gics_prefix: "2010"
+    template: manufacturing
+    confidence: high
+  - gics_prefix: "2020"
+    template: manufacturing
+    confidence: ambiguous_union
+    also_run: cyclicals
+  - gics_prefix: "2030"
+    template: manufacturing
+    confidence: high
+
+  # Consumer
+  - gics_prefix: "2510"
+    template: consumer
+    confidence: high
+  - gics_prefix: "2550"
+    template: consumer
+    confidence: ambiguous_union
+    also_run: tech_saas
+    note: Interactive media / platform retail
+  - gics_prefix: "3010"
+    template: consumer
+    confidence: high
+  - gics_prefix: "3020"
+    template: consumer
+    confidence: high
+  - gics_prefix: "3030"
+    template: consumer
+    confidence: high
+
+  # Health Care — route by sub-sector (no dedicated template)
+  - gics_prefix: "3510"
+    template: manufacturing
+    confidence: high
+    note: Medical devices / equipment
+  - gics_prefix: "3520"
+    template: tech_saas
+    confidence: ambiguous_union
+    also_run: consumer
+    note: Biotech / pharma; Deep uses classification sector exceptions
+
+  # IT — ambiguous tech vs manufacturing for hardware/semis
+  - gics_prefix: "4510"
+    template: tech_saas
+    confidence: high
+  - gics_prefix: "4520"
+    template: manufacturing
+    confidence: ambiguous_union
+    also_run: tech_saas
+    note: Technology hardware; AI apps may still flag in tech_saas
+  - gics_prefix: "4530"
+    template: tech_saas
+    confidence: high
+  - gics_prefix: "4540"
+    template: manufacturing
+    confidence: ambiguous_union
+    also_run: cyclicals
+    note: Semiconductors
+
+  # Communication Services
+  - gics_prefix: "5010"
+    template: tech_saas
+    confidence: ambiguous_union
+    also_run: consumer
+  - gics_prefix: "5020"
+    template: tech_saas
+    confidence: high
+
+  # Utilities — cyclicals-like regulation
+  - gics_prefix: "5510"
+    template: cyclicals
+    confidence: high
+
+  # Real Estate — operating companies only (not REIT wrapper analysis)
+  - gics_prefix: "6010"
+    template: cyclicals
+    confidence: high
+    note: Funnel only; Deep may downgrade if structure unclear
+
+# Yahoo / East Money industry keyword fallback (when GICS code missing)
+industry_proxy_map:
+  - keywords: [bank, 银行, commercial bank]
+    template: financials
+    sub_template: banks
+  - keywords: [insurance, 保险, life insurance, property insurance]
+    template: financials
+    sub_template: insurance
+  - keywords: [broker, 券商, securities, asset management]
+    template: financials
+    sub_template: other_financials
+  - keywords: [software, saas, 软件, cloud]
+    template: tech_saas
+  - keywords: [semiconductor, 半导体, chip]
+    template: manufacturing
+    also_run: [tech_saas, cyclicals]
+  - keywords: [oil, gas, 石油, 煤炭, mining, 钢铁, chemical]
+    template: cyclicals
+  - keywords: [retail, 消费, beverage, food, apparel]
+    template: consumer
+  - keywords: [machinery, industrial, 制造, hardware]
+    template: manufacturing
+
+ambiguous_union_rules:
+  dedupe: by_ticker_highest_rank
+  audit_hint_on_union: "Routed via ambiguous_union; verify sector classification in Deep audit"

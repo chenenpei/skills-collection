@@ -1,0 +1,67 @@
+# Manufacturing / hardware sector funnel
+# Aligns: stock-analysis-audit/spec/data.md Manufacturing and hardware
+# Value alignment: Buffett ROIC; gold-in-quicksand capex discipline; cyclical mid-cycle for heavy cyclicals
+
+version: "0.1.0"
+template: manufacturing
+tracks: [quality, mispricing]
+
+gics_overrides:
+  semiconductors:
+    gics_codes: ["453010", "453020"]
+    capex_to_revenue_max: 0.25
+
+quality_track:
+  pass_if: all_required_and_supporting_min_5_of_7
+  required:
+    roic_5y_avg: { min: 0.13 }
+    fcf_conversion_5y: { min: 0.70 }
+    gross_margin_3y_stable: { max_decline_pp: 5 }
+    net_debt_to_ebitda: { max: 2.5 }
+  supporting:
+    - { metric: capex_to_revenue, max: 0.15, gics_override_semiconductors: 0.25 }
+    - { metric: inventory_turnover_vs_industry, min: 0 }
+    - { metric: capacity_utilization, min: 0.70, max: 0.90, missing: skip }
+    - { metric: top_customer_concentration, max: 0.30, missing: skip }
+    - { metric: roe_5y_avg, min: 0.12 }
+    - { metric: revenue_3y_cagr, min: 0.03 }
+    - { metric: gross_margin, min: 0.25 }
+
+mispricing_track:
+  pass_if: all_required_and_supporting_min_4_of_6
+  required:
+    roic_ttm: { min: 0.10 }
+    net_debt_to_ebitda: { max: 3.0 }
+    gross_margin: { min: 0.20 }
+  supporting:
+    - { metric: ev_ebitda_vs_5y_median, max: 0.80 }
+    - { metric: pb_vs_peer_median, max: 0.85 }
+    - { metric: fcf_yield, min: 0.05 }
+    - { metric: mid_cycle_pe, max: 12, when_cyclical: true }
+    - { metric: price_vs_52w_high, max: 0.70 }
+    - { metric: capex_to_revenue, max: 0.20 }
+
+sector_kill_gates:
+  - id: capex_burn
+    condition: capex_to_revenue_gt_0.25_and_fcf_negative_3y
+    action: exclude
+    reason_slug: gold_in_quicksand_capex_burn
+
+  - id: customer_concentration
+    condition: top_customer_concentration_gt_0.50
+    action: exclude
+    when_field_missing: skip
+
+  - id: inventory_bloat
+    condition: inventory_yoy_minus_revenue_yoy_gt_0.20_for_2_years
+    action: exclude
+
+funnel_flags:
+  - cyclical_manufacturing_check
+  - technology_iteration_risk
+
+ambiguous_union_note: When also_run cyclicals, either track passing retains candidate
+
+audit_hints:
+  - technology_iteration_risk
+  - cyclical_manufacturing_check

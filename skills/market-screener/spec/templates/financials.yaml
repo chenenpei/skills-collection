@@ -1,0 +1,119 @@
+# Financials sector funnel — Banks / Insurance / Other
+# Aligns: stock-analysis-audit/spec/data.md#Financials
+# Value alignment: Buffett bank ROTCE/ROA; Graham P/B for insurance mispricing
+
+version: "0.1.0"
+template: financials
+tracks: [quality, mispricing]
+
+sub_templates:
+  banks:
+    gics_codes: ["401010", "401020"]
+
+    quality_track:
+      pass_if: all_required_and_supporting_min_4_of_6
+      required:
+        rotce: { min: 0.13 }
+        roa:
+          default: 0.009
+          market_overrides: { CN: 0.0075, US: 0.009 }
+        npl_ratio: { max: 0.025 }
+        provision_coverage: { min: 1.50 }
+        capital_adequacy: { min: 0.115 }
+      supporting:
+        - { metric: pb_tangible, max: 2.5 }
+        - { metric: rotce_3y_avg, min: 0.12 }
+        - { metric: npl_ratio_yoy_change, max: 0.005 }
+        - { metric: nim, min: 0.015 }
+        - { metric: dividend_yield, min: 0.03, market_overrides: { CN: 0.03, US: 0.02 } }
+        - { metric: rotce_vs_industry_median, min: 0 }
+
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_3_of_5
+      required:
+        rotce: { min: 0.11 }
+        roa:
+          default: 0.007
+          market_overrides: { CN: 0.006, US: 0.007 }
+        npl_ratio: { max: 0.035 }
+        npl_ratio_yoy_change: { max: 0.010 }
+        capital_adequacy: { min: 0.105 }
+      supporting:
+        - { metric: pb_tangible_vs_5y_median, max: 0.85 }
+        - { metric: pb_tangible, max: 0.80 }
+        - { metric: rotce, min: 0.12 }
+        - { metric: dividend_yield, min: 0.05 }
+        - { metric: price_vs_52w_high, max: 0.70 }
+
+  insurance:
+    gics_codes: ["403010", "403020"]
+
+    quality_track:
+      pass_if: all_required_and_supporting_min_5_of_6
+      required:
+        roe_ttm: { min: 0.10 }
+        combined_ratio: { max: 1.00 }
+        solvency_ratio:
+          CN: { min: 1.50 }
+          US: { field: rbc_ratio, min: 200, missing: data_confidence_low }
+      supporting:
+        - { metric: pb, max: 1.5 }
+        - { metric: roe_3y_avg, min: 0.08 }
+        - { metric: embedded_value_growth_3y, min: 0.05, missing: skip }
+        - { metric: dividend_yield, min: 0.03 }
+        - { metric: loss_ratio_3y_volatility, max: 0.05, missing: skip }
+        - { metric: investment_yield, min: 0.04, missing: skip }
+
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_4_of_5
+      required:
+        roe_ttm: { min: 0.08 }
+        combined_ratio: { max: 1.05 }
+        solvency_ratio:
+          CN: { min: 1.20 }
+          US: { field: rbc_ratio, min: 150, missing: data_confidence_low }
+      supporting:
+        - { metric: pb_vs_5y_median, max: 0.85 }
+        - { metric: pb, max: 0.70 }
+        - { metric: graham_composite, max: 22.5 }
+        - { metric: roe_ttm, min: 0.10 }
+        - { metric: dividend_yield, min: 0.04 }
+        - { metric: price_vs_52w_high, max: 0.75 }
+
+  other_financials:
+    gics_codes: ["402030", "404020"]
+
+    quality_track:
+      pass_if: all_required_and_supporting_min_4_of_5
+      required:
+        roe_ttm: { min: 0.12 }
+        pb: { max: 2.0 }
+      supporting:
+        - { metric: roe_3y_avg, min: 0.10 }
+        - { metric: net_debt_to_equity, max: 1.0 }
+        - { metric: revenue_3y_cagr, min: 0.05 }
+        - { metric: dividend_yield, min: 0.02 }
+        - { metric: roe_vs_industry_median, min: 0 }
+
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_3_of_4
+      required:
+        roe_ttm: { min: 0.08 }
+        pb: { max: 1.5 }
+      supporting:
+        - { metric: pb_vs_5y_median, max: 0.80 }
+        - { metric: graham_composite, max: 22.5 }
+        - { metric: price_vs_52w_high, max: 0.70 }
+        - { metric: roe_ttm, min: 0.12 }
+        - { metric: revenue_yoy, min: 0 }
+
+financial_kill_gates:
+  - id: npl_spike
+    condition: npl_ratio_yoy_change_gt_0.02
+    action: exclude
+  - id: capital_breach
+    condition: capital_adequacy_lt_0.08
+    action: exclude
+  - id: roe_collapsing
+    condition: roe_ttm_lt_0.05_and_roe_3y_avg_lt_0.08
+    action: exclude

@@ -1,0 +1,55 @@
+# Cyclicals sector funnel — mispricing only
+# Aligns: stock-analysis-audit/spec/data.md Cyclicals, classification.md mid-cycle exceptions
+# Value alignment: Li Lu earnings quality; Howard Marks through-the-cycle; peak trap exclusion
+
+version: "0.1.0"
+template: cyclicals
+tracks: [mispricing]
+
+normalization:
+  window_years: 7
+  metrics: [mid_cycle_eps, mid_cycle_ebitda, mid_cycle_fcf, mid_cycle_operating_margin]
+  negative_eps_years: exclude_from_average
+  all_negative: data_confidence_low_do_not_prekill
+
+mispricing_track:
+  pass_if: all_required_and_supporting_min_4_of_6
+  required:
+    mid_cycle_pe: { max: 12 }
+    net_debt_to_ebitda: { max: 2.5 }
+    revenue_10y_cagr: { min: 0.0 }
+  supporting:
+    - { metric: mid_cycle_pe_vs_10y_median, max: 0.85 }
+    - { metric: mid_cycle_ev_ebitda_vs_peer, max: 0.90 }
+    - { metric: pb, max: 1.5 }
+    - { metric: mid_cycle_fcf_yield, min: 0.06 }
+    - { metric: price_vs_52w_high, max: 0.75 }
+    - { metric: operating_margin_vs_10y_median, min: -0.05 }
+
+sector_kill_gates:
+  - id: peak_cycle_trap
+    condition: trailing_pe_lt_8_and_operating_margin_gt_p75_10y
+    action: exclude
+    reason_slug: peak_cycle_trap
+    note: Optically cheap at peak earnings — Li Lu earnings quality trap
+
+  - id: peak_margin_trap
+    condition: operating_margin_gt_p90_10y_and_revenue_yoy_lt_0
+    action: exclude
+
+  - id: balance_sheet_stress
+    condition: net_debt_to_ebitda_gt_4.0
+    action: exclude
+
+  - id: capacity_peak
+    condition: capacity_utilization_gt_0.90
+    action: exclude
+    when_field_missing: skip
+
+funnel_flags:
+  - verify_cycle_position_in_deep
+  - commodity_price_sensitivity_when_applicable
+
+audit_hints:
+  - verify_cycle_position_in_deep
+  - use_mid_cycle_not_trailing_for_valuation

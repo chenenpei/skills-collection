@@ -1,0 +1,60 @@
+# Tech / SaaS sector funnel (AI applications merge here in MVP)
+# Aligns: stock-analysis-audit/spec/data.md Technology/SaaS, AI applications
+# Value alignment: Bessemer Rule of 40; Buffett ROIC/gross margin; Rule of 65 sales yield for mispricing
+
+version: "0.1.0"
+template: tech_saas
+tracks: [quality, mispricing]
+
+quality_track:
+  pass_if: all_required_and_supporting_min_5_of_7
+  required:
+    rule_of_40: { min: 35 }
+    gross_margin: { min: 0.50 }
+    revenue_growth_yoy: { min: 0.10 }
+  supporting:
+    - { metric: rule_of_40, min: 40 }
+    - { metric: gross_margin, min: 0.55 }
+    - { metric: ndr, min: 1.05, missing: skip }
+    - { metric: roic, min: 0.15, if_unprofitable: skip }
+    - { metric: sbc_to_revenue, max: 0.20, market_overrides: { CN: 0.10, US: 0.20 } }
+    - { metric: share_dilution_3y, max: 0.10 }
+    - { metric: fcf_margin, min: 0.15, if_fcf_negative: skip }
+
+  funnel_flags:
+    - rule_of_40_between_35_and_40
+    - ai_platform_dependency_check_required
+
+mispricing_track:
+  pass_if: all_required_and_supporting_min_4_of_6
+  required:
+    gross_margin: { min: 0.42 }
+    rule_of_40: { min: 25 }
+    revenue_growth_yoy: { min: 0.00 }
+    net_debt_to_ebitda: { max: 2.5 }
+  supporting:
+    - { metric: ps_vs_5y_median, max: 0.75, missing: use_ps_vs_peer }
+    - { metric: ps_vs_peer_median, max: 0.80 }
+    - { metric: revenue_yield_vs_peer, min: 1.0 }
+    - { metric: price_vs_52w_high, max: 0.65 }
+    - { metric: ndr, min: 1.00, missing: skip }
+    - { metric: forward_peg, max: 1.5, if_unprofitable: skip }
+
+sector_kill_gates:
+  - id: revenue_collapse
+    condition: revenue_yoy_lt_neg_0.10_for_2_quarters
+    action: exclude
+  - id: gross_margin_erosion
+    condition: gross_margin_yoy_decline_gt_0.10
+    action: exclude
+  - id: extreme_dilution
+    condition: share_dilution_3y_gt_0.25
+    action: exclude
+
+audit_hints:
+  - ai_platform_dependency_check_required
+  - verify_rule_of_40_components_if_data_confidence_low
+
+notes:
+  rule_of_40: revenue_growth_pct + fcf_margin_pct; use operating_margin_proxy if fcf unavailable with data_confidence_low
+  ai_applications: no separate template in MVP; flag for Deep profit-pool and platform dependency checks

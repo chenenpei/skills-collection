@@ -1,0 +1,88 @@
+# Phase 3 trigger discipline — price hit scenarios
+# MVP: human broker alerts + agent-guide; screener alert CLI is Phase 2 placeholder
+# Ref: SOP scenario A (idiosyncratic drop) vs scenario B (macro panic)
+
+version: "0.1.0"
+status: mvp_human_alerts_only
+
+phase_2_placeholder:
+  cli_command: screener alert
+  args:
+    - --from landmines.yaml
+    - --output alerts.yaml
+    - --markets CN|US
+  description: Compare current prices to landmine_price; emit alerts.yaml for agent review
+  not_in_mvp: true
+
+scenarios:
+  scenario_a_isolated_drop:
+    slug: trigger_isolated_drop
+    zh: 个股独立下跌触及 landmine 区间
+    discipline: do_not_buy_immediately
+    agent_actions:
+      - start_24h_qualitative_review
+      - use_stock_analysis_audit_deep_if_new_information
+      - prefer_wait_for_next_quarter_earnings
+    forbid:
+      - immediate_full_position
+      - blind_knife_catch
+    funnel_flag: trigger_review_required
+
+    detection_heuristics:
+      note: Phase 2 screener alert may automate; MVP user/agent judges
+      index_drawdown_20d_lt: 0.05
+      stock_drawdown_from_52w_high_gte: 0.15
+      stock_underperforms_index_5d_by_gte: 0.10
+      interpretation: Stock fell hard while market did not — suspect idiosyncratic risk
+
+  scenario_b_macro_panic:
+    slug: trigger_macro_panic
+    zh: 宏观恐慌导致集体下跌触及 landmine 区间
+    discipline: may_strike_with_partial_position
+    agent_actions:
+      - wait_24h_confirm_macro_not_idiosyncratic
+      - deploy_first_tranche_pct: 0.40
+      - first_tranche_range: [0.40, 0.50]
+      - reserve_remainder_for_next_earnings_season
+      - verify_landmine_thesis_still_intact
+    funnel_flag: macro_panic_candidate
+
+    detection_heuristics:
+      CN:
+        benchmark: CSI300
+        index_drawdown_from_20d_high_gte: 0.08
+      US:
+        benchmark: SPY
+        index_drawdown_from_20d_high_gte: 0.08
+      stock_at_or_below: landmine_price
+      interpretation: Broad panic dragged quality names below landmine — scenario B
+
+decision_tree:
+  - if: scenario_b_heuristics_match
+    then: trigger_macro_panic
+  - elif: scenario_a_heuristics_match
+    then: trigger_isolated_drop
+  - else: trigger_ambiguous
+    slug: trigger_ambiguous
+    discipline: default_to_scenario_a
+    note: When uncertain, prefer 场景 A 纪律 (do not buy immediately)
+
+alerts_schema_placeholder:
+  filename: alerts.yaml
+  location: "{output}/{quarter}/alerts.yaml"
+  phase: 2
+  fields:
+    alerts:
+      item_fields:
+        - ticker
+        - market
+        - current_price
+        - landmine_price
+        - triggered_scenario_slug
+        - recommended_discipline
+        - detected_at
+
+human_execution:
+  primary: broker_GTC_or_price_alert
+  screener_alert_cli: phase_2_optional_supplement
+  never: automated_buy

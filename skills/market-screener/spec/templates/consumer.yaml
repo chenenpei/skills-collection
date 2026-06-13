@@ -1,0 +1,54 @@
+# Consumer sector funnel — discretionary and staples
+# Aligns: stock-analysis-audit/spec/data.md Consumer
+# Value alignment: Buffett ROE/margin stability; Graham composite; FCF yield mispricing
+
+version: "0.1.0"
+template: consumer
+tracks: [quality, mispricing]
+
+quality_track:
+  pass_if: all_required_and_supporting_min_5_of_7
+  required:
+    roe_5y_avg: { min: 0.13 }
+    gross_margin_3y_stable: { max_decline_pp: 5 }
+    fcf_conversion_5y: { min: 0.85 }
+    net_debt_to_ebitda: { max: 2.5 }
+  supporting:
+    - { metric: roe_5y_avg, min: 0.15 }
+    - { metric: roic_5y_avg, min: 0.12 }
+    - { metric: gross_margin_vs_industry, min: 0.05 }
+    - { metric: operating_margin_vs_industry, min: 0 }
+    - { metric: same_store_sales_yoy, min: 0.00, missing: skip }
+    - { metric: revenue_3y_cagr, min: 0.03 }
+    - { metric: debt_to_equity, max: 0.50 }
+    - { metric: dividend_yield, min: 0.02 }
+
+mispricing_track:
+  pass_if: all_required_and_supporting_min_4_of_6
+  required:
+    roe_ttm: { min: 0.10 }
+    gross_margin: { min: 0.25 }
+    fcf_yield: { min: 0.05 }
+  supporting:
+    - { metric: graham_composite, max: 22.5 }
+    - { metric: pe_vs_5y_median, max: 0.85 }
+    - { metric: fcf_yield_vs_risk_free, min: 0.04 }
+    - { metric: price_vs_52w_high, max: 0.70 }
+    - { metric: same_store_sales_yoy, min: -0.03, missing: skip }
+    - { metric: inventory_growth_minus_revenue, max: 0.10 }
+
+sector_kill_gates:
+  - id: channel_stuffing
+    condition: inventory_yoy_minus_revenue_yoy_gt_0.15_for_2_years
+    action: exclude
+  - id: margin_collapse
+    condition: gross_margin_yoy_decline_gt_0.08
+    action: exclude
+  - id: same_store_collapse
+    condition: same_store_sales_yoy_lt_neg_0.05_for_2_periods
+    action: exclude
+    when_field_present: same_store_sales_yoy
+
+graham_composite:
+  formula: pe_3y_avg_times_pb
+  max: 22.5

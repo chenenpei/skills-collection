@@ -1,0 +1,83 @@
+# Shared kill gates — applied before sector funnel templates
+# Principle: prefer false positives over false rejects (wide in, conservative exclude)
+
+version: "0.1.0"
+
+universe:
+  security_type: security_single_company
+  exclude_pooled_vehicles: true
+
+  profile_b:
+    slug: market_cap_profile_b
+    CN:
+      market_cap_min_cny: 2000000000      # 20亿
+      listing_age_min_years: 3
+    US:
+      market_cap_min_usd: 300000000
+      listing_age_min_years: 2
+
+  status_exclusions:
+    slug: universe_exclude_status
+    CN: [ST, delisting, suspended]
+    US: [halted, delisted]
+
+gates:
+  - id: status_excluded
+    phase: universe
+    action: exclude
+    reason_slug: kill_status_excluded
+
+  - id: market_cap_below_floor
+    phase: universe
+    action: exclude
+    reason_slug: kill_market_cap_below_floor
+
+  - id: listing_age_below_floor
+    phase: universe
+    action: exclude
+    reason_slug: kill_listing_age_below_floor
+
+  - id: revenue_decline_3y_consecutive
+    phase: shared
+    action: exclude
+    condition: revenue_yoy_negative_each_of_last_3_years
+    reason_slug: kill_revenue_decline_3y_consecutive
+    note: Sector templates apply additional filters
+
+  - id: ocf_negative_widening_loss
+    phase: shared
+    action: exclude
+    condition: ocf_negative_2_consecutive_years_and_net_loss_widening
+    reason_slug: kill_ocf_negative_widening_loss
+
+  - id: non_standard_audit
+    phase: shared
+    action: exclude
+    condition:
+      CN: audit_opinion_non_standard
+      US: going_concern_emphasis
+    reason_slug: kill_non_standard_audit
+
+  - id: key_fields_missing
+    phase: shared
+    action: exclude
+    condition: missing_count_gte_3
+    fields: [revenue, net_income, market_cap, operating_cash_flow]
+    reason_slug: kill_key_fields_missing
+
+  - id: data_stale_flag_only
+    phase: shared
+    action: flag
+    condition: latest_financial_data_older_than_months_18
+    set: data_confidence_low
+    reason_slug: flag_data_stale
+    note: Do not exclude; Deep audit re-checks
+
+flags_not_exclusions:
+  - id: revenue_decline_ocf_positive
+    condition: revenue_yoy_negative_1y_and_ocf_positive
+    funnel_flag: revenue_decline_ocf_positive
+
+  - id: profit_loss_ocf_divergence
+    condition: net_loss_and_ocf_positive
+    funnel_flag: profit_loss_ocf_divergence

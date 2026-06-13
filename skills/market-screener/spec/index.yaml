@@ -1,0 +1,123 @@
+# Market Screener — spec manifest
+# Domain terms: ../CONTEXT.md
+# Downstream audit: ../../stock-analysis-audit/
+
+version: "0.1.0"
+status: spec_only  # CLI not implemented yet
+tightening_profile: package_m  # 2026 grill: sector templates tightened; soft cap 25 per market
+
+delivery:
+  form: cli_plus_skill
+  cli_language: typescript
+  cli_commands:
+    - screener run --markets CN|US|CN,US --quarter YYYY-QN --output PATH
+    - screener validate spec/
+    - screener explain TICKER --market CN|US
+    - screener landmine --from audit-summary.yaml --output landmines.yaml
+    - screener alert --from landmines.yaml --output alerts.yaml  # Phase 2 placeholder
+
+principles:
+  kill_gate: prefer_false_positives_over_false_rejects
+  sector_template: package_m_moderate_tightening
+  market_override_policy: default_unified_add_override_when_needed
+  funnel_soft_cap_per_market: 25
+  audit_hints: optional_extension_for_orchestrator
+
+universe:
+  security_type: security_single_company
+  markets: [CN, US]
+  market_cap_profile: profile_b
+  ref: kill-gates.yaml#universe
+
+schedule:
+  ref: schedule.yaml
+  principle: unified_cn_us_same_day_after_later_market_disclosure
+  cycles_per_year: 3_runs  # Q1, Q2, Q3; Q4 US rolls into next Q1 gate
+
+data_sources:
+  profile: scheme_f
+  cn:
+    provider: eastmoney
+    uses: [quotes, financials, industry_proxy]
+  us:
+    providers: [sec_edgar, yahoo_finance]
+    uses: [financials_bulk, quotes, industry_proxy]
+  industry_routing: yahoo_industry_to_gics_proxy
+  cache: data/cache/{quarter}/
+  ref: ../CONTEXT.md#Data Sources (MVP)
+
+routing:
+  classifier: gics_level_2_or_3
+  industry_proxy: true
+  ambiguous_union: true
+  ref: routing-map.yaml
+
+templates:
+  - id: financials
+    file: templates/financials.yaml
+    tracks: [quality, mispricing]
+    sub_templates: [banks, insurance, other_financials]
+  - id: tech_saas
+    file: templates/tech-saas.yaml
+    tracks: [quality, mispricing]
+    notes: AI applications merge here with audit flag
+  - id: consumer
+    file: templates/consumer.yaml
+    tracks: [quality, mispricing]
+  - id: cyclicals
+    file: templates/cyclicals.yaml
+    tracks: [mispricing]
+  - id: manufacturing
+    file: templates/manufacturing.yaml
+    tracks: [quality, mispricing]
+
+output:
+  ref: output-schema.yaml
+  funnel_soft_cap:
+    max_candidates_per_market: 25
+    overflow_artifact: deferred.yaml
+  default_layout:
+    - "{output}/{quarter}/CN/candidates.yaml"
+    - "{output}/{quarter}/US/candidates.yaml"
+    - "{output}/{quarter}/CN/deferred.yaml"
+    - "{output}/{quarter}/US/deferred.yaml"
+    - "{output}/{quarter}/CN/excluded.yaml"
+    - "{output}/{quarter}/US/excluded.yaml"
+    - "{output}/{quarter}/audit/CN/{ticker}.md"
+    - "{output}/{quarter}/audit/US/{ticker}.md"
+    - "{output}/{quarter}/audit-summary.yaml"
+    - "{output}/{quarter}/landmines.yaml"
+
+integration:
+  downstream_skill: stock-analysis-audit
+  downstream_mode: deep
+  orchestrator_passes: [ticker, market, audit_hints, metric_snapshot]
+  deep_audit:
+    default_limit_per_market: 20
+    limit_flag: --deep-limit N
+    deep_all_flag: --deep-all
+    deep_all_requires_explicit: true
+    execution: parallel_by_market
+    report_path: "{output}/{quarter}/audit/{market}/{ticker}.md"
+    summary_artifact: audit-summary.yaml
+
+landmine:
+  ref: landmine-rules.yaml
+  cli_command: screener landmine
+  input: audit-summary.yaml#shortlist_for_landmine
+  output_artifact: landmines.yaml
+  execution: human_broker_order_only
+
+trigger_discipline:
+  ref: trigger-discipline.yaml
+  mvp: human_broker_alerts_plus_agent_guide
+  phase_2_placeholder:
+    cli_command: screener alert
+    output_artifact: alerts.yaml
+
+implementation_order:
+  - spec_yaml
+  - cli_skeleton_validate
+  - data_adapters
+  - funnel_engine
+  - skill_md  # done

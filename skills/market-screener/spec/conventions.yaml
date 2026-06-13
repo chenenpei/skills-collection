@@ -1,0 +1,80 @@
+# Spec YAML conventions for market-screener
+# Read by: CLI validate, future funnel-engine
+# Terms: ../CONTEXT.md
+
+version: "0.1.0"
+
+threshold_syntax:
+  simple:
+    example: { min: 0.12 }
+    meaning: metric value must be >= min
+
+  max_only:
+    example: { max: 0.25 }
+    meaning: metric value must be <= max
+
+  market_overrides:
+    example:
+      default: 0.009
+      market_overrides: { CN: 0.0075, US: 0.009 }
+    meaning: Use market-specific floor/ceiling when market is CN or US
+
+  market_metric:
+    example:
+      CN: { min: 1.50 }
+      US: { field: rbc_ratio, min: 200, missing: data_confidence_low }
+    meaning: Different metric fields per market when definitions differ
+
+  missing:
+    values: [skip, data_confidence_low]
+    skip: metric not counted toward supporting pass count
+    data_confidence_low: record low confidence; do not prekill at funnel stage
+
+pass_logic:
+  all_required_and_supporting_min_N_of_M:
+    required: all must pass
+    supporting: at least N of M listed supporting rules must pass
+
+  package_m_defaults:
+    note: Tightened 2026 grill session
+    typical_supporting_bars:
+      tech_saas_quality: 5_of_7
+      tech_saas_mispricing: 4_of_6
+      consumer_quality: 5_of_7
+      consumer_mispricing: 4_of_6
+      cyclicals_mispricing: 4_of_6
+      manufacturing_quality: 5_of_7
+      manufacturing_mispricing: 4_of_6
+      financials_banks: 4_of_6  # unchanged; sparse bank data
+
+funnel_soft_cap:
+  max_candidates_per_market: 25
+  overflow: deferred.yaml
+  ranking: composite funnel score within market
+
+ranking:
+  tie_break: higher data_confidence, then higher supporting pass count
+
+metric_snapshot:
+  include_on_pass: all metrics evaluated for the passed track
+  per_field: { value, period, currency, source, basis, data_confidence }
+
+funnel_flags:
+  appended_to: candidate_record.funnel_flags
+  consumed_by: orchestrator and stock-analysis-audit Deep hints
+
+audit_hints:
+  not_part_of: stock-analysis-audit core schema
+  passed_by: orchestrator into Deep audit prompt
+
+graham_composite:
+  formula: pe_3y_avg * pb
+  max_default: 22.5
+
+rule_of_40:
+  formula: revenue_growth_pct + fcf_margin_pct
+  fallback: operating_margin_pct with data_confidence_low
+
+mid_cycle:
+  window_years_default: 7
+  ref: templates/cyclicals.yaml#normalization
