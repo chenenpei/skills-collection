@@ -37,10 +37,41 @@ const strongSaasRecord = (): SecurityRecord => ({
 
 describe("evaluateTemplateTrack", () => {
   let techSaas: SectorTemplateSpec & Record<string, unknown>;
+  let consumer: SectorTemplateSpec & Record<string, unknown>;
 
   beforeAll(async () => {
-    techSaas = (await loadSpecBundle(SPEC_DIR)).templates.tech_saas as SectorTemplateSpec &
-      Record<string, unknown>;
+    const bundle = await loadSpecBundle(SPEC_DIR);
+    techSaas = bundle.templates.tech_saas as SectorTemplateSpec & Record<string, unknown>;
+    consumer = bundle.templates.consumer as SectorTemplateSpec & Record<string, unknown>;
+  });
+
+  const strongConsumerRecord = (): SecurityRecord => ({
+    ticker: "TEST",
+    market: "CN",
+    companyName: "Stable Consumer",
+    currency: "CNY",
+    status: "active",
+    marketCap: 5e9,
+    listingAgeYears: 10,
+    metrics: {
+      roe_5y_avg: { value: 0.16, dataConfidence: "high" },
+      gross_margin_3y_max_decline_pp: { value: 3, dataConfidence: "high" },
+      fcf_conversion_5y: { value: 0.9, dataConfidence: "high" },
+      net_debt_to_ebitda: { value: 1.5, dataConfidence: "high" },
+      roic_5y_avg: { value: 0.13, dataConfidence: "high" },
+      gross_margin_vs_industry: { value: 0.06, dataConfidence: "high" },
+      operating_margin_vs_industry: { value: 0.02, dataConfidence: "high" },
+      revenue_3y_cagr: { value: 0.05, dataConfidence: "high" },
+      debt_to_equity: { value: 0.3, dataConfidence: "high" },
+      revenue: { value: 1e9, dataConfidence: "high" },
+      net_income: { value: 1e8, dataConfidence: "high" },
+      operating_cash_flow: { value: 2e8, dataConfidence: "high" },
+    },
+    revenueYoyHistory: [0.05, 0.04, 0.03],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 6,
   });
 
   it("passes tech_saas quality when required and supporting bars are met", () => {
@@ -52,5 +83,15 @@ describe("evaluateTemplateTrack", () => {
     const record = strongSaasRecord();
     record.metrics.gross_margin = { value: 0.3, dataConfidence: "high" };
     expect(evaluateTemplateTrack(techSaas, "quality", record).passed).toBe(false);
+  });
+
+  it("passes consumer quality when gross margin max decline is within 5pp", () => {
+    expect(evaluateTemplateTrack(consumer, "quality", strongConsumerRecord()).passed).toBe(true);
+  });
+
+  it("fails consumer quality when gross margin max decline exceeds 5pp", () => {
+    const record = strongConsumerRecord();
+    record.metrics.gross_margin_3y_max_decline_pp = { value: 8, dataConfidence: "high" };
+    expect(evaluateTemplateTrack(consumer, "quality", record).passed).toBe(false);
   });
 });

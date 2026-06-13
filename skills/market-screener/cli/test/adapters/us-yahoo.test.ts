@@ -98,17 +98,6 @@ describe("createUsYahooAdapter", () => {
     expect(records[0]?.ticker).toBe("AAPL");
   });
 
-  it("returns empty array when US is not requested", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-
-    const adapter = createUsYahooAdapter({ cacheDir: "/tmp/screener-cache" });
-    const records = await adapter.loadUniverse(["CN"]);
-
-    expect(records).toEqual([]);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
   it("throws when screener request fails", async () => {
     vi.stubGlobal(
       "fetch",

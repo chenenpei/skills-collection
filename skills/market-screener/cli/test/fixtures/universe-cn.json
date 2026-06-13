@@ -11,7 +11,7 @@
     "industryProxy": "Beverages",
     "metrics": {
       "roe_5y_avg": { "value": 0.32, "dataConfidence": "high" },
-      "gross_margin_3y_stable": { "value": 0.91, "dataConfidence": "high" },
+      "gross_margin_3y_max_decline_pp": { "value": 2.0, "dataConfidence": "high" },
       "fcf_conversion_5y": { "value": 0.95, "dataConfidence": "high" },
       "net_debt_to_ebitda": { "value": 0.3, "dataConfidence": "high" },
       "roic_5y_avg": { "value": 0.28, "dataConfidence": "high" },

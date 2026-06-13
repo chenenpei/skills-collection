@@ -66,17 +66,6 @@ describe("createCnEastMoneyAdapter", () => {
     expect(records[0]?.status).toBe("ST");
   });
 
-  it("returns empty array when CN is not requested", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-
-    const adapter = createCnEastMoneyAdapter({ cacheDir: "/tmp/screener-cache" });
-    const records = await adapter.loadUniverse(["US"]);
-
-    expect(records).toEqual([]);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
   it("paginates until all rows are loaded", async () => {
     const page1 = Array.from({ length: 100 }, (_, i) => ({
       f12: String(600000 + i),

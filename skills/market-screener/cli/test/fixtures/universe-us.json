@@ -12,7 +12,7 @@
     "metrics": {
       "roic_5y_avg": { "value": 0.45, "dataConfidence": "high" },
       "fcf_conversion_5y": { "value": 0.92, "dataConfidence": "high" },
-      "gross_margin_3y_stable": { "value": 0.43, "dataConfidence": "high" },
+      "gross_margin_3y_max_decline_pp": { "value": 3.0, "dataConfidence": "high" },
       "net_debt_to_ebitda": { "value": 0.8, "dataConfidence": "high" },
       "capex_to_revenue": { "value": 0.04, "dataConfidence": "high" },
       "roe_5y_avg": { "value": 0.55, "dataConfidence": "high" },
