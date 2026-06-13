@@ -1,0 +1,97 @@
+# CN sector routing — East Money 申万 hierarchy (L1-L2-L3, separator "-")
+# Edit l1_defaults when East Money adds a new L1; use l2_overrides for exceptions.
+# After edits: cd cli && npm run validate && npm test -- test/engine/router.test.ts
+# Quarterly: read funnel CN/routing-diagnostics.yaml; if fallback_rate > 5%, extend this file.
+
+version: "0.1.0"
+taxonomy: eastmoney_shenwan_hierarchy
+
+legacy_l1_aliases:
+  信息技术: 计算机
+  电气设备: 电力设备
+  交运设备: 汽车
+  电子设备: 电子
+  纺织服装: 纺织服饰
+  文化传媒: 传媒
+  建材: 建筑材料
+  建筑: 建筑装饰
+  家电: 家用电器
+  国防与装备: 国防军工
+
+# L1 default → sector template (full East Money L1 coverage)
+l1_defaults:
+  银行: { template: financials, sub_template: banks }
+  非银金融: { template: financials, sub_template: other_financials }
+  金融: { template: financials, sub_template: other_financials }
+  石油石化: { template: cyclicals }
+  煤炭: { template: cyclicals }
+  钢铁: { template: cyclicals }
+  有色金属: { template: cyclicals }
+  基础化工: { template: cyclicals }
+  化石能源: { template: cyclicals }
+  建筑材料: { template: cyclicals }
+  建筑装饰: { template: cyclicals }
+  房地产: { template: cyclicals }
+  公用事业: { template: cyclicals }
+  交通运输: { template: cyclicals }
+  环保: { template: cyclicals }
+  食品饮料: { template: consumer }
+  商贸零售: { template: consumer }
+  纺织服饰: { template: consumer }
+  家用电器: { template: consumer }
+  社会服务: { template: consumer }
+  美容护理: { template: consumer }
+  轻工制造: { template: consumer }
+  农林牧渔: { template: consumer }
+  计算机: { template: tech_saas }
+  通信: { template: tech_saas }
+  传媒: { template: tech_saas }
+  互联网: { template: tech_saas }
+  信息技术: { template: tech_saas }
+  医药生物:
+    template: tech_saas
+    confidence: ambiguous_union
+    also_run: [consumer]
+  电子:
+    template: manufacturing
+    confidence: ambiguous_union
+    also_run: [tech_saas]
+  电力设备: { template: manufacturing }
+  机械设备: { template: manufacturing }
+  汽车: { template: manufacturing }
+  国防军工: { template: manufacturing }
+  综合: { template: manufacturing }
+
+# L2 overrides (take precedence over l1_defaults)
+l2_overrides:
+  - match: { l1: 电子, l2: 半导体 }
+    template: manufacturing
+    confidence: ambiguous_union
+    also_run: [tech_saas, cyclicals]
+  - match: { l1: 电子, l2: 消费电子 }
+    template: manufacturing
+    confidence: ambiguous_union
+    also_run: [tech_saas]
+  - match: { l1: 医药生物, l2: 中药Ⅱ }
+    template: consumer
+    confidence: high
+  - match: { l1: 非银金融, l2: 证券Ⅱ }
+    template: financials
+    sub_template: other_financials
+    confidence: high
+
+# Keyword proxy patches (when structured map misses)
+proxy_keyword_excludes:
+  - keyword: 消费
+    exclude_if_contains: [消费电子]
+  - keyword: 制造
+    exclude_if_contains: [智能制造]
+
+proxy_keyword_additions:
+  - keywords: [证券, 券商]
+    template: financials
+    sub_template: other_financials
+  - keywords: [软件开发, 软件, saas]
+    template: tech_saas
+  - keywords: [白酒, 啤酒, 乳品]
+    template: consumer
