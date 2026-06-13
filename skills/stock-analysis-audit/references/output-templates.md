@@ -1,5 +1,7 @@
 # Output Templates
 
+Scope: single company only. For ETFs, index funds, active funds, and other pooled fund vehicles, use `fund-output-templates.md` instead.
+
 ## Lite Screening Template
 
 ```markdown

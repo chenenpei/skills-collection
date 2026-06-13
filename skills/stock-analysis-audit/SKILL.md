@@ -1,11 +1,11 @@
 ---
 name: stock-analysis-audit
-description: Performs evidence-first stock analysis and valuation audits. Use when the user asks to analyze a stock, equity, listed company, ticker, valuation, moat, financial quality, opportunity cost versus indexes, or wants a Buffett/Munger/Graham-style investment audit.
+description: Performs evidence-first stock analysis and valuation audits. Use when the user asks to analyze a stock, equity, listed company, ETF, index fund, fund, ticker, valuation, moat, financial quality, opportunity cost versus indexes, or wants a Buffett/Munger/Graham-style investment audit.
 ---
 
 # Stock Analysis Audit
 
-Use this skill to analyze listed companies with an evidence-first workflow. The goal is not to prove a stock is worth buying; it is to decide whether the stock deserves single-name concentration risk versus index alternatives.
+Use this skill to analyze listed companies and pooled fund vehicles with an evidence-first workflow. For single companies, the goal is not to prove a stock is worth buying; it is to decide whether the stock deserves single-name concentration risk versus index alternatives. For ETFs and funds, the goal is to decide whether the fund is a sensible tool for the desired exposure versus peer funds and broad benchmarks.
 
 All conclusions are research assistance only and are not investment advice.
 
@@ -13,7 +13,7 @@ All conclusions are research assistance only and are not investment advice.
 
 - Default to Lite screening unless the user explicitly asks for Deep, full audit, or complete analysis.
 - Accept minimal input: company name, ticker, abbreviation, or business keyword.
-- Identify the company before analyzing it.
+- Identify the security before analyzing it.
 - Default opportunity-cost benchmarks:
   - Nasdaq 100 for global large-cap growth and technology opportunity cost
   - CSI Dividend Index for high-dividend cash-return opportunity cost
@@ -25,14 +25,18 @@ All conclusions are research assistance only and are not investment advice.
 Read only what is needed:
 
 - For data rules: `references/data-contract.md`
-- For execution flow: `references/workflow.md`
-- For investment type classification: `references/classification-rules.md`
-- For final report shapes: `references/output-templates.md`
+- For execution flow: `references/workflow.md` for single companies; `references/fund-workflow.md` for ETFs and funds
+- For investment type classification: `references/classification-rules.md` (single companies only)
+- For final report shapes: `references/output-templates.md` for single companies; `references/fund-output-templates.md` for ETFs and funds
 - For tool use and stop conditions: `references/tool-policy.md`
 
-For Lite analysis, read `references/data-contract.md`, `references/workflow.md`, `references/output-templates.md`, and `references/tool-policy.md`.
+For Lite single-company analysis, read `references/data-contract.md`, `references/workflow.md`, `references/output-templates.md`, and `references/tool-policy.md`.
 
-For Deep analysis, also read `references/classification-rules.md`.
+For Lite or Deep fund/ETF analysis, read `references/data-contract.md`, `references/fund-workflow.md`, `references/fund-output-templates.md`, and `references/tool-policy.md`.
+
+For fund/ETF analysis, do not load `references/workflow.md`, `references/output-templates.md`, or `references/classification-rules.md` as the governing templates unless you are explicitly analyzing an underlying single-company holding.
+
+For Deep single-company analysis, also read `references/classification-rules.md`.
 
 ## Bundled Prompt Kit (same directory)
 
@@ -48,8 +52,11 @@ Do not load the entire `source/` file into context for routine analysis; use `re
 ## Execution Rules
 
 1. Identify the security first.
-   - Confirm company full name, ticker, primary listing, trading currency, business, and possible ADR/share-class ambiguity.
+   - Confirm security type: single company, ETF/index fund, active fund, or unclear.
+   - For single companies: confirm company full name, ticker, primary listing, trading currency, business, and possible ADR/share-class ambiguity.
+   - For funds/ETFs: confirm fund name, ticker, issuer, tracked index or mandate, expense ratio, and closest peer fund.
    - If multiple candidates exist, stop and ask the user to choose.
+   - If the security is an ETF or fund, use `references/fund-workflow.md` and `references/fund-output-templates.md` instead of company classification, moat scoring, and company output templates.
 
 2. Gather data before analysis.
    - Use available tools to collect company filings, market data, valuation data, and benchmark data.
@@ -57,25 +64,28 @@ Do not load the entire `source/` file into context for routine analysis; use `re
    - If data quality is Low, final verdict must not exceed Watchlist.
 
 3. Run the appropriate workflow.
-   - Lite: company identity, data quality, business model, key financial snapshot, valuation/opportunity cost, potential misunderstanding, top risks, preliminary verdict.
-   - Deep: cross-cycle financials, industry-specific metrics, profit-pool destruction check, hidden upside check, classification, moat, management, valuation, red-team risks, circle-of-competence, final verdict.
+   - Single-company Lite: company identity, data quality, business model, key financial snapshot, valuation/opportunity cost, potential misunderstanding, top risks, preliminary verdict.
+   - Single-company Deep: cross-cycle financials, industry-specific metrics, profit-pool destruction check, hidden upside check, classification, moat, management, valuation, red-team risks, circle-of-competence, final verdict.
+   - Fund/ETF Lite or Deep: fund identity, wrapper quality, portfolio anatomy, weighted valuation, growth attribution, peer comparison, exposure-level profit-pool check, Bull-side misunderstanding check, Bear-side hidden re-pricing check, fund-specific risks, fund verdict.
 
-4. Use classification discipline.
+4. Use classification discipline for single companies only.
    - Classify with necessary conditions, M/N supporting evidence, veto conditions, and industry exceptions.
    - Do not let one attractive metric hide a major flaw.
    - Before positive classification, check who can destroy the product or profit pool without needing to profit from that product.
    - Before Reject, Watchlist, or Value Trap conclusions, check whether the market is using an outdated business classification that misses hidden assets, ecosystem lock-in, capital allocation change, or a new profit pool.
    - Hidden upside requires hard evidence: net-income/cash-flow divergence, real buyback-driven share count reduction, segment/backlog/order evidence, industry clearing effects, or proof that the impairment is cyclical rather than structural.
+   - For ETFs and funds, skip company classification and use growth attribution, peer comparison, and exposure-level profit-pool checks from `references/fund-workflow.md`.
 
 5. Produce a clear final verdict.
-   - Choose exactly one: Reject, Watchlist, Medium-Term Revaluation Opportunity, High-Quality Company at Reasonable Price, High Conviction Candidate.
+   - Single company: choose exactly one of Reject, Watchlist, Medium-Term Revaluation Opportunity, High-Quality Company at Reasonable Price, High Conviction Candidate.
+   - ETF/fund: choose exactly one of Reject, Watchlist, Satellite Hold, Core Hold, Tactical Only.
    - Include confidence, data quality, top supporting evidence, top opposing evidence, key falsification metric, and re-audit trigger.
 
 ## Stop and Ask
 
 Stop instead of continuing when:
 
-- Company identity is ambiguous.
+- Company or fund identity is ambiguous.
 - Data sources conflict on a key value and cannot be reconciled.
 - The company is delisted, privatized, renamed, merged, or materially restructured and the current security is unclear.
 - The user asks for an action framework but provides no circle-of-competence or risk context.

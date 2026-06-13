@@ -1,5 +1,7 @@
 # Classification Rules
 
+Scope: single company only. Do not apply these M/N classifications to ETFs, index funds, active funds, or other pooled fund vehicles.
+
 Use necessary conditions, M/N supporting evidence, veto conditions, and sector exceptions. Choose one primary investment type.
 
 ## A. Cigar-Butt Undervalued Asset

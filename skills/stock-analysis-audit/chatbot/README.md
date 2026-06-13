@@ -5,16 +5,21 @@
 ## 推荐用法
 
 1. 把 `00-system-prompt.md` 作为 system prompt 或会话开场规则。
-2. 用 `01-company-identification.md` 先确认分析对象。
-3. 默认使用 `02-lite-screening.md` 做初筛。
-4. 如果模型无法联网或数据不足，使用 `03-data-intake.md` 让模型告诉你最小数据需求。
-5. 当你提供了足够数据后，再按需投喂：
+2. 用 `01-security-identification.md` 先确认分析对象和证券类型。
+3. 如果是单一公司，使用个股阶段 prompt。
+4. 如果是 ETF / 基金，使用 fund 阶段 prompt。
+5. 如果模型无法联网或数据不足，使用对应 data intake prompt 让模型告诉你最小数据需求。
+6. 当你提供了足够数据后，再按需投喂：
    - `04-cross-cycle-financial-audit.md`
    - `05-business-quality-and-moat.md`
    - `06-valuation-and-opportunity-cost.md`
    - `07-red-team-and-verdict.md`
+   - `04-fund-portfolio-anatomy.md`
+   - `05-fund-growth-peer-comparison.md`
+   - `06-fund-exposure-misunderstanding.md`
+   - `07-fund-red-team-and-verdict.md`
 
-## Lite 初筛流程
+## Single-Company Lite 初筛流程
 
 适合快速判断是否值得继续研究。
 
@@ -22,7 +27,7 @@
 
 ```text
 00-system-prompt.md
-01-company-identification.md
+01-security-identification.md
 02-lite-screening.md
 ```
 
@@ -32,7 +37,7 @@
 03-data-intake.md
 ```
 
-## Deep 深度审计流程
+## Single-Company Deep 深度审计流程
 
 适合你愿意手动提供财报数据和指数数据时使用。
 
@@ -40,7 +45,7 @@
 
 ```text
 00-system-prompt.md
-01-company-identification.md
+01-security-identification.md
 03-data-intake.md
 04-cross-cycle-financial-audit.md
 05-business-quality-and-moat.md
@@ -48,12 +53,47 @@
 07-red-team-and-verdict.md
 ```
 
+## Fund Lite 初筛流程
+
+适合快速判断 ETF / 基金是否是获得目标暴露的合理工具。
+
+推荐顺序：
+
+```text
+00-system-prompt.md
+01-security-identification.md
+02-lite-fund-screening.md
+```
+
+如果模型提示基金数据不足，则插入：
+
+```text
+03-fund-data-intake.md
+```
+
+## Fund Deep 深度审计流程
+
+适合你愿意手动提供 fact sheet、holdings、index methodology、peer fund 和组合估值数据时使用。
+
+推荐顺序：
+
+```text
+00-system-prompt.md
+01-security-identification.md
+03-fund-data-intake.md
+04-fund-portfolio-anatomy.md
+05-fund-growth-peer-comparison.md
+06-fund-exposure-misunderstanding.md
+07-fund-red-team-and-verdict.md
+```
+
 ## 关键提醒
 
 - 不要让无联网模型“动态查询”。如果它没有工具，应让它明确要求你提供数据。
 - 不要一次性投喂所有阶段 prompt。分阶段运行能减少幻觉和格式疲劳。
-- 如果公司身份存在歧义，必须先停住确认。
+- 如果证券身份存在歧义，必须先停住确认。
 - 如果关键数据缺失，最终结论不得高于“观察名单”。
+- ETF / 基金必须同时完成 Bull-side Misunderstanding 和 Bear-side Hidden Re-pricing Check。
 
 ## 适合场景
 

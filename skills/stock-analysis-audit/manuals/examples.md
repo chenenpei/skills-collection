@@ -1,6 +1,6 @@
 # Examples
 
-下面是两种最小使用示例。示例只展示调用方式，不包含真实投资结论。
+下面是几种最小使用示例。示例只展示调用方式，不包含真实投资结论。
 
 ## 示例 1：Chatbot Lite 初筛
 
@@ -19,7 +19,7 @@ chatbot/00-system-prompt.md
 复制：
 
 ```text
-chatbot/01-company-identification.md
+chatbot/01-security-identification.md
 ```
 
 把关键词替换为：
@@ -74,7 +74,78 @@ Microsoft / MSFT
 4. 输出 Lite 模板。
 5. 如果数据不足，标注 `N/A` 并降级结论。
 
-## 示例 3：Agent Skill Deep
+## 示例 3：Chatbot Fund Lite（SMH）
+
+### 第一步：设置 system
+
+复制：
+
+```text
+chatbot/00-system-prompt.md
+```
+
+### 第二步：识别证券
+
+复制：
+
+```text
+chatbot/01-security-identification.md
+```
+
+把关键词替换为：
+
+```text
+SMH
+```
+
+期望模型输出：
+
+```markdown
+## 证券识别结果
+
+- 识别对象：VanEck Semiconductor ETF
+- Ticker：SMH
+- 证券类型：ETF
+- ETF / 基金信息：
+  - Issuer / sponsor：VanEck
+  - Index tracked / mandate：MVIS US Listed Semiconductor 25 Index
+  - Closest peer fund candidates：SOXX 等
+- 识别置信度：High
+```
+
+### 第三步：Fund Lite 初筛
+
+复制：
+
+```text
+chatbot/02-lite-fund-screening.md
+```
+
+把基金填为：
+
+```text
+SMH / VanEck Semiconductor ETF
+```
+
+期望模型至少输出 `Bull-side Misunderstanding`、`Bear-side Hidden Re-pricing Check`、peer fund comparison 和 fund verdict。若没有联网，它应停止并要求提供 fact sheet、holdings、portfolio valuation 和 peer fund 数据。
+
+## 示例 4：Agent Fund Lite（SMH）
+
+对 Cursor 或通用 Agent 说：
+
+```text
+用 stock-analysis-audit 对 SMH 做 Lite ETF 审计，重点看估值、增长归因和同类基金比较。
+```
+
+期望 Agent：
+
+1. 识别 SMH 是 ETF，而不是单一公司。
+2. 读取 `fund-workflow.md` 和 `fund-output-templates.md`。
+3. 收集 issuer fact sheet、holdings、portfolio valuation、SOXX 等 peer fund 和 broad benchmark。
+4. 同时完成 Bull-side 与 Bear-side 检查。
+5. 输出基金五档之一。Watchlist 的语义是“不追高，但不等于单边看空；已有仓可视风险承受能力作为 satellite 观察”。
+
+## 示例 5：Agent Skill Deep
 
 对 Agent 说：
 
@@ -98,7 +169,7 @@ Microsoft / MSFT
 先只完成 Deep 的前两步：公司识别和跨周期财务表。
 ```
 
-## 示例 4：无联网模型的数据补充
+## 示例 6：无联网模型的数据补充
 
 如果 Chatbot 无法联网，使用：
 

@@ -1,15 +1,18 @@
 # stock-analysis-audit
 
-证据优先的股票分析审计 Skill，包含 Agent 运行时说明、Chatbot 分阶段 prompt、母版规范与使用手册。
+证据优先的证券分析审计 Skill，覆盖单一公司股票、ETF、指数基金、主动基金和其他 pooled fund vehicles，包含 Agent 运行时说明、Chatbot 分阶段 prompt、母版规范与使用手册。
 
 ## 目录
 
 | 路径 | 用途 |
 |------|------|
 | `SKILL.md` | Agent 加载入口 |
-| `references/` | 数据纪律、工作流、分类规则、输出模板、工具策略 |
+| `references/data-contract.md` | 个股与基金数据纪律 |
+| `references/workflow.md`、`references/output-templates.md`、`references/classification-rules.md` | 个股 workflow、输出模板与 M/N 分类 |
+| `references/fund-workflow.md`、`references/fund-output-templates.md` | ETF / 基金 workflow 与输出模板 |
+| `references/tool-policy.md` | 工具策略、分流和停止条件 |
 | `source/` | 母版完整规范（维护用，勿整段作 system prompt） |
-| `chatbot/` | 无工具 Chatbot 分阶段投喂 prompt |
+| `chatbot/` | 无工具 Chatbot 个股与基金分阶段 prompt |
 | `manuals/` | 使用手册、示例、迁移说明 |
 
 更完整的 kit 说明见 [PROMPT-KIT.md](PROMPT-KIT.md)。
@@ -42,4 +45,12 @@ cp -R skills/stock-analysis-audit ~/.cursor/skills/stock-analysis-audit
 
 ```text
 用 stock-analysis-audit 对 NVDA 做 Deep 股票审计。
+```
+
+```text
+用 stock-analysis-audit 对 SMH 做 Lite ETF 审计，重点看估值、增长归因和同类基金比较。
+```
+
+```text
+用 stock-analysis-audit 对 SOXX 和 SMH 做基金工具对比。
 ```

@@ -1,5 +1,7 @@
 # Workflow
 
+Scope: single company only. For ETFs, index funds, active funds, and other pooled fund vehicles, use `fund-workflow.md` instead.
+
 ## Company Identification
 
 Before any financial analysis, identify:

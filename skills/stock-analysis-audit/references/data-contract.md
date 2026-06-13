@@ -105,11 +105,59 @@ Manufacturing and hardware:
 - Technology iteration risk
 - Capacity utilization
 
+## Fund and ETF Metrics
+
+Use this section when the security is an ETF, index fund, or other pooled fund vehicle.
+
+Required fund-wrapper metrics when available:
+
+- NAV and market price
+- AUM
+- Expense ratio
+- Distribution yield
+- Beta vs relevant benchmark
+- Premium / discount to NAV
+- Tracking difference vs index
+- Average daily volume
+
+Required portfolio-level metrics when available:
+
+- Number of holdings
+- Top 5 and Top 10 weights
+- Largest single-name weight
+- Sector and country weights
+- Portfolio weighted trailing P/E
+- Portfolio weighted forward P/E
+- Portfolio weighted NTM earnings growth estimate
+
+Prohibited without relabeling:
+
+- Treating the fund as if it has company revenue, net income, operating cash flow, Capex, FCF, ROE, or ROIC
+- Using one holding's single-quarter YoY growth as the fund's growth rate
+- Using secondary media forward P/E as portfolio forward P/E without issuer disclosure or a shown weighted calculation
+
+Portfolio forward P/E rules:
+
+- Prefer issuer disclosure when available.
+- If calculated, show top-holding weights and forward P/E inputs, or provide a reproducible weighted formula.
+- Label the result as `calculated`, not `reported`.
+- If portfolio forward P/E cannot be verified, write `N/A` and explain the impact on valuation conclusions.
+
+Fund data quality guidance:
+
+- High: issuer fact sheet plus current holdings, and either issuer-disclosed portfolio P/E or a reproducible weighted calculation for key valuation metrics.
+- Medium: holdings and fund-level data are reliable, but weighted forward P/E or portfolio growth requires estimates.
+- Low: fund identity, holdings, expense ratio, or valuation inputs conflict materially.
+
+If fund data quality is Low, the final fund verdict must not exceed Watchlist.
+
 ## Stop Conditions
 
 Stop or downgrade the analysis when:
 
 - Company identity is not reliable.
 - Current security cannot be mapped to the company because of delisting, merger, privatization, or share-class confusion.
+- Fund identity, tracked index, or peer fund is ambiguous.
+- Issuer and third-party data conflict materially on AUM, expense ratio, or portfolio valuation inputs used in the verdict.
 - Key data sources materially conflict.
 - No reliable basis exists for valuation or cash-flow quality.

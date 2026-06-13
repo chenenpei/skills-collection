@@ -1,5 +1,7 @@
 # 01 Company Identification Prompt
 
+Deprecated compatibility prompt. Prefer `01-security-identification.md` for new workflows because it can route both single companies and ETF / fund vehicles. Use this file only when you are certain the target is a single operating company.
+
 用于传统 Chatbot 的第一步：识别用户想分析的上市公司。
 
 ## Prompt
