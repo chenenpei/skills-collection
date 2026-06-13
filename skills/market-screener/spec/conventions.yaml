@@ -30,6 +30,20 @@ threshold_syntax:
     skip: metric not counted toward supporting pass count
     data_confidence_low: record low confidence; do not prekill at funnel stage
 
+  allowed_keys:
+    note: CLI threshold evaluator only understands these rule keys
+    keys: [min, max, default, market_overrides, missing, field]
+    unsupported_example: { max_decline_pp: 5 }  # invalid — use derived metric + max instead
+
+derived_metrics:
+  gross_margin_3y_max_decline_pp:
+    meaning: Largest peak-to-trough drop in gross margin over the last 3 fiscal years
+    unit: percentage_points
+    example: 2.5 means a 2.5pp decline from the 3y peak margin
+    compute_from: annual gross_margin series in enrichment layer (cli/src/metrics/derive.ts)
+    threshold: { max: 5 }
+    replaces: gross_margin_3y_stable with max_decline_pp rule (removed — engine ignored it)
+
 pass_logic:
   all_required_and_supporting_min_N_of_M:
     required: all must pass

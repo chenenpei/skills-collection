@@ -10,7 +10,7 @@ quality_track:
   pass_if: all_required_and_supporting_min_5_of_7
   required:
     roe_5y_avg: { min: 0.13 }
-    gross_margin_3y_stable: { max_decline_pp: 5 }
+    gross_margin_3y_max_decline_pp: { max: 5 }
     fcf_conversion_5y: { min: 0.85 }
     net_debt_to_ebitda: { max: 2.5 }
   supporting:
