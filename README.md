@@ -11,6 +11,7 @@
 | **code-research**       | 只读深度梳理代码库业务与实现，按模板产出中文研究报告到 `docs/research/`；适用于「研究某模块实现」「理解调用链」「交接前摸底」等，不负责顺手改业务代码。                                                                                                                               |
 | **figma-design-review** | 对照 Figma 设计稿（或截图降级）走查实现与设计的一致性，关注布局、间距、字体颜色与设计 token / 组件复用；缺少设计稿或代码范围时不强行评审。**完整走查 Figma 节点时需在 Agent 环境中配置 Figma MCP**（以便通过 MCP 读取设计上下文）；仅有截图时仍可按 SKILL 中的降级流程做有限评审。                                              |
 | **stock-analysis-audit** | 对上市公司做证据优先的定量与定性审计（Lite 初筛 / Deep 深度），含护城河、估值、机会成本与逆向排雷；默认对比纳斯达克 100、中证红利与无风险利率。同目录含 `chatbot/` 分阶段 prompt 与 `source/` 母版规范。结论仅供研究辅助，非投资建议。需联网或数据工具时效果最佳。 |
+| **market-screener** | 季度定量漏斗：扫描 A 股 / 美股单公司宇宙，经 Kill Gate 与行业模板筛选后输出 YAML 候选名单，再衔接 `stock-analysis-audit` Deep 审计与 landmine 限价流程。含 `spec/` 可执行规则与 TypeScript `screener` CLI（`validate` / `run` / `explain` / `landmine`）。Skill 需手动 `@market-screener` 触发。结论仅供研究辅助，非投资建议。 |
 
 
 ## 安装
@@ -41,6 +42,10 @@ npx skills add https://github.com/chenenpei/skiils-collection --skill figma-desi
 npx skills add https://github.com/chenenpei/skiils-collection --skill stock-analysis-audit -y
 ```
 
+```bash
+npx skills add https://github.com/chenenpei/skiils-collection --skill market-screener -y
+```
+
 已克隆本仓库时，在仓库根目录：**全部安装**：
 
 ```bash
@@ -63,6 +68,10 @@ npx skills add . --skill figma-design-review -y
 
 ```bash
 npx skills add . --skill stock-analysis-audit -y
+```
+
+```bash
+npx skills add . --skill market-screener -y
 ```
 
 ## License
