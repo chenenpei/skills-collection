@@ -3,7 +3,7 @@
 # Downstream audit: ../../stock-analysis-audit/
 
 version: "0.1.0"
-status: cli_m1_m2_done  # validate, run (fixture + live), explain, landmine — see ../cli/
+status: cli_m3_live_funnel_done  # validate, run (fixture + live enriched), explain, landmine
 tightening_profile: package_m  # 2026 grill: sector templates tightened; soft cap 25 per market
 
 delivery:
@@ -43,7 +43,10 @@ data_sources:
     providers: [sec_edgar, yahoo_finance]
     uses: [financials_bulk, quotes, industry_proxy]
   industry_routing: yahoo_industry_to_gics_proxy
-  cache: data/cache/{quarter}/
+  enrichment:
+    cn: eastmoney_datacenter_annual + orginfo
+    us: sec_companyfacts + sec_submissions
+    cache: data/cache/{quarter}/
   ref: ../CONTEXT.md#Data Sources (MVP)
 
 routing:

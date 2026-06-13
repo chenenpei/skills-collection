@@ -98,7 +98,24 @@ npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --out
 | `landmine` | Landmine YAML from audit-summary |
 | `alert` | Phase 2 placeholder (not implemented) |
 
-**Adapters:** `--adapter fixture` (default, offline) | `--adapter live` (CN East Money + US Yahoo; requires network).
+**Adapters:** `--adapter fixture` (default, offline) | `--adapter live` (CN East Money + US Yahoo + per-ticker financial enrichment; requires network).
+
+## Live full funnel (M3)
+
+With `--adapter live`, the CLI loads quote universes then enriches each security with annual financials and industry proxy (CN: East Money datacenter + orginfo; US: SEC companyfacts + submissions). Enrichment responses are cached per quarter under `cli/data/cache/{quarter}/`.
+
+### Quarterly live run
+
+```bash
+cd skills/market-screener/cli
+npm install
+npm run validate
+npm run e2e:live -- --markets CN,US --quarter YYYY-QN
+```
+
+First CN run may take 30–60 min (4000+ enrichment requests). Subsequent runs use quarter cache under `data/cache/`.
+
+Optional `run` flags: `--enrich-concurrency <n>` (default 8), `--skip-cache` (force fresh enrichment).
 
 ## Output Locale
 

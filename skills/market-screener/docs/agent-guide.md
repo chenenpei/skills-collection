@@ -2,7 +2,7 @@
 
 本指南面向编排 **季度批量漏斗 → Deep 审计 → landmine 限价 → 到价纪律** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
 
-**CLI 状态：** `screener` CLI 已在 `cli/` 落地（validate / run / explain / landmine）。Agent **必须优先调用 CLI** 执行定量漏斗与 landmine；`screener` 不在 `$PATH`，需在 `cli/` 目录通过 `npm run dev -- <command>` 运行（见 §2）。仅当 CLI 安装或执行真实失败时，才回退到 `spec/` 手工编排并标注 `N/A`。
+**CLI 状态：** `screener` CLI 已在 `cli/` 落地（validate / run / explain / landmine）；**M3** 已完成 live adapter 全量 enrichment 管线（quote universe → 逐票财务/行业补全 → 漏斗）。Agent **必须优先调用 CLI** 执行定量漏斗与 landmine；`screener` 不在 `$PATH`，需在 `cli/` 目录通过 `npm run dev -- <command>` 运行（见 §2）。仅当 CLI 安装或执行真实失败时，才回退到 `spec/` 手工编排并标注 `N/A`。
 
 ---
 
@@ -42,7 +42,14 @@ npm run dev -- run \
 ```
 
 - **`--adapter fixture`** — 离线 fixture，适合本地验证
-- **`--adapter live`** — CN 东方财富 + US Yahoo Finance（需联网）
+- **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙，再经 **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；US：`sec_companyfacts` + `sec_submissions`），需联网
+
+**Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。
+
+**Live run 可选参数：**
+
+- `--enrich-concurrency <n>` — 并行 enrichment 请求数（默认 8）
+- `--skip-cache` — 忽略磁盘缓存，强制重新拉取
 
 产出（每市场）：
 
