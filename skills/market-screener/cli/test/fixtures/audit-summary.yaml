@@ -1,0 +1,13 @@
+quarter: 2026-Q2
+deep_limit_per_market: 20
+shortlist_for_landmine:
+  - ticker: "600519"
+    market: CN
+    deep_verdict_slug: classification_quality_at_reasonable_price
+    landmine_priority: 1
+    passed_track: quality
+    fair_value_bull_mean: 1800
+    current_price: 1600
+    currency: CNY
+rejected_after_deep: []
+deep_deferred: []
