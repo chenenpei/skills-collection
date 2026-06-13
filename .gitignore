@@ -3,6 +3,14 @@
 .AppleDouble
 .LSOverride
 
+# Git worktrees (isolated feature branches)
+.worktrees/
+
+# Market screener CLI
+skills/market-screener/cli/node_modules/
+skills/market-screener/cli/dist/
+data/cache/
+
 # Editor / IDE
 .idea/
 .vscode/
