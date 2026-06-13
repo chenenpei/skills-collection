@@ -69,10 +69,16 @@ l2_overrides:
     template: manufacturing
     confidence: ambiguous_union
     also_run: [tech_saas, cyclicals]
+  # L3 before L2 catch-all (router: first match wins)
+  - match: { l1: 电子, l2: 消费电子, l3: 品牌消费电子 }
+    template: consumer
+    confidence: high
+  - match: { l1: 电子, l2: 消费电子, l3: 消费电子零部件及组装 }
+    template: manufacturing
+    confidence: high
   - match: { l1: 电子, l2: 消费电子 }
     template: manufacturing
-    confidence: ambiguous_union
-    also_run: [tech_saas]
+    confidence: high
   - match: { l1: 医药生物, l2: 中药Ⅱ }
     template: consumer
     confidence: high

@@ -51,14 +51,27 @@ describe("routeSecurity", () => {
   });
 
   describe("CN sector routing", () => {
-    it("routes 电子-消费电子 to manufacturing+tech_saas, never consumer", () => {
+    it("routes 电子-消费电子-品牌消费电子 to consumer", () => {
       const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
         market: "CN",
         industryProxy: "电子-消费电子-品牌消费电子",
       });
       expect(result.routingMethod).toBe("cn_industry_map");
-      expect(result.templates.map((t) => t.id).sort()).toEqual(["manufacturing", "tech_saas"]);
+      expect(result.matchedRule).toBe("l3:电子/消费电子/品牌消费电子");
+      expect(result.templates).toEqual([{ id: "consumer" }]);
+      expect(result.routingConfidence).toBe("high");
+    });
+
+    it("routes 电子-消费电子-零部件及组装 to manufacturing only", () => {
+      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+        market: "CN",
+        industryProxy: "电子-消费电子-消费电子零部件及组装",
+      });
+      expect(result.routingMethod).toBe("cn_industry_map");
+      expect(result.matchedRule).toBe("l3:电子/消费电子/消费电子零部件及组装");
+      expect(result.templates).toEqual([{ id: "manufacturing" }]);
       expect(result.templates.map((t) => t.id)).not.toContain("consumer");
+      expect(result.templates.map((t) => t.id)).not.toContain("tech_saas");
     });
 
     it("routes 食品饮料 to consumer", () => {

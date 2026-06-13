@@ -25,6 +25,7 @@ export interface RouteResult {
 interface CnIndustryParts {
   l1?: string;
   l2?: string;
+  l3?: string;
 }
 
 interface TemplateRule {
@@ -42,7 +43,7 @@ function parseCnIndustry(raw?: string): CnIndustryParts {
   const text = String(raw ?? "").trim();
   if (!text) return {};
   const parts = text.split("-").map((p) => p.trim()).filter(Boolean);
-  return { l1: parts[0], l2: parts[1] };
+  return { l1: parts[0], l2: parts[1], l3: parts[2] };
 }
 
 function normalizeCnL1(
@@ -91,14 +92,14 @@ function routeViaCnIndustryMap(
   if (!l1) return undefined;
 
   for (const override of cnIndustryMap.l2_overrides ?? []) {
-    const match = override.match as { l1?: string; l2?: string } | undefined;
+    const match = override.match as { l1?: string; l2?: string; l3?: string } | undefined;
     if (!match?.l1 || match.l1 !== l1) continue;
     if (match.l2 && match.l2 !== parts.l2) continue;
-    return buildRouteFromRule(
-      override as TemplateRule,
-      `l2:${l1}/${parts.l2 ?? ""}`,
-      "cn_industry_map"
-    );
+    if (match.l3 && match.l3 !== parts.l3) continue;
+    const ruleLabel = match.l3
+      ? `l3:${l1}/${parts.l2 ?? ""}/${parts.l3 ?? ""}`
+      : `l2:${l1}/${parts.l2 ?? ""}`;
+    return buildRouteFromRule(override as TemplateRule, ruleLabel, "cn_industry_map");
   }
 
   const l1Rule = cnIndustryMap.l1_defaults?.[l1] as TemplateRule | undefined;
