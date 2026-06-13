@@ -4,9 +4,9 @@ import {
   bestPassingCandidate,
   listTemplateTrackResults,
   routeSecurityRecord,
-} from "../engine/evaluate-security.js";
-import { applyKillGates, type SecurityRecord } from "../engine/kill-gates.js";
-import type { Market } from "../engine/types.js";
+} from "../funnel/run.js";
+import { applyKillGates, type SecurityRecord } from "../funnel/kill-gates.js";
+import type { Market } from "../funnel/types.js";
 import { loadSpecBundle } from "../spec/loader.js";
 
 export interface ExplainCommandOptions {

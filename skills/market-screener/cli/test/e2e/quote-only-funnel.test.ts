@@ -3,9 +3,9 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import os from "node:os";
 import { parse as parseYaml } from "yaml";
-import { withAdapterDefaults } from "../../src/adapters/defaults.js";
+import { withAdapterDefaults } from "../../src/data/cn/quotes.js";
 import { loadSpecBundle } from "../../src/spec/loader.js";
-import { runFunnel } from "../../src/engine/funnel-run.js";
+import { runFunnel } from "../../src/funnel/run.js";
 import type { SpecBundle } from "../../src/spec/types.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");

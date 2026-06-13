@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { DEFAULT_SPEC_DIR } from "../paths.js";
+import { DEFAULT_SPEC_DIR } from "../lib/paths.js";
 import { loadSpecBundle } from "../spec/loader.js";
 
 interface ShortlistItem {

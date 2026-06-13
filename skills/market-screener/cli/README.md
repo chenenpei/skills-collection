@@ -9,6 +9,20 @@ cd skills/market-screener/cli
 npm install
 ```
 
+
+## Source layout
+
+```
+src/
+  cli.ts
+  commands/     run | explain | validate | landmine
+  funnel/       run, router, kill-gates, template-evaluator, ranker, threshold, universe, diagnostics, types
+  data/         registry, fixture, live, quote-prefilter, metrics, types; cn/ and us/ market adapters
+  io/           artifacts (YAML output helpers)
+  spec/         YAML loader and validation
+  lib/          paths, cache, http, concurrency
+```
+
 ## Commands
 
 Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.ts <command>`.
@@ -107,7 +121,7 @@ Works from `funnel-diagnostics.yaml` when present; otherwise reconstructs from `
 npm test
 ```
 
-Unit and integration tests cover adapters, cache, enrichment merge, and funnel engine. Live network tests are gated behind `e2e:live` / `e2e:live:full`.
+Unit and integration tests cover data adapters, cache, enrichment merge, and funnel. Live network tests are gated behind `e2e:live` / `e2e:live:full`.
 
 ## Related
 

@@ -13,8 +13,8 @@ import {
   buildFunnelDiagnosticsFromArtifacts,
   formatFunnelReplayReport,
   type FunnelDiagnosticsDoc,
-} from "../src/engine/funnel-diagnostics.js";
-import type { Market } from "../src/engine/types.js";
+} from "../src/funnel/diagnostics.js";
+import type { Market } from "../src/funnel/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
