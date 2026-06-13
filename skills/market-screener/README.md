@@ -14,7 +14,8 @@ Quarterly quantitative funnel for A-share and US single-company equities. Feeds 
 | [spec/index.yaml](./spec/index.yaml) | Manifest, data sources, template list |
 | [spec/kill-gates.yaml](./spec/kill-gates.yaml) | Shared kill gates before sector funnels |
 | [spec/routing-map.yaml](./spec/routing-map.yaml) | GICS / industry proxy → sector templates |
-| [spec/output-schema.yaml](./spec/output-schema.yaml) | `candidates.yaml` / `excluded.yaml` / `prefilter-excluded.yaml` contract |
+| [spec/cn-industry-map.yaml](./spec/cn-industry-map.yaml) | A-share Shenwan L1/L2 → sector templates (primary CN routing) |
+| [spec/output-schema.yaml](./spec/output-schema.yaml) | `candidates.yaml` / `excluded.yaml` / diagnostics contract |
 | [spec/conventions.yaml](./spec/conventions.yaml) | Threshold and pass-logic syntax |
 | [spec/landmine-rules.yaml](./spec/landmine-rules.yaml) | Landmine price formulas (Phase 2) |
 | [spec/trigger-discipline.yaml](./spec/trigger-discipline.yaml) | Scenario A/B trigger rules (alert CLI Phase 2) |
@@ -71,7 +72,9 @@ npx tsx bin/screener.ts run \
   --adapter live
 ```
 
-Writes `{output}/{quarter}/{CN|US}/candidates.yaml`, `deferred.yaml`, `excluded.yaml`, and (live, when non-empty) `prefilter-excluded.yaml`.
+Writes `{output}/{quarter}/{CN|US}/candidates.yaml`, `deferred.yaml`, `excluded.yaml`, `routing-diagnostics.yaml`, `funnel-diagnostics.yaml`, and (live, when non-empty) `prefilter-excluded.yaml`.
+
+**CN routing:** enriched A-share names route via `spec/cn-industry-map.yaml` (`routing_method: cn_industry_map`). Verify coverage before quarterly funnel: `npx tsx scripts/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec` (target `fallback_rate` < 5%).
 
 **Live-only flags:** `--enrich-concurrency` (default 4), `--skip-cache`.
 

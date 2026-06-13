@@ -46,9 +46,22 @@ slug: universe_exclude_financials_optional
 _Avoid_: excluding banks or insurers from the universe
 
 **Sector Routing**:
-The step that assigns each security in the investable universe to one or more sector funnel templates before sector-specific scoring. Uses GICS Level 2 or Level 3 as the primary classifier.
+The step that assigns each security in the investable universe to one or more sector funnel templates before sector-specific scoring. US names use GICS Level 2/3 as the primary classifier; A-share names use East Money Shenwan hierarchy via `spec/cn-industry-map.yaml` after enrichment (`routing_method: cn_industry_map`).
 slug: sector_routing
 _Avoid_: running all sector templates on every security, GICS Level 1 only
+
+**CN Industry Map Routing**:
+Primary A-share sector routing path: map `industry_proxy` (L1-L2-L3, `-` separator) through `spec/cn-industry-map.yaml` (`l1_defaults`, `l2_overrides`, legacy aliases). Emits `routing_method: cn_industry_map` when matched.
+slug: cn_industry_map_routing
+_Avoid_: keyword-only proxy routing for CN when the Shenwan L1 is known
+
+**Routing Method**:
+Which classifier assigned sector templates: `gics`, `cn_industry_map`, `industry_proxy`, or `fallback`. Stored on candidate records and in routing diagnostics.
+slug: routing_method
+
+**Routing Fallback**:
+When no GICS, CN map, or keyword proxy matches, route to `fallback_template` (default manufacturing) with `routing_confidence: low`. Deep audit must treat sector classification as uncertain; pass through `audit_hints` (e.g. `routing_fallback_unmapped_industry`).
+slug: routing_fallback
 
 **Routing Confidence**:
 Whether a security's GICS class maps cleanly to a single sector funnel template, or falls into an ambiguous class that requires parallel evaluation.

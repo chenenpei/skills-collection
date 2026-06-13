@@ -1,4 +1,5 @@
 # GICS L2/L3 (or Yahoo industry proxy) → sector funnel template
+# A-share structured routing: spec/cn-industry-map.yaml (referenced below). This file holds GICS mappings, shared keyword fallback, and classifier defaults.
 # Ambiguous entries run parallel templates; pass if ANY track passes (dedupe by ticker)
 
 version: "0.1.0"

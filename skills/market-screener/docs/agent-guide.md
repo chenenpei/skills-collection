@@ -57,6 +57,8 @@ npm run dev -- run \
 - `CN/deferred.yaml` — 通过漏斗但 rank > 25
 - `CN/excluded.yaml` — 对 **已 enrichment** 宇宙应用 Kill Gate 后的排除（含 `enrichment_failure` 可选字段）
 - `CN/prefilter-excluded.yaml` — **仅 live**：quote prefilter 跳过、未 enrichment 的标的（status/市值/年限）
+- `CN/routing-diagnostics.yaml` — Kill Gate 存活标的的路由分布（`by_method`、`fallback_rate`）
+- `CN/funnel-diagnostics.yaml` — 全漏斗回放统计（prefilter/kill 原因占比、sector 通过率）；可用 `scripts/funnel-replay.ts` 打印可读报告
 - `US/` 同上
 
 **禁止** Agent 自行调用东方财富/Yahoo API 重实现漏斗逻辑；数据拉取由 CLI adapter 负责。
@@ -76,10 +78,12 @@ npm run dev -- run \
 漏斗上下文（需交叉验证，非最终证据）：
 - passed_track: {quality|mispricing}
 - routed_templates: [...]
-- routing_confidence: {high|ambiguous_union}
+- routing_method: {gics|cn_industry_map|industry_proxy|fallback}
+- routing_confidence: {high|ambiguous_union|low}
 - metric_snapshot: ...
 - audit_hints: ...
 
+若 routing_method 为 fallback 或 routing_confidence 为 low，Deep 须标注 sector 分类不确定并处理 audit_hints。
 若 metric_snapshot 与 Deep 数据冲突，以 Deep 为准并说明。
 ```
 
@@ -147,6 +151,7 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 
 - [ ] `candidates.yaml` / `deferred.yaml` / `excluded.yaml`（CN、US）
 - [ ] live 跑批时若有 quote prefilter 跳过：`prefilter-excluded.yaml`（CN、US）
+- [ ] `routing-diagnostics.yaml` / `funnel-diagnostics.yaml`（CN、US）；CN `fallback_rate` 宜 < 5%
 - [ ] `audit/{market}/*.md`（Deep，每市场 ≤20）
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml`（若有 shortlist）
@@ -170,8 +175,9 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 | `spec/index.yaml` | Manifest |
 | `spec/schedule.yaml` | 何时跑 |
 | `spec/kill-gates.yaml` | 共享 Kill Gate |
-| `spec/routing-map.yaml` | 行业路由 |
-| `spec/conventions.yaml` | 阈值语法 |
+| `spec/routing-map.yaml` | GICS / keyword fallback → sector templates |
+| `spec/cn-industry-map.yaml` | A-share Shenwan L1/L2 → sector templates（CN 主路径） |
+| `spec/conventions.yaml` | 阈值语法、`routing_method` |
 | `spec/templates/*.yaml` | Sector 漏斗（Package M） |
 | `spec/landmine-rules.yaml` | landmine 限价公式 |
 | `spec/trigger-discipline.yaml` | 场景 A/B |

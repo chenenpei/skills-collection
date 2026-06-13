@@ -54,8 +54,10 @@ data_sources:
 
 routing:
   classifier: gics_level_2_or_3
+  cn_primary: cn-industry-map.yaml   # A-share enriched universe; routing_method cn_industry_map
   industry_proxy: true
   ambiguous_union: true
+  diagnostics: [routing-diagnostics.yaml, funnel-diagnostics.yaml]
   ref: routing-map.yaml
 
 templates:
@@ -91,6 +93,10 @@ output:
     - "{output}/{quarter}/US/excluded.yaml"
     - "{output}/{quarter}/CN/prefilter-excluded.yaml"   # live only; when non-empty
     - "{output}/{quarter}/US/prefilter-excluded.yaml"   # live only; when non-empty
+    - "{output}/{quarter}/CN/routing-diagnostics.yaml"
+    - "{output}/{quarter}/US/routing-diagnostics.yaml"
+    - "{output}/{quarter}/CN/funnel-diagnostics.yaml"
+    - "{output}/{quarter}/US/funnel-diagnostics.yaml"
     - "{output}/{quarter}/audit/CN/{ticker}.md"
     - "{output}/{quarter}/audit/US/{ticker}.md"
     - "{output}/{quarter}/audit-summary.yaml"

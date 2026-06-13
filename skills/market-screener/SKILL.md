@@ -25,7 +25,7 @@ When loaded, confirm the user's intent:
 2. **Never run the quarterly funnel before the later-market disclosure anchor** for the active cycle. Warn if the user requests early runs; note `data_confidence: low` risk.
 3. **Default Deep limit:** rank 1–20 per market from `candidates.yaml`. Run `--deep-all` only when the user explicitly requests full Deep on every candidate.
 4. **Do not replace stock-analysis-audit** for single-ticker Deep/Lite. Invoke that skill per candidate with funnel context (`audit_hints`, `metric_snapshot`).
-5. **Funnel metrics are coarse.** Deep audit may override funnel snapshots; record conflicts in audit reports.
+5. **Funnel metrics are coarse.** Deep audit may override funnel snapshots; record conflicts in audit reports. When `routing_method` is `fallback` or `routing_confidence` is `low`, Deep must flag sector classification uncertainty and honor `audit_hints`.
 6. **Package M** is the active tightening profile: sector template thresholds + **soft cap 25** candidates per market (overflow → `deferred.yaml`).
 
 ## Default Quarterly Run Sequence
@@ -47,14 +47,15 @@ Read only what is needed for the current step:
 - Manifest and integration defaults: `spec/index.yaml`.
 - Scheduled run dates: `spec/schedule.yaml`.
 - Universe and shared kill gates: `spec/kill-gates.yaml`.
-- Sector routing and ambiguous union: `spec/routing-map.yaml`.
+- Sector routing (GICS / keyword fallback): `spec/routing-map.yaml`.
+- A-share Shenwan routing (primary CN path): `spec/cn-industry-map.yaml`.
 - Threshold syntax: `spec/conventions.yaml`.
 - Sector funnels (Package M): `spec/templates/*.yaml`.
 - Output shapes: `spec/output-schema.yaml`.
 - Landmine formulas: `spec/landmine-rules.yaml`.
 - Post-landmine behavior: `spec/trigger-discipline.yaml`.
 
-For a single-ticker explain/debug request: `spec/index.yaml`, `spec/routing-map.yaml`, relevant template under `spec/templates/`, and `spec/kill-gates.yaml`.
+For a single-ticker explain/debug request: `spec/index.yaml`, `spec/routing-map.yaml`, `spec/cn-industry-map.yaml` (CN), relevant template under `spec/templates/`, and `spec/kill-gates.yaml`.
 
 ## Downstream: stock-analysis-audit
 
@@ -66,10 +67,12 @@ For each Deep candidate, attach funnel context in the prompt:
 漏斗上下文（需交叉验证，非最终证据）：
 - passed_track: {quality|mispricing}
 - routed_templates: [...]
-- routing_confidence: {high|ambiguous_union}
+- routing_method: {gics|cn_industry_map|industry_proxy|fallback}
+- routing_confidence: {high|ambiguous_union|low}
 - metric_snapshot: ...
 - audit_hints: ...
 
+若 routing_method 为 fallback 或 routing_confidence 为 low，Deep 须标注 sector 分类不确定并处理 audit_hints。
 若 metric_snapshot 与 Deep 数据冲突，以 Deep 为准并说明。
 ```
 
@@ -141,6 +144,7 @@ After a scheduled quarterly run, verify:
 
 - [ ] `candidates.yaml`, `deferred.yaml`, `excluded.yaml` for CN and US
 - [ ] Live runs with prefilter skips: `prefilter-excluded.yaml` per market
+- [ ] `routing-diagnostics.yaml`, `funnel-diagnostics.yaml` per market (CN `fallback_rate` target < 5%)
 - [ ] Deep reports under `audit/{market}/` (≤20 per market unless `--deep-all`)
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml` if shortlist exists
