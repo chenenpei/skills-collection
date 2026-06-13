@@ -1,0 +1,27 @@
+{
+  "name": "market-screener-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "screener": "./bin/screener.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "tsx bin/screener.ts",
+    "validate": "tsx bin/screener.ts validate ../spec"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "yaml": "^2.8.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
