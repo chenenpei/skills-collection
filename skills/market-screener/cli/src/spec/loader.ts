@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import {
+  CnIndustryMapSchema,
   IndexSchema,
   KillGatesSchema,
   RoutingMapSchema,
@@ -24,6 +25,11 @@ export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
   const routingMap = RoutingMapSchema.parse(
     await readYamlFile(path.join(specDir, "routing-map.yaml"))
   );
+  const cnMapRef = (routingMap.classifier as { cn_industry_map_ref?: string } | undefined)
+    ?.cn_industry_map_ref;
+  const cnIndustryMap = cnMapRef
+    ? CnIndustryMapSchema.parse(await readYamlFile(path.join(specDir, cnMapRef)))
+    : undefined;
   const conventions = (await readYamlFile(
     path.join(specDir, "conventions.yaml")
   )) as Record<string, unknown>;
@@ -48,6 +54,7 @@ export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
     index,
     killGates,
     routingMap,
+    cnIndustryMap,
     conventions,
     outputSchema,
     schedule,

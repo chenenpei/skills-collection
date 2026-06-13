@@ -11,7 +11,7 @@ const REQUIRED_TEMPLATE_IDS = [
 
 const FUNNEL_SOFT_CAP = 25;
 const KILL_MARKET_CAP_SLUG = "kill_market_cap_below_floor";
-const CORE_SPEC_FILES = 7;
+const CORE_SPEC_FILES = 8;
 const FUNNEL_TRACKS = ["quality_track", "mispricing_track"] as const;
 
 const ALLOWED_REQUIRED_KEYS = new Set([
@@ -98,6 +98,65 @@ function validateTrackThresholds(
   }
 }
 
+function validateCnIndustryTemplateRef(
+  refPath: string,
+  template: unknown,
+  alsoRun: unknown,
+  bundle: SpecBundle,
+  errors: string[]
+): void {
+  if (typeof template === "string" && !bundle.templates[template]) {
+    errors.push(`${refPath}: unknown template "${template}"`);
+  }
+  if (Array.isArray(alsoRun)) {
+    for (const id of alsoRun) {
+      if (typeof id === "string" && !bundle.templates[id]) {
+        errors.push(`${refPath}.also_run: unknown template "${id}"`);
+      }
+    }
+  } else if (typeof alsoRun === "string" && !bundle.templates[alsoRun]) {
+    errors.push(`${refPath}.also_run: unknown template "${alsoRun}"`);
+  }
+}
+
+function validateCnIndustryMap(bundle: SpecBundle, errors: string[]): void {
+  const map = bundle.cnIndustryMap;
+  if (!map?.l1_defaults) return;
+
+  for (const [l1, rule] of Object.entries(map.l1_defaults)) {
+    if (!isRecord(rule)) continue;
+    validateCnIndustryTemplateRef(
+      `cn-industry-map l1_defaults.${l1}`,
+      rule.template,
+      rule.also_run,
+      bundle,
+      errors
+    );
+  }
+
+  for (const [index, override] of (map.l2_overrides ?? []).entries()) {
+    if (!isRecord(override)) continue;
+    validateCnIndustryTemplateRef(
+      `cn-industry-map l2_overrides[${index}]`,
+      override.template,
+      override.also_run,
+      bundle,
+      errors
+    );
+  }
+
+  for (const [index, entry] of (map.proxy_keyword_additions ?? []).entries()) {
+    if (!isRecord(entry)) continue;
+    validateCnIndustryTemplateRef(
+      `cn-industry-map proxy_keyword_additions[${index}]`,
+      entry.template,
+      entry.also_run,
+      bundle,
+      errors
+    );
+  }
+}
+
 function validateTemplateThresholds(
   templatePath: string,
   template: Record<string, unknown>,
@@ -154,6 +213,10 @@ export function validateSpecBundle(bundle: SpecBundle): ValidateResult {
     if (typeof alsoRun === "string" && !bundle.templates[alsoRun]) {
       errors.push(`routing-map also_run references unknown template: ${alsoRun}`);
     }
+  }
+
+  if (bundle.cnIndustryMap) {
+    validateCnIndustryMap(bundle, errors);
   }
 
   const hasMarketCapKill = bundle.killGates.gates.some(

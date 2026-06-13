@@ -31,7 +31,8 @@ export interface PassingCandidate {
 }
 
 export function routeSecurityRecord(bundle: SpecBundle, record: SecurityRecord): RouteResult {
-  return routeSecurity(bundle.routingMap, {
+  return routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+    market: record.market,
     gicsCode: record.gicsCode,
     industryProxy: record.industryProxy,
   });
