@@ -1,5 +1,6 @@
 import type { SpecBundle } from "../spec/types.js";
 import { buildRunMetadata } from "../io/artifacts.js";
+import { pct, sortedEntries } from "../lib/report-format.js";
 import {
   bestPassingCandidate,
   listTemplateTrackResults,
@@ -9,19 +10,6 @@ import {
 import type { KillGateResult, SecurityRecord } from "./kill-gates.js";
 import { getUniverseProfileFailureReason } from "./universe.js";
 import type { Market } from "./types.js";
-
-function countReason(
-  bucket: Record<string, number>,
-  reason: string | undefined,
-  fallback = "unknown"
-): void {
-  const key = reason ?? fallback;
-  bucket[key] = (bucket[key] ?? 0) + 1;
-}
-
-function sortedEntries(counts: Record<string, number>): Array<[string, number]> {
-  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-}
 
 export interface FunnelDiagnosticsDoc {
   run_metadata: ReturnType<typeof buildRunMetadata>;
@@ -41,6 +29,7 @@ export interface FunnelDiagnosticsDoc {
   routing: {
     by_method: Record<string, number>;
     by_template: Record<string, number>;
+    fallback_count: number;
     fallback_rate: number;
   };
   sector_by_template: Record<
@@ -52,6 +41,11 @@ export interface FunnelDiagnosticsDoc {
 
 export class FunnelDiagnosticsCollector {
   readonly prefilterByReason: Record<string, number> = {};
+  readonly prefilterExcludedRows: Array<{
+    ticker: string;
+    market: SecurityRecord["market"];
+    kill_reason: string;
+  }> = [];
   readonly killByReason: Record<string, number> = {};
   readonly byMethod: Record<string, number> = {};
   readonly byTemplate: Record<string, number> = {};
@@ -64,10 +58,14 @@ export class FunnelDiagnosticsCollector {
 
   recordPrefilterExcluded(bundle: SpecBundle, records: SecurityRecord[]): void {
     for (const record of records) {
-      countReason(
-        this.prefilterByReason,
-        getUniverseProfileFailureReason(bundle.killGates, record) ?? "kill_prefilter_excluded"
-      );
+      const killReason =
+        getUniverseProfileFailureReason(bundle.killGates, record) ?? "kill_prefilter_excluded";
+      countReason(this.prefilterByReason, killReason);
+      this.prefilterExcludedRows.push({
+        ticker: record.ticker,
+        market: record.market,
+        kill_reason: killReason,
+      });
     }
   }
 
@@ -98,13 +96,18 @@ export class FunnelDiagnosticsCollector {
       this.sectorByTemplate[template.id].routed += 1;
     }
 
-    for (const entry of listTemplateTrackResults(bundle, record, route)) {
+    const trackResults = listTemplateTrackResults(bundle, record, route);
+    const passedTemplates = new Set<string>();
+    for (const entry of trackResults) {
       if (!entry.result.passed) continue;
-      const bucket = this.sectorByTemplate[entry.template];
+      passedTemplates.add(entry.template);
+    }
+    for (const template of passedTemplates) {
+      const bucket = this.sectorByTemplate[template];
       if (bucket) bucket.passed += 1;
     }
 
-    const best = bestPassingCandidate(bundle, record, kill, route);
+    const best = bestPassingCandidate(bundle, record, kill, route, trackResults);
     if (best) this.sectorPassed += 1;
     return best;
   }
@@ -156,12 +159,22 @@ export class FunnelDiagnosticsCollector {
       routing: {
         by_method: this.byMethod,
         by_template: this.byTemplate,
+        fallback_count: this.fallbackCount,
         fallback_rate: killSurvivors > 0 ? this.fallbackCount / killSurvivors : 0,
       },
       sector_by_template: sectorByTemplateOut,
       unmapped_samples: this.unmappedSamples,
     };
   }
+}
+
+function countReason(
+  bucket: Record<string, number>,
+  reason: string | undefined,
+  fallback = "unknown"
+): void {
+  const key = reason ?? fallback;
+  bucket[key] = (bucket[key] ?? 0) + 1;
 }
 
 /** Slim routing artifact kept for backward compatibility. */
@@ -178,11 +191,6 @@ export function routingDiagnosticsFromFunnel(doc: FunnelDiagnosticsDoc): {
     },
     unmapped_samples: doc.unmapped_samples,
   };
-}
-
-function pct(count: number, total: number): string {
-  if (total <= 0) return "0.0%";
-  return `${((count / total) * 100).toFixed(1)}%`;
 }
 
 function printReasonTable(
@@ -256,7 +264,7 @@ export function formatFunnelReplayReport(doc: FunnelDiagnosticsDoc, market: Mark
   lines.push("## Post kill gate — routing distribution");
   lines.push("");
   lines.push(
-    `Fallback rate (of kill survivors): **${pct(Math.round(doc.routing.fallback_rate * s.kill_survivors), s.kill_survivors)}** (${doc.routing.fallback_rate.toFixed(3)})`
+    `Fallback rate (of kill survivors): **${pct(doc.routing.fallback_count ?? 0, s.kill_survivors)}** (${doc.routing.fallback_rate.toFixed(3)})`
   );
   lines.push("");
   lines.push("### By routing_method");
@@ -370,6 +378,9 @@ export function buildFunnelDiagnosticsFromArtifacts(
     routing: {
       by_method: routing?.by_method ?? {},
       by_template: routing?.by_template ?? {},
+      fallback_count:
+        routing?.fallback_count ??
+        Math.round((routing?.fallback_rate ?? 0) * totalRouted),
       fallback_rate: routing?.fallback_rate ?? 0,
     },
     sector_by_template: {},

@@ -7,8 +7,10 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { routeSecurity } from "../src/funnel/router.js";
+import { routeFromIndustryProxy } from "../src/funnel/router.js";
 import type { Market } from "../src/funnel/types.js";
+import { mapPool } from "../src/lib/concurrency.js";
+import { pct, sortedEntries } from "../src/lib/report-format.js";
 import { DEFAULT_CACHE_DIR, DEFAULT_SPEC_DIR } from "../src/lib/paths.js";
 import { loadSpecBundle } from "../src/spec/loader.js";
 
@@ -47,15 +49,6 @@ function parseArgs(argv: string[]): Args {
   }
 
   return { quarter, market, specDir, cacheDir, write };
-}
-
-function pct(count: number, total: number): string {
-  if (total <= 0) return "0.0%";
-  return `${((count / total) * 100).toFixed(1)}%`;
-}
-
-function sortedEntries(counts: Record<string, number>): Array<[string, number]> {
-  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
 }
 
 function formatReport(opts: {
@@ -135,6 +128,19 @@ async function main(): Promise<void> {
     throw new Error(`Cache directory not found: ${cacheMarketDir}`);
   }
 
+  const perFile = await mapPool(files, 32, async (file) => {
+    const raw = await fs.readFile(path.join(cacheMarketDir, file), "utf8");
+    const payload = JSON.parse(raw) as CachePayload;
+    const industryProxy = payload.industryProxy?.trim();
+    const route = routeFromIndustryProxy(
+      bundle.routingMap,
+      bundle.cnIndustryMap,
+      args.market,
+      industryProxy
+    );
+    return { industryProxy, route };
+  });
+
   const byMethod: Record<string, number> = {};
   const byTemplate: Record<string, number> = {};
   const unmappedByProxy: Record<string, number> = {};
@@ -142,16 +148,8 @@ async function main(): Promise<void> {
   let missingProxy = 0;
   let consumerMisroute = 0;
 
-  for (const file of files) {
-    const raw = await fs.readFile(path.join(cacheMarketDir, file), "utf8");
-    const payload = JSON.parse(raw) as CachePayload;
-    const industryProxy = payload.industryProxy?.trim();
+  for (const { industryProxy, route } of perFile) {
     if (!industryProxy) missingProxy += 1;
-
-    const route = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
-      market: args.market,
-      industryProxy,
-    });
 
     byMethod[route.routingMethod] = (byMethod[route.routingMethod] ?? 0) + 1;
     if (route.routingMethod === "fallback") {

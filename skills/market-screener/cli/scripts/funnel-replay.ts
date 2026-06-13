@@ -7,7 +7,6 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import {
   buildFunnelDiagnosticsFromArtifacts,
@@ -15,8 +14,6 @@ import {
   type FunnelDiagnosticsDoc,
 } from "../src/funnel/diagnostics.js";
 import type { Market } from "../src/funnel/types.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv: string[]): { fromOutput: string; write?: string } {
   let fromOutput = "";
@@ -33,11 +30,6 @@ function parseArgs(argv: string[]): { fromOutput: string; write?: string } {
   return { fromOutput: path.resolve(fromOutput), write };
 }
 
-function readYamlIfExists<T>(filePath: string): T | undefined {
-  if (!fs.existsSync(filePath)) return undefined;
-  return parseYaml(fs.readFileSync(filePath, "utf8")) as T;
-}
-
 function loadArtifacts(outputDir: string): {
   market: Market;
   doc: FunnelDiagnosticsDoc;
@@ -47,9 +39,21 @@ function loadArtifacts(outputDir: string): {
     throw new Error(`Expected output dir ending in CN or US, got: ${outputDir}`);
   }
 
-  const candidatesDoc = readYamlIfExists<{ run_metadata?: FunnelDiagnosticsDoc["run_metadata"]; candidates?: unknown[] }>(
-    path.join(outputDir, "candidates.yaml")
-  );
+  const funnelPath = path.join(outputDir, "funnel-diagnostics.yaml");
+  if (fs.existsSync(funnelPath)) {
+    const funnelDoc = parseYaml(fs.readFileSync(funnelPath, "utf8")) as FunnelDiagnosticsDoc;
+    return { market, doc: funnelDoc };
+  }
+
+  const readYamlIfExists = <T>(filePath: string): T | undefined => {
+    if (!fs.existsSync(filePath)) return undefined;
+    return parseYaml(fs.readFileSync(filePath, "utf8")) as T;
+  };
+
+  const candidatesDoc = readYamlIfExists<{
+    run_metadata?: FunnelDiagnosticsDoc["run_metadata"];
+    candidates?: unknown[];
+  }>(path.join(outputDir, "candidates.yaml"));
   const deferredDoc = readYamlIfExists<{ deferred?: unknown[] }>(path.join(outputDir, "deferred.yaml"));
   const excludedDoc = readYamlIfExists<{ excluded?: Array<{ kill_reason?: string }> }>(
     path.join(outputDir, "excluded.yaml")
@@ -57,23 +61,20 @@ function loadArtifacts(outputDir: string): {
   const prefilterDoc = readYamlIfExists<{ prefilter_excluded?: Array<{ kill_reason?: string }> }>(
     path.join(outputDir, "prefilter-excluded.yaml")
   );
-  const funnelDoc = readYamlIfExists<FunnelDiagnosticsDoc>(path.join(outputDir, "funnel-diagnostics.yaml"));
   const routingDoc = readYamlIfExists<{
     summary?: FunnelDiagnosticsDoc["routing"] & { total_routed?: number };
     unmapped_samples?: FunnelDiagnosticsDoc["unmapped_samples"];
     run_metadata?: FunnelDiagnosticsDoc["run_metadata"];
   }>(path.join(outputDir, "routing-diagnostics.yaml"));
 
-  const doc =
-    funnelDoc ??
-    buildFunnelDiagnosticsFromArtifacts(market, {
-      run_metadata: candidatesDoc?.run_metadata ?? routingDoc?.run_metadata,
-      prefilter_excluded: prefilterDoc?.prefilter_excluded,
-      excluded: excludedDoc?.excluded,
-      routing_diagnostics: routingDoc,
-      candidates: candidatesDoc?.candidates,
-      deferred: deferredDoc?.deferred,
-    });
+  const doc = buildFunnelDiagnosticsFromArtifacts(market, {
+    run_metadata: candidatesDoc?.run_metadata ?? routingDoc?.run_metadata,
+    prefilter_excluded: prefilterDoc?.prefilter_excluded,
+    excluded: excludedDoc?.excluded,
+    routing_diagnostics: routingDoc,
+    candidates: candidatesDoc?.candidates,
+    deferred: deferredDoc?.deferred,
+  });
 
   if (!doc) {
     throw new Error(

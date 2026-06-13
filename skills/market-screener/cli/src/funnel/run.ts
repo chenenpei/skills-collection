@@ -1,7 +1,17 @@
+import path from "node:path";
+import { funnelSoftCapFromBundle } from "../spec/conventions.js";
 import type { SpecBundle, SectorTemplateSpec } from "../spec/types.js";
-import type { KillGateResult, SecurityRecord } from "./kill-gates.js";
+import { writeYamlArtifact } from "../io/artifacts.js";
+import {
+  FunnelDiagnosticsCollector,
+  routingDiagnosticsFromFunnel,
+} from "./diagnostics.js";
+import { applyKillGates, type KillGateResult, type SecurityRecord } from "./kill-gates.js";
+import { rankCandidates, splitBySoftCap } from "./ranker.js";
 import { routeSecurity, type RouteResult } from "./router.js";
 import { evaluateTemplateTrack, type TemplateEvalResult } from "./template-evaluator.js";
+import { getUniverseProfileFailureReason } from "./universe.js";
+import type { Market } from "./types.js";
 
 export type FunnelTrack = "quality" | "mispricing";
 
@@ -73,11 +83,14 @@ export function bestPassingCandidate(
   bundle: SpecBundle,
   record: SecurityRecord,
   kill: KillGateResult,
-  route: RouteResult
+  route: RouteResult,
+  trackResults?: TemplateTrackResult[]
 ): PassingCandidate | null {
+  const entries = trackResults ?? listTemplateTrackResults(bundle, record, route);
+  const routedTemplates = route.templates.map((t) => t.id);
   let best: PassingCandidate | null = null;
 
-  for (const entry of listTemplateTrackResults(bundle, record, route)) {
+  for (const entry of entries) {
     if (!entry.result.passed || !entry.result.passedTrack) continue;
 
     const score = entry.result.supportingPassCount;
@@ -89,7 +102,7 @@ export function bestPassingCandidate(
       company_name: record.companyName,
       currency: record.currency,
       industry_proxy: record.industryProxy,
-      routed_templates: route.templates.map((t) => t.id),
+      routed_templates: routedTemplates,
       routing_confidence: route.routingConfidence,
       routing_method: route.routingMethod,
       matched_rule: route.matchedRule,
@@ -107,19 +120,6 @@ export function bestPassingCandidate(
 
   return best;
 }
-
-import path from "node:path";
-import { getUniverseProfileFailureReason } from "./universe.js";
-import type { SpecBundle } from "../spec/types.js";
-import { funnelSoftCapFromBundle } from "../spec/conventions.js";
-import { writeYamlArtifact } from "../io/artifacts.js";
-import {
-  FunnelDiagnosticsCollector,
-  routingDiagnosticsFromFunnel,
-} from "./diagnostics.js";
-import { applyKillGates, type SecurityRecord } from "./kill-gates.js";
-import { rankCandidates, splitBySoftCap } from "./ranker.js";
-import type { Market } from "./types.js";
 
 export interface FunnelRunOptions {
   bundle: SpecBundle;
@@ -207,38 +207,34 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
     });
 
     const base = path.join(opts.outputDir, market);
-    await writeYamlArtifact(path.join(base, "candidates.yaml"), {
-      run_metadata: funnelDiagnostics.run_metadata,
-      candidates: primary,
-    });
-    await writeYamlArtifact(path.join(base, "deferred.yaml"), {
-      run_metadata: funnelDiagnostics.run_metadata,
-      deferred,
-    });
-    await writeYamlArtifact(path.join(base, "excluded.yaml"), {
-      run_metadata: funnelDiagnostics.run_metadata,
-      excluded,
-    });
-    await writeYamlArtifact(
-      path.join(base, "funnel-diagnostics.yaml"),
-      funnelDiagnostics
-    );
-    await writeYamlArtifact(
-      path.join(base, "routing-diagnostics.yaml"),
-      routingDiagnosticsFromFunnel(funnelDiagnostics)
-    );
-    if (marketPrefilterExcluded.length > 0) {
-      await writeYamlArtifact(path.join(base, "prefilter-excluded.yaml"), {
+    const writes: Promise<void>[] = [
+      writeYamlArtifact(path.join(base, "candidates.yaml"), {
         run_metadata: funnelDiagnostics.run_metadata,
-        prefilter_excluded: marketPrefilterExcluded.map((record) => ({
-          ticker: record.ticker,
-          market: record.market,
-          kill_reason:
-            getUniverseProfileFailureReason(opts.bundle.killGates, record) ??
-            "kill_prefilter_excluded",
-        })),
-      });
+        candidates: primary,
+      }),
+      writeYamlArtifact(path.join(base, "deferred.yaml"), {
+        run_metadata: funnelDiagnostics.run_metadata,
+        deferred,
+      }),
+      writeYamlArtifact(path.join(base, "excluded.yaml"), {
+        run_metadata: funnelDiagnostics.run_metadata,
+        excluded,
+      }),
+      writeYamlArtifact(path.join(base, "funnel-diagnostics.yaml"), funnelDiagnostics),
+      writeYamlArtifact(
+        path.join(base, "routing-diagnostics.yaml"),
+        routingDiagnosticsFromFunnel(funnelDiagnostics)
+      ),
+    ];
+    if (diagnostics.prefilterExcludedRows.length > 0) {
+      writes.push(
+        writeYamlArtifact(path.join(base, "prefilter-excluded.yaml"), {
+          run_metadata: funnelDiagnostics.run_metadata,
+          prefilter_excluded: diagnostics.prefilterExcludedRows,
+        })
+      );
     }
+    await Promise.all(writes);
 
     totalCandidates += primary.length;
     totalDeferred += deferred.length;

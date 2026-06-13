@@ -193,3 +193,12 @@ export function routeSecurity(
 
   return fallbackRoute(routingMap);
 }
+
+export function routeFromIndustryProxy(
+  routingMap: RoutingMapSpec,
+  cnIndustryMap: CnIndustryMapSpec | undefined,
+  market: Market,
+  industryProxy?: string
+): RouteResult {
+  return routeSecurity(routingMap, cnIndustryMap, { market, industryProxy });
+}
