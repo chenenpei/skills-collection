@@ -99,6 +99,24 @@ async function main(): Promise<void> {
     console.log("excluded:", excludedDoc.excluded.length);
     console.log("kill reasons:", reasons);
 
+    if (candidatesDoc.candidates.length < 1) {
+      throw new Error(
+        `${market}: expected >= 1 candidate after financial enrichment; got 0. ` +
+          "Live adapter may still be quote-only."
+      );
+    }
+
+    const first = candidatesDoc.candidates[0] as {
+      ticker?: string;
+      metric_snapshot?: Record<string, unknown>;
+    };
+    const snapKeys = Object.keys(first.metric_snapshot ?? {});
+    if (snapKeys.length < 3) {
+      throw new Error(
+        `${market}: first candidate ${first.ticker} metric_snapshot too sparse: ${snapKeys.join(", ")}`
+      );
+    }
+
     const falseRevenue = reasons.kill_revenue_decline_3y_consecutive ?? 0;
     if (falseRevenue > 0) {
       throw new Error(
