@@ -115,6 +115,16 @@ npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN --writ
 
 Works from `funnel-diagnostics.yaml` when present; otherwise reconstructs from `prefilter-excluded.yaml`, `excluded.yaml`, and `routing-diagnostics.yaml`.
 
+### Routing report (cache)
+
+Offline routing distribution from enrichment cache (`industryProxy` per ticker):
+
+```bash
+npx tsx scripts/routing-report.ts --quarter 2026-Q1 --market CN --spec ../spec
+```
+
+Use after a live enrichment run to verify CN map coverage (`fallback_rate < 5%`) before quarterly funnel.
+
 ## Tests
 
 ```bash
