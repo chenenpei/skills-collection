@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { SecurityRecord } from "../engine/kill-gates.js";
 import type { Market } from "../engine/types.js";
+import { DEFAULT_FIXTURES_DIR } from "../paths.js";
 import type { MarketDataAdapter } from "./types.js";
 
 async function loadFixtureFile(
@@ -20,7 +21,7 @@ async function loadFixtureFile(
   }
 }
 
-export function createFixtureAdapter(fixturesDir: string): MarketDataAdapter {
+export function createFixtureAdapter(fixturesDir = DEFAULT_FIXTURES_DIR): MarketDataAdapter {
   return {
     async loadUniverse(markets: Market[]): Promise<SecurityRecord[]> {
       const records: SecurityRecord[] = [];

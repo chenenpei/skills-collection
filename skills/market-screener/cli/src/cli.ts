@@ -30,15 +30,23 @@ export async function runCli(argv: string[]): Promise<void> {
     .requiredOption("--output <dir>", "Output root directory")
     .requiredOption("--spec <dir>", "Path to spec directory")
     .option("--adapter <kind>", "Data adapter: fixture or live", "fixture")
+    .option("--enrich-concurrency <n>", "Parallel enrichment requests", "8")
+    .option("--skip-cache", "Ignore enrichment disk cache", false)
     .action(async (opts: {
       markets: string;
       quarter: string;
       output: string;
       spec: string;
       adapter: "fixture" | "live";
+      enrichConcurrency: string;
+      skipCache: boolean;
     }) => {
       const { runCommand } = await import("./commands/run.js");
-      await runCommand(opts);
+      await runCommand({
+        ...opts,
+        enrichConcurrency: Number.parseInt(opts.enrichConcurrency, 10),
+        skipCache: Boolean(opts.skipCache),
+      });
     });
 
   program
