@@ -1,7 +1,8 @@
 import { readCache, writeCache } from "../../lib/cache.js";
+import { mergeEnrichment } from "../merge-enrichment.js";
 import type { EnrichOptions } from "../types.js";
 import type { SecurityRecord } from "../../engine/kill-gates.js";
-import { deriveFromAnnualRows, type AnnualFinancialRow } from "../../metrics/derive.js";
+import type { AnnualFinancialRow } from "../../metrics/derive.js";
 import { fetchUsAnnualRows } from "./sec-companyfacts.js";
 import { fetchUsIndustryProxy } from "./sec-submissions.js";
 import { resolveCik } from "./sec-tickers.js";
@@ -11,25 +12,7 @@ interface UsCachePayload {
   industryProxy?: string;
 }
 
-export function mergeUsEnrichment(
-  record: SecurityRecord,
-  annualRows: AnnualFinancialRow[],
-  industryProxy?: string
-): SecurityRecord {
-  if (annualRows.length === 0) return record;
-
-  const derived = deriveFromAnnualRows(annualRows, {
-    marketCap: record.marketCap,
-    currency: record.currency,
-  });
-
-  return {
-    ...record,
-    industryProxy: industryProxy ?? record.industryProxy,
-    ...derived,
-    metrics: { ...derived.metrics, ...record.metrics },
-  };
-}
+export const mergeUsEnrichment = mergeEnrichment;
 
 export async function enrichUsRecord(
   record: SecurityRecord,
@@ -44,21 +27,25 @@ export async function enrichUsRecord(
       "US",
       record.ticker
     );
-    if (cached) return mergeUsEnrichment(record, cached.annualRows, cached.industryProxy);
+    if (cached?.annualRows.length) {
+      return mergeEnrichment(record, cached.annualRows, cached.industryProxy);
+    }
   }
 
   const cik = await resolveCik(record.ticker);
-  if (!cik) return record;
+  if (!cik) return { ...record, enrichmentFailure: "cik_unresolved" };
 
   const [annualRows, industryProxy] = await Promise.all([
     fetchUsAnnualRows(cik),
     fetchUsIndustryProxy(cik),
   ]);
 
-  await writeCache(opts.cacheDir, opts.quarter, "US", record.ticker, {
-    annualRows,
-    industryProxy,
-  } satisfies UsCachePayload);
+  if (!opts.skipCache && annualRows.length > 0) {
+    await writeCache(opts.cacheDir, opts.quarter, "US", record.ticker, {
+      annualRows,
+      industryProxy,
+    } satisfies UsCachePayload);
+  }
 
-  return mergeUsEnrichment(record, annualRows, industryProxy);
+  return mergeEnrichment(record, annualRows, industryProxy);
 }

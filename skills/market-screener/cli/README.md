@@ -1,6 +1,6 @@
 # market-screener CLI
 
-TypeScript `screener` binary (Commander + tsx). Runs the quantitative funnel from `../spec/` and writes `candidates.yaml`, `deferred.yaml`, and `excluded.yaml` per market.
+TypeScript `screener` binary (Commander + tsx). Runs the quantitative funnel from `../spec/` and writes `candidates.yaml`, `deferred.yaml`, `excluded.yaml`, and (live only) `prefilter-excluded.yaml` per market.
 
 ## Install
 
@@ -29,15 +29,16 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 | `--output` | — | Output root; writes `{output}/{quarter}/{market}/` |
 | `--spec` | — | Path to spec directory |
 | `--adapter` | `fixture` | `fixture` (offline) or `live` (network) |
-| `--enrich-concurrency` | `8` | Parallel enrichment requests (live only) |
-| `--skip-cache` | off | Ignore enrichment disk cache (live only) |
+| `--enrich-concurrency` | `4` | Parallel enrichment tickers (live only; each may issue 2 HTTP calls) |
+| `--skip-cache` | off | Ignore enrichment disk cache — no read or write (live only) |
 
 ## Live adapter & enrichment (M3)
 
 `--adapter live` runs a two-stage pipeline:
 
 1. **Quote universe** — CN East Money list + US Yahoo quotes (market cap, price, basic fields).
-2. **Enrichment** — per security, fetch annual financials and industry proxy, derive funnel metrics, merge into `SecurityRecord`.
+2. **Quote prefilter** — skip status/cap/age failures before HTTP (written to `prefilter-excluded.yaml`).
+3. **Enrichment** — per surviving security, fetch annual financials and industry proxy, derive metrics (including `operating_margin`), apply industry median overlays, merge into `SecurityRecord`.
 
 | Market | Enrichment sources |
 |--------|-------------------|
@@ -56,7 +57,9 @@ data/cache/{quarter}/{CN|US}/{ticker}.json
 
 - First CN live run for a quarter: typically **30–60 min** (one request per ticker unless cached).
 - Subsequent runs in the same quarter read cache unless `--skip-cache` is set.
+- Empty financial responses are **not** cached (next run refetches).
 - Cache is keyed by quarter + market + ticker; safe to delete `data/cache/{quarter}/` to force a refresh.
+- Host in-flight caps: East Money datacenter 8, SEC 4 (in addition to `--enrich-concurrency`).
 
 ## E2E scripts
 
@@ -74,7 +77,16 @@ Pass extra args through to the live script:
 npm run e2e:live -- --markets CN,US --quarter 2026-Q2
 ```
 
-Live E2E asserts enriched candidates (non-empty `metric_snapshot`, no false `kill_revenue_decline_3y_consecutive`, CN universe scale). Requires network; on macOS with a system proxy, set `HTTPS_PROXY` (see `scripts/e2e-live.ts`).
+Live E2E asserts enriched candidates (`candidates >= 1`, non-empty `metric_snapshot`), CN universe scale, and no false `kill_revenue_decline_3y_consecutive` on empty YoY. Requires network; on macOS with a system proxy, set `HTTPS_PROXY` (see `scripts/e2e-live.ts`).
+
+### Output artifacts (per market)
+
+| File | When |
+|------|------|
+| `candidates.yaml` | Always |
+| `deferred.yaml` | Always (may be empty) |
+| `excluded.yaml` | Kill gates on **enriched** universe |
+| `prefilter-excluded.yaml` | Live only, when quote prefilter skips exist |
 
 ## Tests
 

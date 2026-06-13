@@ -2,7 +2,7 @@
 
 Quarterly quantitative funnel for A-share and US single-company equities. Feeds candidates into [stock-analysis-audit](../stock-analysis-audit/) Deep audit.
 
-**Status:** Spec + SKILL.md (Package M tightened) — CLI M1/M2 done (`cli_m1_m2_done`).
+**Status:** Spec + SKILL.md (Package M tightened) — CLI **M3 live enrichment** done (`cli_m3_live_funnel_done`).
 
 ## Layout
 
@@ -14,7 +14,7 @@ Quarterly quantitative funnel for A-share and US single-company equities. Feeds 
 | [spec/index.yaml](./spec/index.yaml) | Manifest, data sources, template list |
 | [spec/kill-gates.yaml](./spec/kill-gates.yaml) | Shared kill gates before sector funnels |
 | [spec/routing-map.yaml](./spec/routing-map.yaml) | GICS / industry proxy → sector templates |
-| [spec/output-schema.yaml](./spec/output-schema.yaml) | `candidates.yaml` / `excluded.yaml` contract |
+| [spec/output-schema.yaml](./spec/output-schema.yaml) | `candidates.yaml` / `excluded.yaml` / `prefilter-excluded.yaml` contract |
 | [spec/conventions.yaml](./spec/conventions.yaml) | Threshold and pass-logic syntax |
 | [spec/landmine-rules.yaml](./spec/landmine-rules.yaml) | Landmine price formulas (Phase 2) |
 | [spec/trigger-discipline.yaml](./spec/trigger-discipline.yaml) | Scenario A/B trigger rules (alert CLI Phase 2) |
@@ -71,7 +71,9 @@ npx tsx bin/screener.ts run \
   --adapter live
 ```
 
-Writes `{output}/{quarter}/{CN|US}/candidates.yaml`, `deferred.yaml`, and `excluded.yaml`.
+Writes `{output}/{quarter}/{CN|US}/candidates.yaml`, `deferred.yaml`, `excluded.yaml`, and (live, when non-empty) `prefilter-excluded.yaml`.
+
+**Live-only flags:** `--enrich-concurrency` (default 4), `--skip-cache`.
 
 **Explain one security** (routing + kill gates + template evaluation)
 

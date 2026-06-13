@@ -5,6 +5,9 @@ import { parseMarkets } from "../lib/markets.js";
 import { DEFAULT_CACHE_DIR } from "../paths.js";
 import { loadSpecBundle } from "../spec/loader.js";
 
+/** Default per-ticker enrichment workers; each ticker may issue 2 HTTP calls. */
+const DEFAULT_ENRICH_CONCURRENCY = 4;
+
 export interface RunCommandOptions {
   markets: string;
   quarter: string;
@@ -23,19 +26,24 @@ export async function runCommand(opts: RunCommandOptions): Promise<void> {
   const enrichOpts = {
     quarter: opts.quarter,
     cacheDir: DEFAULT_CACHE_DIR,
-    concurrency: opts.enrichConcurrency ?? 8,
+    concurrency: opts.enrichConcurrency ?? DEFAULT_ENRICH_CONCURRENCY,
     skipCache: opts.skipCache ?? false,
+    killGates: bundle.killGates,
   };
 
   let universe = await adapter.loadUniverse(markets);
+  let prefilterExcluded: typeof universe = [];
   if (adapter.enrichRecords && (opts.adapter ?? "fixture") === "live") {
-    universe = await adapter.enrichRecords(universe, enrichOpts);
+    const enriched = await adapter.enrichRecords(universe, enrichOpts);
+    universe = enriched.universe;
+    prefilterExcluded = enriched.prefilterExcluded;
   }
   const outputDir = path.join(path.resolve(opts.output), opts.quarter);
 
   const result = await runFunnel({
     bundle,
     universe,
+    prefilterExcluded,
     quarter: opts.quarter,
     marketScope,
     outputDir,

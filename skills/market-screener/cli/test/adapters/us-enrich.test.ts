@@ -47,17 +47,19 @@ describe("mergeUsEnrichment", () => {
     expect(merged.metrics.roe_5y_avg?.value).toBeGreaterThan(1);
   });
 
-  it("preserves quote metrics over derived metrics", () => {
+  it("preserves quote-only metrics while derived financials win on overlap", () => {
     const withQuote: SecurityRecord = {
       ...base,
       metrics: {
+        trailing_pe: { value: 28.5, dataConfidence: "high" },
         roe_5y_avg: { value: 0.42, dataConfidence: "high" },
       },
     };
 
     const merged = mergeUsEnrichment(withQuote, rows, "Electronic Computers");
-    expect(merged.metrics.roe_5y_avg?.value).toBe(0.42);
-    expect(merged.metrics.roe_5y_avg?.dataConfidence).toBe("high");
+    expect(merged.metrics.trailing_pe?.value).toBe(28.5);
+    expect(merged.metrics.roe_5y_avg?.value).toBeGreaterThan(1);
+    expect(merged.metrics.roe_5y_avg?.dataConfidence).toBe("medium");
   });
 
   it("returns record unchanged when annual rows are empty", () => {

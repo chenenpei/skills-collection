@@ -30,7 +30,11 @@ export async function runCli(argv: string[]): Promise<void> {
     .requiredOption("--output <dir>", "Output root directory")
     .requiredOption("--spec <dir>", "Path to spec directory")
     .option("--adapter <kind>", "Data adapter: fixture or live", "fixture")
-    .option("--enrich-concurrency <n>", "Parallel enrichment requests", "8")
+    .option(
+      "--enrich-concurrency <n>",
+      "Parallel enrichment tickers (each may issue 2 HTTP calls)",
+      "4"
+    )
     .option("--skip-cache", "Ignore enrichment disk cache", false)
     .action(async (opts: {
       markets: string;

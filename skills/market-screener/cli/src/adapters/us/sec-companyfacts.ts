@@ -1,6 +1,5 @@
-import { httpFetch } from "../../lib/http-fetch.js";
+import { secFetch } from "./sec-client.js";
 import type { AnnualFinancialRow } from "../../metrics/derive.js";
-import { SEC_UA } from "./sec-tickers.js";
 
 type FactPoint = { fy?: number; fp?: string; val?: number; form?: string };
 type GaapFacts = Record<string, { units?: Record<string, FactPoint[]> }>;
@@ -72,9 +71,7 @@ export function parseCompanyFactsAnnualRows(body: FactsBody): AnnualFinancialRow
 }
 
 export async function fetchUsAnnualRows(cik: string): Promise<AnnualFinancialRow[]> {
-  const res = await httpFetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, {
-    headers: { "User-Agent": SEC_UA },
-  });
+  const res = await secFetch(`/api/xbrl/companyfacts/CIK${cik}.json`);
   if (!res.ok) throw new Error(`SEC companyfacts failed for CIK${cik}: ${res.status}`);
   return parseCompanyFactsAnnualRows((await res.json()) as FactsBody);
 }

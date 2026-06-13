@@ -1,4 +1,6 @@
 import path from "node:path";
+import type { SecurityRecord } from "../engine/kill-gates.js";
+import { getUniverseProfileFailureReason } from "../engine/universe-profile.js";
 import type { SpecBundle } from "../spec/types.js";
 import { funnelSoftCapFromBundle } from "../spec/conventions.js";
 import { buildRunMetadata } from "../output/metadata.js";
@@ -15,6 +17,7 @@ import type { Market } from "./types.js";
 export interface FunnelRunOptions {
   bundle: SpecBundle;
   universe: SecurityRecord[];
+  prefilterExcluded?: SecurityRecord[];
   quarter: string;
   marketScope: Market | "CN,US";
   outputDir: string;
@@ -37,6 +40,9 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
 
   for (const market of markets) {
     const marketUniverse = opts.universe.filter((u) => u.market === market);
+    const marketPrefilterExcluded = (opts.prefilterExcluded ?? []).filter(
+      (r) => r.market === market
+    );
     const excluded: unknown[] = [];
     const passed: PassingCandidate[] = [];
 
@@ -48,6 +54,7 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
           market: record.market,
           kill_reason: kill.killReason,
           metric_snapshot: {},
+          enrichment_failure: record.enrichmentFailure,
         });
         continue;
       }
@@ -82,7 +89,7 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
       bundle: opts.bundle,
       quarter: opts.quarter,
       marketScope: market,
-      universeCount: marketUniverse.length,
+      universeCount: marketUniverse.length + marketPrefilterExcluded.length,
       candidateCount: primary.length,
       deferredCount: deferred.length,
     });
@@ -100,6 +107,18 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
       run_metadata: meta,
       excluded,
     });
+    if (marketPrefilterExcluded.length > 0) {
+      await writeYamlArtifact(path.join(base, "prefilter-excluded.yaml"), {
+        run_metadata: meta,
+        prefilter_excluded: marketPrefilterExcluded.map((record) => ({
+          ticker: record.ticker,
+          market: record.market,
+          kill_reason:
+            getUniverseProfileFailureReason(opts.bundle.killGates, record) ??
+            "kill_prefilter_excluded",
+        })),
+      });
+    }
 
     totalCandidates += primary.length;
     totalDeferred += deferred.length;

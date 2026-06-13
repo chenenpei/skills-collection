@@ -15,15 +15,21 @@ export function parseTickerMap(raw: Record<string, TickerEntry>): Map<string, st
 }
 
 let cachedMap: Map<string, string> | null = null;
+let loadPromise: Promise<Map<string, string>> | null = null;
 
 export async function loadTickerToCikMap(): Promise<Map<string, string>> {
   if (cachedMap) return cachedMap;
-  const res = await httpFetch(SEC_TICKERS_URL, {
-    headers: { "User-Agent": SEC_UA },
-  });
-  if (!res.ok) throw new Error(`SEC tickers failed: ${res.status}`);
-  cachedMap = parseTickerMap((await res.json()) as Record<string, TickerEntry>);
-  return cachedMap;
+  if (!loadPromise) {
+    loadPromise = (async () => {
+      const res = await httpFetch(SEC_TICKERS_URL, {
+        headers: { "User-Agent": SEC_UA },
+      });
+      if (!res.ok) throw new Error(`SEC tickers failed: ${res.status}`);
+      cachedMap = parseTickerMap((await res.json()) as Record<string, TickerEntry>);
+      return cachedMap;
+    })();
+  }
+  return loadPromise;
 }
 
 export async function resolveCik(ticker: string): Promise<string | undefined> {

@@ -1,4 +1,4 @@
-import { DEFAULT_CACHE_DIR, DEFAULT_FIXTURES_DIR, DEFAULT_SPEC_DIR } from "../paths.js";
+import { DEFAULT_CACHE_DIR, DEFAULT_FIXTURES_DIR } from "../paths.js";
 import { createCnEastMoneyAdapter } from "./cn-eastmoney.js";
 import { createFixtureAdapter } from "./fixture.js";
 import { enrichLiveUniverse } from "./live-pipeline.js";
@@ -26,7 +26,7 @@ export function createLiveAdapter(cacheDir = DEFAULT_CACHE_DIR): MarketDataAdapt
     },
 
     async enrichRecords(records: SecurityRecord[], opts: EnrichOptions): Promise<SecurityRecord[]> {
-      return enrichLiveUniverse(records, { ...opts, cacheDir }, DEFAULT_SPEC_DIR);
+      return enrichLiveUniverse(records, { ...opts, cacheDir });
     },
   };
 }

@@ -1,12 +1,5 @@
-import { httpFetch } from "../../lib/http-fetch.js";
 import type { AnnualFinancialRow } from "../../metrics/derive.js";
-
-const BASE = "https://datacenter-web.eastmoney.com/api/data/v1/get";
-const HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Referer: "https://emweb.securities.eastmoney.com/",
-};
+import { fetchEastMoneyDatacenter } from "./eastmoney-datacenter.js";
 
 type RawRow = Record<string, string | number | null | undefined>;
 
@@ -35,8 +28,8 @@ export function parseEastMoneyAnnualRows(data: RawRow[]): AnnualFinancialRow[] {
     .filter((r) => r.year > 1900 && r.revenue > 0);
 }
 
-function buildUrl(secucode: string): string {
-  const params = new URLSearchParams({
+function buildParams(secucode: string): URLSearchParams {
+  return new URLSearchParams({
     reportName: "RPT_F10_FINANCE_MAINFINADATA",
     columns:
       "SECUCODE,REPORT_DATE,REPORT_TYPE,TOTALOPERATEREVE,PARENTNETPROFIT,MLR,ROEJQ,NETCASH_OPERATE_PK,ZCFZL,OPERATE_PROFIT_PK",
@@ -46,12 +39,11 @@ function buildUrl(secucode: string): string {
     sortTypes: "-1",
     sortColumns: "REPORT_DATE",
   });
-  return `${BASE}?${params.toString()}`;
 }
 
 export async function fetchCnAnnualRows(ticker: string): Promise<AnnualFinancialRow[]> {
   const secucode = cnTickerToSecucode(ticker);
-  const res = await httpFetch(buildUrl(secucode), { headers: HEADERS });
+  const res = await fetchEastMoneyDatacenter(buildParams(secucode));
   if (!res.ok) throw new Error(`EastMoney financials failed for ${ticker}: ${res.status}`);
 
   const body = (await res.json()) as { result?: { data?: RawRow[] } };

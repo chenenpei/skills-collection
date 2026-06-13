@@ -1,12 +1,5 @@
-import { httpFetch } from "../../lib/http-fetch.js";
 import { cnTickerToSecucode } from "./eastmoney-financials.js";
-
-const BASE = "https://datacenter-web.eastmoney.com/api/data/v1/get";
-const HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Referer: "https://emweb.securities.eastmoney.com/",
-};
+import { fetchEastMoneyDatacenter } from "./eastmoney-datacenter.js";
 
 type OrgRow = { BOARD_NAME_LEVEL?: string; EM2016?: string };
 
@@ -27,7 +20,7 @@ export async function fetchCnIndustryProxy(ticker: string): Promise<string | und
     pageSize: "1",
   });
 
-  const res = await httpFetch(`${BASE}?${params.toString()}`, { headers: HEADERS });
+  const res = await fetchEastMoneyDatacenter(params);
   if (!res.ok) throw new Error(`EastMoney industry failed for ${ticker}: ${res.status}`);
 
   const body = (await res.json()) as { result?: { data?: OrgRow[] } };

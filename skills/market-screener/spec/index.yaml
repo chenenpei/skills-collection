@@ -47,6 +47,9 @@ data_sources:
     cn: eastmoney_datacenter_annual + orginfo
     us: sec_companyfacts + sec_submissions
     cache: data/cache/{quarter}/
+    prefilter: quote-only universe gates before HTTP (status, cap, age)
+    host_limits: { eastmoney_datacenter: 8, sec_edgar: 4 }
+    default_enrich_concurrency: 4
   ref: ../CONTEXT.md#Data Sources (MVP)
 
 routing:
@@ -86,6 +89,8 @@ output:
     - "{output}/{quarter}/US/deferred.yaml"
     - "{output}/{quarter}/CN/excluded.yaml"
     - "{output}/{quarter}/US/excluded.yaml"
+    - "{output}/{quarter}/CN/prefilter-excluded.yaml"   # live only; when non-empty
+    - "{output}/{quarter}/US/prefilter-excluded.yaml"   # live only; when non-empty
     - "{output}/{quarter}/audit/CN/{ticker}.md"
     - "{output}/{quarter}/audit/US/{ticker}.md"
     - "{output}/{quarter}/audit-summary.yaml"

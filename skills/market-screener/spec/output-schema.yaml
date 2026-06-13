@@ -13,7 +13,16 @@ artifacts:
 
   excluded:
     filename: excluded.yaml
-    description: Securities removed by shared kill gates for quarterly false-reject review
+    description: >
+      Securities removed by shared kill gates after live enrichment (or fixture load).
+      Does not include quote-only prefilter skips — see prefilter_excluded.
+
+  prefilter_excluded:
+    filename: prefilter-excluded.yaml
+    description: >
+      Live adapter only. Securities skipped before financial enrichment because they
+      fail universe profile gates (status, market cap floor, listing age). Same kill
+      reason slugs as kill-gates.yaml universe phase. Written only when non-empty.
 
 candidates_schema:
   run_metadata:
@@ -23,7 +32,7 @@ candidates_schema:
       executed_at: ISO8601
       quarter: string           # e.g. 2026-Q2
       market_scope: CN | US | CN,US
-      universe_count: integer
+      universe_count: integer   # quote universe size incl. prefilter_excluded (live)
       candidate_count: integer
       deferred_count: integer   # passed funnel but below soft-cap rank
       funnel_soft_cap: integer  # e.g. 25
@@ -77,6 +86,20 @@ excluded_schema:
       market: CN | US
       kill_reason: string       # slug from kill-gates.yaml
       metric_snapshot: object
+      enrichment_failure: string  # optional; cik_unresolved | fetch_failed when live enrich incomplete
+
+prefilter_excluded_schema:
+  run_metadata:
+    same_as: candidates_schema.run_metadata
+
+  prefilter_excluded:
+    type: array
+    description: Quote-only skips before enrichment (live adapter only)
+    item_required: [ticker, market, kill_reason]
+    fields:
+      ticker: string
+      market: CN | US
+      kill_reason: string       # kill_status_excluded | kill_market_cap_below_floor | kill_listing_age_below_floor
 
 metric_snapshot_conventions:
   data_confidence_per_field: optional  # high | medium | low

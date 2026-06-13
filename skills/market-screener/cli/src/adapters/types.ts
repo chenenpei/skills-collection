@@ -1,4 +1,5 @@
 import type { SecurityRecord } from "../engine/kill-gates.js";
+import type { KillGatesSpec } from "../spec/types.js";
 import type { Market } from "../engine/types.js";
 
 export interface EnrichOptions {
@@ -6,9 +7,18 @@ export interface EnrichOptions {
   cacheDir: string;
   concurrency: number;
   skipCache?: boolean;
+  killGates?: KillGatesSpec;
+}
+
+export interface EnrichResult {
+  universe: SecurityRecord[];
+  prefilterExcluded: SecurityRecord[];
 }
 
 export interface MarketDataAdapter {
   loadUniverse(markets: Market[]): Promise<SecurityRecord[]>;
-  enrichRecords?(records: SecurityRecord[], opts: EnrichOptions): Promise<SecurityRecord[]>;
+  enrichRecords?(
+    records: SecurityRecord[],
+    opts: EnrichOptions
+  ): Promise<EnrichResult>;
 }

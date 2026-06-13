@@ -92,7 +92,7 @@ npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --out
 
 | Command | Purpose |
 |---------|---------|
-| `run` | Quantitative funnel → `candidates.yaml`, `deferred.yaml`, `excluded.yaml` |
+| `run` | Quantitative funnel → `candidates.yaml`, `deferred.yaml`, `excluded.yaml` (+ live `prefilter-excluded.yaml`) |
 | `validate` | Lint `spec/` YAML |
 | `explain` | Single-ticker routing trace |
 | `landmine` | Landmine YAML from audit-summary |
@@ -102,7 +102,7 @@ npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --out
 
 ## Live full funnel (M3)
 
-With `--adapter live`, the CLI loads quote universes then enriches each security with annual financials and industry proxy (CN: East Money datacenter + orginfo; US: SEC companyfacts + submissions). Enrichment responses are cached per quarter under `cli/data/cache/{quarter}/`.
+With `--adapter live`, the CLI loads quote universes, applies **quote prefilter** (status/cap/age — skips written to `prefilter-excluded.yaml`), then enriches survivors with annual financials and industry proxy (CN: East Money datacenter + orginfo; US: SEC companyfacts + submissions). Derived metrics include `operating_margin`; industry median overlays populate `gross_margin_vs_industry` and `operating_margin_vs_industry`. Enrichment responses are cached per quarter under `cli/data/cache/{quarter}/` (empty rows not cached).
 
 ### Quarterly live run
 
@@ -115,7 +115,7 @@ npm run e2e:live -- --markets CN,US --quarter YYYY-QN
 
 First CN run may take 30–60 min (4000+ enrichment requests). Subsequent runs use quarter cache under `data/cache/`.
 
-Optional `run` flags: `--enrich-concurrency <n>` (default 8), `--skip-cache` (force fresh enrichment).
+Optional `run` flags: `--enrich-concurrency <n>` (default **4**; each ticker ≈2 HTTP calls), `--skip-cache` (no cache read/write).
 
 ## Output Locale
 
@@ -140,6 +140,7 @@ Ask one question at a time. Prefer multiple-choice options when possible.
 After a scheduled quarterly run, verify:
 
 - [ ] `candidates.yaml`, `deferred.yaml`, `excluded.yaml` for CN and US
+- [ ] Live runs with prefilter skips: `prefilter-excluded.yaml` per market
 - [ ] Deep reports under `audit/{market}/` (≤20 per market unless `--deep-all`)
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml` if shortlist exists

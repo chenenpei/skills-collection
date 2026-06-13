@@ -1,4 +1,5 @@
 import type { KillGatesSpec } from "../spec/types.js";
+import { BLOCKED_STATUSES, getUniverseFloors } from "./universe-profile.js";
 import type { DataConfidence, Market, MetricValue } from "./types.js";
 
 export interface SecurityRecord {
@@ -17,6 +18,8 @@ export interface SecurityRecord {
   netLossWidening: boolean;
   nonStandardAudit: boolean;
   latestFinancialMonthsOld: number;
+  /** Set when live enrichment could not complete for this record. */
+  enrichmentFailure?: "cik_unresolved" | "fetch_failed";
 }
 
 export interface KillGateResult {
@@ -25,20 +28,6 @@ export interface KillGateResult {
   funnelFlags: string[];
   dataConfidence: DataConfidence;
 }
-
-type ProfileMarket = {
-  market_cap_min_cny?: number;
-  market_cap_min_usd?: number;
-  listing_age_min_years?: number;
-};
-
-const BLOCKED_STATUSES = new Set([
-  "ST",
-  "delisting",
-  "suspended",
-  "halted",
-  "delisted",
-]);
 
 function countMissingKeyFields(metrics: Record<string, MetricValue>): number {
   const required = ["revenue", "net_income", "operating_cash_flow"];
@@ -60,24 +49,15 @@ export function applyKillGates(
   const flags: string[] = [];
   let dataConfidence: DataConfidence = "high";
 
-  const profile = (
-    spec.universe as { profile_b?: Record<string, ProfileMarket> }
-  ).profile_b;
-  const cnFloor = profile?.CN?.market_cap_min_cny ?? 2_000_000_000;
-  const usFloor = profile?.US?.market_cap_min_usd ?? 300_000_000;
-  const cnAge = profile?.CN?.listing_age_min_years ?? 3;
-  const usAge = profile?.US?.listing_age_min_years ?? 2;
-
   if (BLOCKED_STATUSES.has(record.status)) {
     return excluded("kill_status_excluded", flags, dataConfidence);
   }
 
-  const capFloor = record.market === "CN" ? cnFloor : usFloor;
+  const { capFloor, ageFloor } = getUniverseFloors(spec, record.market);
   if (record.marketCap < capFloor) {
     return excluded("kill_market_cap_below_floor", flags, dataConfidence);
   }
 
-  const ageFloor = record.market === "CN" ? cnAge : usAge;
   if (record.listingAgeYears < ageFloor) {
     return excluded("kill_listing_age_below_floor", flags, dataConfidence);
   }

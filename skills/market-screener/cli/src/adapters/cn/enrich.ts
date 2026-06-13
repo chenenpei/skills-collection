@@ -1,7 +1,8 @@
 import { readCache, writeCache } from "../../lib/cache.js";
+import { mergeEnrichment } from "../merge-enrichment.js";
 import type { EnrichOptions } from "../types.js";
 import type { SecurityRecord } from "../../engine/kill-gates.js";
-import { deriveFromAnnualRows, type AnnualFinancialRow } from "../../metrics/derive.js";
+import type { AnnualFinancialRow } from "../../metrics/derive.js";
 import { fetchCnAnnualRows } from "./eastmoney-financials.js";
 import { fetchCnIndustryProxy } from "./eastmoney-industry.js";
 
@@ -10,25 +11,7 @@ interface CnCachePayload {
   industryProxy?: string;
 }
 
-export function mergeCnEnrichment(
-  record: SecurityRecord,
-  annualRows: AnnualFinancialRow[],
-  industryProxy?: string
-): SecurityRecord {
-  if (annualRows.length === 0) return record;
-
-  const derived = deriveFromAnnualRows(annualRows, {
-    marketCap: record.marketCap,
-    currency: record.currency,
-  });
-
-  return {
-    ...record,
-    industryProxy: industryProxy ?? record.industryProxy,
-    ...derived,
-    metrics: { ...derived.metrics, ...record.metrics },
-  };
-}
+export const mergeCnEnrichment = mergeEnrichment;
 
 export async function enrichCnRecord(
   record: SecurityRecord,
@@ -43,7 +26,9 @@ export async function enrichCnRecord(
       "CN",
       record.ticker
     );
-    if (cached) return mergeCnEnrichment(record, cached.annualRows, cached.industryProxy);
+    if (cached?.annualRows.length) {
+      return mergeEnrichment(record, cached.annualRows, cached.industryProxy);
+    }
   }
 
   const [annualRows, industryProxy] = await Promise.all([
@@ -51,10 +36,12 @@ export async function enrichCnRecord(
     fetchCnIndustryProxy(record.ticker),
   ]);
 
-  await writeCache(opts.cacheDir, opts.quarter, "CN", record.ticker, {
-    annualRows,
-    industryProxy,
-  } satisfies CnCachePayload);
+  if (!opts.skipCache && annualRows.length > 0) {
+    await writeCache(opts.cacheDir, opts.quarter, "CN", record.ticker, {
+      annualRows,
+      industryProxy,
+    } satisfies CnCachePayload);
+  }
 
-  return mergeCnEnrichment(record, annualRows, industryProxy);
+  return mergeEnrichment(record, annualRows, industryProxy);
 }

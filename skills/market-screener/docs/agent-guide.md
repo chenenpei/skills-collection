@@ -42,20 +42,21 @@ npm run dev -- run \
 ```
 
 - **`--adapter fixture`** — 离线 fixture，适合本地验证
-- **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙，再经 **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；US：`sec_companyfacts` + `sec_submissions`），需联网
+- **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙 → **quote prefilter**（status/市值/上市年限，未 enrichment 的写入 `prefilter-excluded.yaml`）→ **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；US：`sec_companyfacts` + `sec_submissions`），需联网
 
-**Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。
+**Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。
 
 **Live run 可选参数：**
 
-- `--enrich-concurrency <n>` — 并行 enrichment 请求数（默认 8）
-- `--skip-cache` — 忽略磁盘缓存，强制重新拉取
+- `--enrich-concurrency <n>` — 并行 enrichment **ticker** 数（默认 **4**；每 ticker 约 2 次 HTTP；另有 East Money/SEC host 上限）
+- `--skip-cache` — 忽略磁盘缓存（不读不写），强制重新拉取
 
 产出（每市场）：
 
 - `CN/candidates.yaml` — rank 1–25（软顶，Package M）
 - `CN/deferred.yaml` — 通过漏斗但 rank > 25
-- `CN/excluded.yaml` — Kill Gate 排除
+- `CN/excluded.yaml` — 对 **已 enrichment** 宇宙应用 Kill Gate 后的排除（含 `enrichment_failure` 可选字段）
+- `CN/prefilter-excluded.yaml` — **仅 live**：quote prefilter 跳过、未 enrichment 的标的（status/市值/年限）
 - `US/` 同上
 
 **禁止** Agent 自行调用东方财富/Yahoo API 重实现漏斗逻辑；数据拉取由 CLI adapter 负责。
@@ -145,6 +146,7 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 季度运行结束应存在：
 
 - [ ] `candidates.yaml` / `deferred.yaml` / `excluded.yaml`（CN、US）
+- [ ] live 跑批时若有 quote prefilter 跳过：`prefilter-excluded.yaml`（CN、US）
 - [ ] `audit/{market}/*.md`（Deep，每市场 ≤20）
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml`（若有 shortlist）

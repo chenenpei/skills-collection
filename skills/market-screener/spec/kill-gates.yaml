@@ -85,3 +85,21 @@ flags_not_exclusions:
   - id: profit_loss_ocf_divergence
     condition: net_loss_and_ocf_positive
     funnel_flag: profit_loss_ocf_divergence
+
+live_quote_prefilter:
+  applies_when: adapter_live
+  phase: before_financial_enrichment
+  shared_with: universe gates (status_excluded, market_cap_below_floor, listing_age_below_floor)
+  implementation: cli/src/engine/universe-profile.ts via cli/src/adapters/live-pipeline.ts
+  output_artifact: prefilter-excluded.yaml
+  note: >
+    Skipped securities are not enriched (saves HTTP). They are excluded from the
+    enriched funnel universe but counted in run_metadata.universe_count. Funnel
+    kill gates apply only to enriched survivors; prefilter skips appear only in
+    prefilter-excluded.yaml, not in excluded.yaml.
+
+enrichment_failures:
+  optional_field: enrichment_failure
+  values:
+    cik_unresolved: US ticker not in SEC company_tickers map
+    fetch_failed: per-ticker HTTP or parse error (record kept quote-only; may flag_key_fields_unavailable)

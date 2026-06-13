@@ -54,6 +54,15 @@ function netDebtToEbitdaProxy(row: AnnualFinancialRow): number {
   return Math.max(0, (debtProxy - row.operatingCashFlow * 0.1) / ebitda);
 }
 
+function operatingMargin(row: AnnualFinancialRow): number {
+  if (row.revenue <= 0) return 0;
+  if (row.operatingProfit !== undefined && row.operatingProfit > 0) {
+    return row.operatingProfit / row.revenue;
+  }
+  // Proxy when operating profit is unavailable (see spec/conventions.yaml).
+  return (row.grossProfit / row.revenue) * 0.35;
+}
+
 export interface DeriveContext {
   marketCap: number;
   currency: string;
@@ -92,6 +101,7 @@ export function deriveFromAnnualRows(
     losses.length >= 2 && losses[losses.length - 1].netIncome < losses[0].netIncome;
 
   const grossMargin = latest.revenue > 0 ? latest.grossProfit / latest.revenue : 0;
+  const opMargin = operatingMargin(latest);
   const fcfYield =
     ctx.marketCap > 0 && ctx.fcf !== undefined ? ctx.fcf / ctx.marketCap : undefined;
 
@@ -102,6 +112,7 @@ export function deriveFromAnnualRows(
     roe_ttm: mv(latest.roe),
     roe_5y_avg: mv(avg(roes)),
     gross_margin: mv(grossMargin),
+    operating_margin: mv(opMargin),
     gross_margin_3y_max_decline_pp: mv(computeGrossMarginMaxDeclinePp(grossMargins)),
     fcf_conversion_5y: mv(avg(fcfConversions.length ? fcfConversions : [0])),
     net_debt_to_ebitda: mv(netDebtToEbitdaProxy(latest)),
