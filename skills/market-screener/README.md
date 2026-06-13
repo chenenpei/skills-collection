@@ -2,12 +2,13 @@
 
 Quarterly quantitative funnel for A-share and US single-company equities. Feeds candidates into [stock-analysis-audit](../stock-analysis-audit/) Deep audit.
 
-**Status:** Spec + SKILL.md (Package M tightened) — CLI not implemented yet.
+**Status:** Spec + SKILL.md (Package M tightened) — CLI M1/M2 done (`cli_m1_m2_done`).
 
 ## Layout
 
 | Path | Purpose |
 |------|---------|
+| [cli/](./cli/) | TypeScript `screener` CLI (validate, run, explain, landmine) |
 | [docs/agent-guide.md](./docs/agent-guide.md) | Quarterly runbook for agents (schedule, Deep, landmine, triggers) |
 | [CONTEXT.md](./CONTEXT.md) | Domain vocabulary (glossary only) |
 | [spec/index.yaml](./spec/index.yaml) | Manifest, data sources, template list |
@@ -22,9 +23,66 @@ Quarterly quantitative funnel for A-share and US single-company equities. Feeds 
 
 | [SKILL.md](./SKILL.md) | Agent orchestration entry (manual invocation only) |
 
-## Planned (not yet present)
+## CLI
 
-- `cli/` — TypeScript `screener` CLI
+Path: [`cli/`](./cli/). TypeScript package with `screener` binary (Commander + tsx).
+
+### Install
+
+```bash
+cd skills/market-screener/cli
+npm install
+```
+
+### Test
+
+```bash
+npm test
+```
+
+### Commands
+
+All commands run from `skills/market-screener/cli` via `npm run dev -- <command>` or `npx tsx bin/screener.ts <command>`.
+
+**Validate spec**
+
+```bash
+npm run validate
+# or: npx tsx bin/screener.ts validate ../spec
+```
+
+**Run funnel** (fixture adapter by default; live adapter not implemented yet)
+
+```bash
+npx tsx bin/screener.ts run \
+  --markets CN,US \
+  --quarter 2026-Q2 \
+  --output /tmp/screener-out \
+  --spec ../spec \
+  --adapter fixture
+```
+
+Writes `{output}/{quarter}/{CN|US}/candidates.yaml`, `deferred.yaml`, and `excluded.yaml`.
+
+**Explain one security** (routing + kill gates + template evaluation)
+
+```bash
+npx tsx bin/screener.ts explain 600519 \
+  --market CN \
+  --fixture test/fixtures/universe-cn.json \
+  --spec ../spec
+```
+
+**Landmine prices** from Deep audit shortlist
+
+```bash
+npx tsx bin/screener.ts landmine \
+  --from test/fixtures/audit-summary.yaml \
+  --output /tmp/landmines.yaml \
+  --quarter 2026-Q2
+```
+
+`--spec` defaults to `../spec` when omitted. Phase 2 placeholder: `screener alert` (not implemented).
 
 ## Related
 
