@@ -51,15 +51,24 @@ npm run validate
 # or: npx tsx bin/screener.ts validate ../spec
 ```
 
-**Run funnel** (fixture adapter by default; live adapter not implemented yet)
+**Run funnel** (`--adapter fixture` offline by default; `--adapter live` for CN East Money + US Yahoo)
 
 ```bash
+# Offline (default)
 npx tsx bin/screener.ts run \
   --markets CN,US \
   --quarter 2026-Q2 \
   --output /tmp/screener-out \
   --spec ../spec \
   --adapter fixture
+
+# Live universe (requires network)
+npx tsx bin/screener.ts run \
+  --markets CN,US \
+  --quarter 2026-Q2 \
+  --output /tmp/screener-out-live \
+  --spec ../spec \
+  --adapter live
 ```
 
 Writes `{output}/{quarter}/{CN|US}/candidates.yaml`, `deferred.yaml`, and `excluded.yaml`.

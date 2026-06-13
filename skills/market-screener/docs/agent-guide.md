@@ -2,7 +2,7 @@
 
 本指南面向编排 **季度批量漏斗 → Deep 审计 → landmine 限价 → 到价纪律** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
 
-**MVP 状态：** `screener` CLI 尚未实现；Agent 可按本指南手工编排，或等 CLI 落地后改为调用命令。
+**CLI 状态：** `screener` CLI 已在 `cli/` 落地（validate / run / explain / landmine）。Agent **必须优先调用 CLI** 执行定量漏斗与 landmine；`screener` 不在 `$PATH`，需在 `cli/` 目录通过 `npm run dev -- <command>` 运行（见 §2）。仅当 CLI 安装或执行真实失败时，才回退到 `spec/` 手工编排并标注 `N/A`。
 
 ---
 
@@ -29,9 +29,20 @@ Phase 2 占位：`screener schedule --year YYYY` 打印解析日期。
 
 ### Step 1 — 定量漏斗
 
+在 skill 目录下的 `cli/` 中执行（首次需 `npm install`）：
+
 ```bash
-screener run --markets CN,US --quarter 2026-Q2 --output ./funnel-output/2026-Q2/
+cd cli
+npm run dev -- run \
+  --markets CN,US \
+  --quarter 2026-Q2 \
+  --output ./funnel-output/2026-Q2/ \
+  --spec ../spec \
+  --adapter fixture
 ```
+
+- **`--adapter fixture`** — 离线 fixture，适合本地验证
+- **`--adapter live`** — CN 东方财富 + US Yahoo Finance（需联网）
 
 产出（每市场）：
 
@@ -40,7 +51,7 @@ screener run --markets CN,US --quarter 2026-Q2 --output ./funnel-output/2026-Q2/
 - `CN/excluded.yaml` — Kill Gate 排除
 - `US/` 同上
 
-Agent 若无 CLI：按 `spec/` 规则说明本轮应用 **Package M** 收紧后的 sector templates。
+**禁止** Agent 自行调用东方财富/Yahoo API 重实现漏斗逻辑；数据拉取由 CLI adapter 负责。
 
 ### Step 2 — Deep 审计（stock-analysis-audit）
 
@@ -81,8 +92,11 @@ Deep 合格输出标准见 stock-analysis-audit `docs/agent-guide.md`。
 ## 3. 等待期 — landmine 限价（Phase 2）
 
 ```bash
-screener landmine --from funnel-output/2026-Q2/audit-summary.yaml \
-  --output funnel-output/2026-Q2/landmines.yaml
+cd cli
+npm run dev -- landmine \
+  --from ../funnel-output/2026-Q2/audit-summary.yaml \
+  --output ../funnel-output/2026-Q2/landmines.yaml \
+  --quarter 2026-Q2
 ```
 
 公式见 `spec/landmine-rules.yaml`：
@@ -113,7 +127,7 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 
 | 阶段 | market-screener | stock-analysis-audit |
 |------|-----------------|---------------------|
-| 全市场定量 | `screener run` + `spec/templates/` | 不参与 |
+| 全市场定量 | `cli/` → `npm run dev -- run` + `spec/templates/` | 不参与 |
 | 单票 Deep | 编排 + audit_hints | Deep workflow |
 | 到价后复核 | trigger-discipline | 可选再 Deep |
 

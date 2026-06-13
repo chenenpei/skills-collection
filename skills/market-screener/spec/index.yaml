@@ -3,7 +3,7 @@
 # Downstream audit: ../../stock-analysis-audit/
 
 version: "0.1.0"
-status: cli_in_progress  # CLI at ../cli/ — validate, run (fixture), explain, landmine
+status: cli_m1_m2_done  # validate, run (fixture + live), explain, landmine — see ../cli/
 tightening_profile: package_m  # 2026 grill: sector templates tightened; soft cap 25 per market
 
 delivery:
