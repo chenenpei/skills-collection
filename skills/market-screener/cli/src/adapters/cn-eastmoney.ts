@@ -1,17 +1,22 @@
 import { withAdapterDefaults } from "./defaults.js";
 import type { SecurityRecord } from "../engine/kill-gates.js";
+import { httpFetch } from "../lib/http-fetch.js";
 import type { Market } from "../engine/types.js";
 import type { MarketDataAdapter } from "./types.js";
 
-const CLIST_BASE = "https://push2.eastmoney.com/api/qt/clist/get";
+const CLIST_BASE = "https://push2delay.eastmoney.com/api/qt/clist/get";
+const EASTMONEY_UT = "bd1d9ddb04089700cf9c27f6f7426281";
 const A_SHARE_FS =
   "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048";
 const CLIST_FIELDS = "f12,f14,f20,f116,f127";
 /** East Money caps each page well below requested pz; paginate explicitly. */
 const PAGE_SIZE = 100;
 const REQUEST_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (compatible; market-screener/0.1)",
-  Referer: "https://quote.eastmoney.com/",
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Referer: "https://quote.eastmoney.com/center/gridlist.html",
+  Accept: "application/json, text/plain, */*",
+  Origin: "https://quote.eastmoney.com",
 };
 
 type EastMoneyRow = Record<string, number | string | undefined>;
@@ -24,6 +29,8 @@ function buildListUrl(page: number, pageSize: number): string {
     np: "1",
     fltt: "2",
     invt: "2",
+    fid: "f12",
+    ut: EASTMONEY_UT,
     fs: A_SHARE_FS,
     fields: CLIST_FIELDS,
   });
@@ -58,8 +65,16 @@ function mapRowToSecurityRecord(row: EastMoneyRow): SecurityRecord {
 }
 
 async function fetchPage(page: number): Promise<{ rows: EastMoneyRow[]; total: number }> {
-  const res = await fetch(buildListUrl(page, PAGE_SIZE), { headers: REQUEST_HEADERS });
-  if (!res.ok) throw new Error(`EastMoney list failed: ${res.status}`);
+  const url = buildListUrl(page, PAGE_SIZE);
+  let res: Response;
+  try {
+    res = await httpFetch(url, { headers: REQUEST_HEADERS });
+  } catch (err) {
+    const cause = err instanceof Error && "cause" in err ? (err.cause as Error | undefined) : undefined;
+    const detail = cause?.message ?? (err instanceof Error ? err.message : String(err));
+    throw new Error(`EastMoney fetch failed (${url}): ${detail}`);
+  }
+  if (!res.ok) throw new Error(`EastMoney list failed: ${res.status} ${url}`);
 
   const body = (await res.json()) as { data?: { diff?: EastMoneyRow[]; total?: number } };
   const rows = body.data?.diff ?? [];

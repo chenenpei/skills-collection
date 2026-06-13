@@ -1,5 +1,6 @@
 import { withAdapterDefaults } from "./defaults.js";
 import type { SecurityRecord } from "../engine/kill-gates.js";
+import { httpFetch } from "../lib/http-fetch.js";
 import type { Market } from "../engine/types.js";
 import type { MarketDataAdapter } from "./types.js";
 
@@ -64,7 +65,7 @@ export function createUsYahooAdapter(_opts: { cacheDir: string }): MarketDataAda
       let total = Number.POSITIVE_INFINITY;
 
       while (offset < total) {
-        const res = await fetch(SCREENER_URL, {
+        const res = await httpFetch(SCREENER_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: buildScreenerBody(offset),
