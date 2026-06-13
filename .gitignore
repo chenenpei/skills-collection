@@ -6,6 +6,10 @@
 # Git worktrees (isolated feature branches)
 .worktrees/
 
+# skills CLI project-level install artifacts (use -g for global install)
+.agents/
+skills-lock.json
+
 # Market screener CLI
 skills/market-screener/cli/node_modules/
 skills/market-screener/cli/dist/

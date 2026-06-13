@@ -16,7 +16,7 @@ quality_track:
   required:
     roic_5y_avg: { min: 0.13 }
     fcf_conversion_5y: { min: 0.70 }
-    gross_margin_3y_stable: { max_decline_pp: 5 }
+    gross_margin_3y_max_decline_pp: { max: 5 }
     net_debt_to_ebitda: { max: 2.5 }
   supporting:
     - { metric: capex_to_revenue, max: 0.15, gics_override_semiconductors: 0.25 }
