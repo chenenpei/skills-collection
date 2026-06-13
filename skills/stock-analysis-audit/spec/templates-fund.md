@@ -1,32 +1,36 @@
 # Fund and ETF Output Templates
 
-Use these templates when the analyzed security is an ETF, index fund, or other pooled fund vehicle.
+Scope: ETFs, index funds, active funds, and other pooled vehicles.
 
-Do not use company verdict labels unless explicitly mapping back to a single-stock decision inside the fund. Fund verdicts describe **tool quality and role**, not operating-business quality.
+Do not use company verdict labels unless explicitly mapping back to a single-stock decision inside the fund. Fund verdicts describe tool quality and role, not operating-business quality.
 
-## Fund Verdict Scale
-
-Choose exactly one:
-
-- **Reject** — fee, structure, tracking, liquidity, concentration, or valuation is clearly inferior to a relevant alternative
-- **Watchlist** — exposure may be useful, but current data, price, cycle, or peer comparison does not support action now
-- **Satellite Hold** — reasonable as a small satellite position if the user wants this exposure; not a core holding
-- **Core Hold** — durable tool with clear advantages vs peers and benchmarks for long-term allocation
-- **Tactical Only** — may be usable for a defined cycle or short horizon, but not a long-term hold
-
-Mapping note:
-
-- Do not translate directly to company verdicts such as High Conviction Candidate.
-- If the user asks for a single-stock style answer, explain that the fund verdict describes allocation role, not issuer quality.
-
-If data quality is Low, the final verdict must not exceed Watchlist.
+Render headings and narrative in the user's requested language. Use stable slugs from `../CONTEXT.md` in `Structured Summary`.
 
 ## Lite Fund Screening Template
+
+Required sections:
+
+1. One-Sentence Verdict
+2. Fund Identification
+3. Data Quality and Missing Items
+4. Exposure Summary
+5. Fund Wrapper Snapshot
+6. Portfolio Anatomy
+7. Top Holdings and Growth Attribution
+8. Valuation and Opportunity Cost
+9. Peer Fund Comparison
+10. Industry Profit-Pool Destruction Check
+11. Bull-side Misunderstanding
+12. Bear-side Hidden Re-pricing Check
+13. Top Three Risks
+14. Preliminary Verdict
+15. Data Needed for Further Work
+16. Structured Summary
 
 ```markdown
 ## 1. One-Sentence Verdict
 
-Final verdict: [Reject / Watchlist / Satellite Hold / Core Hold / Tactical Only]
+Final verdict: [rendered label from `final_verdict` slug]
 Confidence: [1-5]
 Data quality: [High / Medium / Low]
 
@@ -57,7 +61,7 @@ Data quality: [High / Medium / Low]
 - Index weighting scheme:
 - Rebalance / reconstitution notes:
 - Why an investor would use this instead of a broad index:
-- Lifecycle of the underlying exposure: [chaotic / evidence-established / fully priced / declining]
+- Lifecycle of the underlying exposure:
 
 ## 5. Fund Wrapper Snapshot
 
@@ -90,8 +94,6 @@ Data quality: [High / Medium / Low]
 
 | Holding | Weight % | Trailing P/E | Forward P/E | NTM earnings growth | Role [leader / core / drag / distorted] |
 |---|---:|---:|---:|---:|---|
-|  |  |  |  |  |  |
-|  |  |  |  |  |  |
 
 Growth attribution conclusion:
 
@@ -114,8 +116,8 @@ Growth attribution conclusion:
 
 Required comparisons:
 
-- Versus broad benchmark: [e.g. QQQ / CSI 300 / S&P 500]
-- Versus cash-return benchmark if relevant: [e.g. CSI Dividend Index]
+- Versus broad benchmark:
+- Versus cash-return benchmark if relevant:
 - Versus closest peer fund:
 
 ## 9. Peer Fund Comparison
@@ -185,14 +187,43 @@ Peer conclusion:
 ## 15. Data Needed for Further Work
 
 -
+
+## Structured Summary
+
+| field | slug | label |
+|---|---|---|
+| data_quality | data_quality_[high/medium/low] | [rendered label] |
+| final_verdict | verdict_fund_* | [rendered label] |
+| portfolio_role | [core / satellite / tactical / avoid / watch] | [rendered label] |
 ```
 
 ## Deep Fund Audit Template
 
+Required sections:
+
+1. Final Verdict
+2. Fund Identification
+3. Data Quality
+4. Index Methodology
+5. Fund Wrapper Quality
+6. Portfolio Anatomy
+7. Top Holdings Table
+8. Growth Attribution
+9. Historical Performance and Cycle Context
+10. Industry Profit-Pool Destruction Check
+11. Hidden Upside Check at Exposure Level
+12. Valuation and Opportunity Cost
+13. Red Team and Inversion
+14. Circle of Competence
+15. Action Framework
+16. Falsification
+17. Final Three Questions
+18. Structured Summary
+
 ```markdown
 ## 1. Final Verdict
 
-Final verdict: [Reject / Watchlist / Satellite Hold / Core Hold / Tactical Only]
+Final verdict: [rendered label from `final_verdict` slug]
 Confidence: [1-5]
 Data quality: [High / Medium / Low]
 
@@ -260,7 +291,6 @@ Wrapper conclusion:
 
 | Holding | Weight % | Trailing P/E | Forward P/E | NTM earnings growth | Revenue growth | Role | Key risk |
 |---|---:|---:|---:|---:|---:|---|---|
-|  |  |  |  |  |  |  |  |
 
 Leader / drag summary:
 
@@ -351,15 +381,23 @@ Fact-based rebuttal:
 1. Is this fund a better tool than the relevant peer fund and broad benchmark for the exposure the user wants?
 2. Which fact is most likely to overturn the conclusion?
 3. If not using it now, what should change before re-audit?
+
+## Structured Summary
+
+| field | slug | label |
+|---|---|---|
+| data_quality | data_quality_[high/medium/low] | [rendered label] |
+| final_verdict | verdict_fund_* | [rendered label] |
+| portfolio_role | [core / satellite / tactical / avoid / watch] | [rendered label] |
 ```
 
 ## Required Closing Rules
 
 Every fund report must explicitly state:
 
-1. Whether the verdict applies to the **fund as a tool**, not the underlying industry alone.
-2. Whether portfolio forward P/E was **issuer-disclosed** or **calculated**, with source or formula shown.
-3. Whether bullish growth claims were validated at **portfolio level**, not leader level only.
-4. Whether bearish narratives were tested for **hidden re-pricing evidence** before issuing Reject or cautious verdicts.
+1. Whether the verdict applies to the fund as a tool, not the underlying industry alone.
+2. Whether portfolio forward P/E was issuer-disclosed or calculated, with source or formula shown.
+3. Whether bullish growth claims were validated at portfolio level, not leader level only.
+4. Whether bearish narratives were tested for hidden re-pricing evidence before issuing Reject or cautious verdicts.
 5. Which peer fund and broad benchmark were used in the comparison.
 6. The best portfolio role: core, satellite, tactical, or avoid.

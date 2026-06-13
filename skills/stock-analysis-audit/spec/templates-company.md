@@ -1,13 +1,39 @@
-# Output Templates
+# Company Output Templates
 
-Scope: single company only. For ETFs, index funds, active funds, and other pooled fund vehicles, use `fund-output-templates.md` instead.
+Scope: single companies only. Use `templates-fund.md` for ETFs, index funds, active funds, and other pooled vehicles.
+
+Render headings and narrative in the user's requested language. Use stable slugs from `../CONTEXT.md` in `Structured Summary`.
+
+## Rendering Rules
+
+- Use user-language labels in prose.
+- Use slugs in `Structured Summary`.
+- Include `N/A` for missing values and explain impact.
+- Distinguish facts, calculations, and judgments.
+- Cite source names or URLs when available.
+- Do not imply certainty beyond data quality.
 
 ## Lite Screening Template
+
+Required sections:
+
+1. One-Sentence Verdict
+2. Company Identification
+3. Data Quality and Missing Items
+4. Business Model
+5. Financial Snapshot
+6. Valuation and Opportunity Cost
+7. Profit Pool Destruction Check
+8. Potential Misunderstanding
+9. Top Three Risks
+10. Preliminary Verdict
+11. Data Needed for Further Work
+12. Structured Summary
 
 ```markdown
 ## 1. One-Sentence Verdict
 
-Final verdict: [Reject / Watchlist / Medium-Term Revaluation Opportunity / High-Quality Company at Reasonable Price / High Conviction Candidate]
+Final verdict: [rendered label from `final_verdict` slug]
 Confidence: [1-5]
 Data quality: [High / Medium / Low]
 
@@ -34,6 +60,7 @@ Data quality: [High / Medium / Low]
 - Revenue type:
 - Main dependencies:
 - Lifecycle stage:
+- Business archetype: [rendered label or N/A]
 
 ## 5. Financial Snapshot
 
@@ -85,18 +112,48 @@ Data quality: [High / Medium / Low]
 - Supporting evidence:
 - Opposing evidence:
 - Key falsification metric:
+- Re-audit trigger:
 
 ## 11. Data Needed for Further Work
 
 -
+
+## Structured Summary
+
+| field | slug | label |
+|---|---|---|
+| data_quality | data_quality_[high/medium/low] | [rendered label] |
+| business_archetype | [archetype_* or N/A] | [rendered label or N/A] |
+| final_verdict | verdict_* | [rendered label] |
 ```
 
 ## Deep Audit Template
 
+Required sections:
+
+1. Final Verdict
+2. Company Identification
+3. Data Quality
+4. Business Model
+5. Cross-Cycle Financials
+6. Sector-Specific Metrics
+7. Profit Pool Destruction Check
+8. Hidden Upside Check
+9. Hidden Upside Evidence
+10. Investment Type Classification
+11. Moat and Management
+12. Valuation and Opportunity Cost
+13. Inversion and Red Team
+14. Circle of Competence
+15. Action Framework
+16. Falsification
+17. Final Three Questions
+18. Structured Summary
+
 ```markdown
 ## 1. Final Verdict
 
-Final verdict: [Reject / Watchlist / Medium-Term Revaluation Opportunity / High-Quality Company at Reasonable Price / High Conviction Candidate]
+Final verdict: [rendered label from `final_verdict` slug]
 Confidence: [1-5]
 Data quality: [High / Medium / Low]
 
@@ -125,6 +182,7 @@ Data quality: [High / Medium / Low]
 - Switching cost:
 - Main dependencies:
 - Lifecycle stage:
+- Business archetype:
 
 ## 5. Cross-Cycle Financials
 
@@ -234,4 +292,13 @@ Fact-based rebuttal:
 1. Is this stock worth extra concentration risk versus indexes?
 2. Which fact is most likely to overturn the conclusion?
 3. If not buying now, what should change before re-audit?
+
+## Structured Summary
+
+| field | slug | label |
+|---|---|---|
+| data_quality | data_quality_[high/medium/low] | [rendered label] |
+| business_archetype | archetype_* | [rendered label] |
+| investment_classification | classification_* | [rendered label] |
+| final_verdict | verdict_* | [rendered label] |
 ```

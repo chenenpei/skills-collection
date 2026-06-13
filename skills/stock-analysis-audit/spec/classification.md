@@ -1,10 +1,10 @@
-# Classification Rules
+# Company Investment Classification
 
-Scope: single company only. Do not apply these M/N classifications to ETFs, index funds, active funds, or other pooled fund vehicles.
+Scope: single companies only. Do not apply these M/N classifications to ETFs, index funds, active funds, or other pooled vehicles.
 
-Use necessary conditions, M/N supporting evidence, veto conditions, and sector exceptions. Choose one primary investment type.
+Use necessary conditions, M/N supporting evidence, veto conditions, and sector exceptions. Choose one primary investment type. Slugs and labels are defined in `../CONTEXT.md`.
 
-## A. Cigar-Butt Undervalued Asset
+## classification_cigar_butt
 
 Necessary conditions:
 
@@ -28,7 +28,7 @@ Veto conditions:
 
 Required answer: Is this a pricing error, or deteriorating fundamentals disguised as value?
 
-## B. High-Quality Company at Reasonable Price
+## classification_quality_at_reasonable_price
 
 Necessary conditions:
 
@@ -65,7 +65,7 @@ Sector exceptions:
 
 Required answer: Can the company maintain high capital returns, or is it only showing attractive mature-period numbers?
 
-## C. Quantitative Mispricing With High Upside
+## classification_quantitative_mispricing
 
 Necessary conditions:
 
@@ -110,11 +110,11 @@ Sector exceptions:
 
 Required answer: Is the market misunderstanding the business, or seeing deterioration earlier than the analyst?
 
-## D. Value Trap
+## classification_value_trap
 
-Before using this classification, complete the Hidden Upside Check. If the company has credible evidence of outdated market classification, underappreciated assets, a second profit pool, or improving capital allocation, explain why those positives are insufficient before classifying it as a value trap.
+Before using this classification, complete the hidden-upside check in `gates.md`. If the company has credible evidence of outdated market classification, underappreciated assets, a second profit pool, or improving capital allocation, explain why those positives are insufficient before classifying it as a value trap.
 
-If any 3 apply and the Hidden Upside Check fails, prioritize this classification:
+If any 3 apply and the hidden-upside check fails, prioritize this classification:
 
 - Valuation is cheap but revenue, margin, or cash flow keeps deteriorating
 - Moat is weakening
@@ -126,7 +126,7 @@ If any 3 apply and the Hidden Upside Check fails, prioritize this classification
 
 Required answer: Is the cheap valuation simply fair pricing for future decline, or did the analysis miss an underappreciated asset, a new profit pool, or a business-classification mismatch?
 
-## E. Overpriced Excellent Company
+## classification_overpriced_excellent
 
 If any 3 apply, consider this classification:
 
@@ -140,15 +140,15 @@ Required answer: Is this a good company but not a good stock at the current pric
 
 ## Final Verdict Mapping
 
-Final verdict must be one of:
+Final company verdict must be one of:
 
-- Reject
-- Watchlist
-- Medium-Term Revaluation Opportunity
-- High-Quality Company at Reasonable Price
-- High Conviction Candidate
+- `verdict_reject`
+- `verdict_watchlist`
+- `verdict_medium_term_revaluation`
+- `verdict_quality_reasonable_price`
+- `verdict_high_conviction`
 
-High Conviction Candidate requires all:
+`verdict_high_conviction` requires all:
 
 - Data quality at least Medium
 - Clear business model and strong moat

@@ -20,34 +20,43 @@ All conclusions are research assistance only and are not investment advice.
   - Relevant 10-year government bond yield as the risk-free-rate baseline
 - Add a local core index when the primary listing market is clear.
 
+## Output Locale
+
+- Match the user's message language by default.
+- If the user explicitly asks for a language, use that language for headings and narrative.
+- Keep standard financial abbreviations such as P/E, FCF, ROE, ROIC, NTM, and AUM.
+- Use stable slugs from `CONTEXT.md` in `Structured Summary`.
+- Render human-readable labels from the slug according to the user locale.
+- Do not mix taxonomy layers: business archetype, investment classification, and final verdict are separate.
+
 ## Required References
 
 Read only what is needed:
 
-- For data rules: `references/data-contract.md`
-- For execution flow: `references/workflow.md` for single companies; `references/fund-workflow.md` for ETFs and funds
-- For investment type classification: `references/classification-rules.md` (single companies only)
-- For final report shapes: `references/output-templates.md` for single companies; `references/fund-output-templates.md` for ETFs and funds
-- For tool use and stop conditions: `references/tool-policy.md`
+- Always read `CONTEXT.md` and `spec/gates.md`.
+- For data rules, tool use, source order, cross-checking, and calculations: `spec/data.md`.
+- For single-company workflow: `spec/workflow-company.md`.
+- For ETF / fund workflow: `spec/workflow-fund.md`.
+- For Deep single-company investment type classification: `spec/classification.md`.
+- For single-company report shapes: `spec/templates-company.md`.
+- For ETF / fund report shapes: `spec/templates-fund.md`.
 
-For Lite single-company analysis, read `references/data-contract.md`, `references/workflow.md`, `references/output-templates.md`, and `references/tool-policy.md`.
+For Lite single-company analysis, read `CONTEXT.md`, `spec/gates.md`, `spec/data.md`, `spec/workflow-company.md`, and `spec/templates-company.md`.
 
-For Lite or Deep fund/ETF analysis, read `references/data-contract.md`, `references/fund-workflow.md`, `references/fund-output-templates.md`, and `references/tool-policy.md`.
+For Deep single-company analysis, also read `spec/classification.md`.
 
-For fund/ETF analysis, do not load `references/workflow.md`, `references/output-templates.md`, or `references/classification-rules.md` as the governing templates unless you are explicitly analyzing an underlying single-company holding.
+For Lite or Deep fund/ETF analysis, read `CONTEXT.md`, `spec/gates.md`, `spec/data.md`, `spec/workflow-fund.md`, and `spec/templates-fund.md`.
 
-For Deep single-company analysis, also read `references/classification-rules.md`.
+For fund/ETF analysis, do not load `spec/workflow-company.md`, `spec/templates-company.md`, or `spec/classification.md` unless the user explicitly asks for underlying single-company holding analysis.
 
-## Bundled Prompt Kit (same directory)
+## Bundled Prompt Kit
 
-This skill directory also ships maintainers' and Chatbot assets:
+This skill directory also ships runtime references, Chatbot assets, and human docs:
 
-- `source/stock-analysis-audit-prompt.md` — canonical full spec
+- `CONTEXT.md` — canonical vocabulary
+- `spec/` — runtime references
 - `chatbot/` — staged prompts for tool-less chatbots
-- `manuals/` — usage guides and examples
-- `PROMPT-KIT.md` — overview
-
-Do not load the entire `source/` file into context for routine analysis; use `references/` instead.
+- `docs/` — usage guides and examples
 
 ## Execution Rules
 
@@ -56,7 +65,7 @@ Do not load the entire `source/` file into context for routine analysis; use `re
    - For single companies: confirm company full name, ticker, primary listing, trading currency, business, and possible ADR/share-class ambiguity.
    - For funds/ETFs: confirm fund name, ticker, issuer, tracked index or mandate, expense ratio, and closest peer fund.
    - If multiple candidates exist, stop and ask the user to choose.
-   - If the security is an ETF or fund, use `references/fund-workflow.md` and `references/fund-output-templates.md` instead of company classification, moat scoring, and company output templates.
+   - If the security is an ETF or fund, use `spec/workflow-fund.md` and `spec/templates-fund.md` instead of company classification, moat scoring, and company output templates.
 
 2. Gather data before analysis.
    - Use available tools to collect company filings, market data, valuation data, and benchmark data.
@@ -74,12 +83,13 @@ Do not load the entire `source/` file into context for routine analysis; use `re
    - Before positive classification, check who can destroy the product or profit pool without needing to profit from that product.
    - Before Reject, Watchlist, or Value Trap conclusions, check whether the market is using an outdated business classification that misses hidden assets, ecosystem lock-in, capital allocation change, or a new profit pool.
    - Hidden upside requires hard evidence: net-income/cash-flow divergence, real buyback-driven share count reduction, segment/backlog/order evidence, industry clearing effects, or proof that the impairment is cyclical rather than structural.
-   - For ETFs and funds, skip company classification and use growth attribution, peer comparison, and exposure-level profit-pool checks from `references/fund-workflow.md`.
+   - For ETFs and funds, skip company classification and use growth attribution, peer comparison, and exposure-level profit-pool checks from `spec/workflow-fund.md`.
 
 5. Produce a clear final verdict.
-   - Single company: choose exactly one of Reject, Watchlist, Medium-Term Revaluation Opportunity, High-Quality Company at Reasonable Price, High Conviction Candidate.
+   - Single company: choose exactly one company verdict slug from `CONTEXT.md`.
    - ETF/fund: choose exactly one of Reject, Watchlist, Satellite Hold, Core Hold, Tactical Only.
    - Include confidence, data quality, top supporting evidence, top opposing evidence, key falsification metric, and re-audit trigger.
+   - Include `## Structured Summary` with `field | slug | label`.
 
 ## Stop and Ask
 
