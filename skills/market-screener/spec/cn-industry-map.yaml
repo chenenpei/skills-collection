@@ -50,9 +50,8 @@ l1_defaults:
   互联网: { template: tech_saas }
   信息技术: { template: tech_saas }
   医药生物:
-    template: tech_saas
-    confidence: ambiguous_union
-    also_run: [consumer]
+    template: healthcare
+    confidence: high
   电子:
     template: manufacturing
     confidence: ambiguous_union
@@ -80,6 +79,12 @@ l2_overrides:
     template: manufacturing
     confidence: high
   - match: { l1: 医药生物, l2: 中药Ⅱ }
+    template: consumer
+    confidence: high
+  - match: { l1: 医药生物, l2: 医疗器械 }
+    template: manufacturing
+    confidence: high
+  - match: { l1: 医药生物, l2: 医药商业 }
     template: consumer
     confidence: high
   - match: { l1: 非银金融, l2: 证券Ⅱ }

@@ -71,16 +71,15 @@ mappings:
     template: consumer
     confidence: high
 
-  # Health Care — route by sub-sector (no dedicated template)
+  # Health Care — route by sub-sector
   - gics_prefix: "3510"
     template: manufacturing
     confidence: high
     note: Medical devices / equipment
   - gics_prefix: "3520"
-    template: tech_saas
-    confidence: ambiguous_union
-    also_run: consumer
-    note: Biotech / pharma; Deep uses classification sector exceptions
+    template: healthcare
+    confidence: high
+    note: Biotech / pharma; aligns with healthcare funnel and audit sector block
 
   # IT — ambiguous tech vs manufacturing for hardware/semis
   - gics_prefix: "4510"

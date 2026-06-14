@@ -44,8 +44,8 @@ data_sources:
     uses: [financials_bulk, quotes, industry_proxy]
   industry_routing: yahoo_industry_to_gics_proxy
   enrichment:
-    cn: eastmoney_datacenter_annual + orginfo
-    us: sec_companyfacts + sec_submissions
+    cn: eastmoney_datacenter_annual + cashflow + balance + orginfo + quote_dividend
+    us: sec_companyfacts + sec_submissions + yahoo_dividend_yield
     cache: data/cache/{quarter}/
     prefilter: quote-only universe gates before HTTP (status, cap, age)
     host_limits: { eastmoney_datacenter: 8, sec_edgar: 4 }
@@ -77,6 +77,9 @@ templates:
     tracks: [mispricing]
   - id: manufacturing
     file: templates/manufacturing.yaml
+    tracks: [quality, mispricing]
+  - id: healthcare
+    file: templates/healthcare.yaml
     tracks: [quality, mispricing]
 
 output:
