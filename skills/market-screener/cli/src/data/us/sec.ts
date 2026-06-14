@@ -70,11 +70,44 @@ import type { AnnualFinancialRow } from "../metrics.js";
 
 type FactPoint = { fy?: number; fp?: string; val?: number; form?: string };
 type GaapFacts = Record<string, { units?: Record<string, FactPoint[]> }>;
-type FactsBody = {
+export type FactsBody = {
   facts?: {
     "us-gaap"?: GaapFacts;
   };
 };
+
+export function effectiveTaxRate(
+  taxMap: Map<number, number>,
+  pretaxMap: Map<number, number>,
+  year: number
+): number {
+  const tax = taxMap.get(year);
+  const pretax = pretaxMap.get(year);
+  if (tax === undefined || pretax === undefined || pretax <= 0) return 0.21;
+  return Math.min(0.35, Math.max(0, tax / pretax));
+}
+
+export function deriveUsRoicForYear(
+  year: number,
+  ctx: {
+    operatingProfit?: number;
+    taxRate: number;
+    totalEquity?: number;
+    longTermDebt?: number;
+    shortTermDebt?: number;
+    monetaryFunds?: number;
+  }
+): number | undefined {
+  const { operatingProfit, taxRate, totalEquity, longTermDebt, shortTermDebt, monetaryFunds } = ctx;
+  if (operatingProfit === undefined || operatingProfit <= 0 || totalEquity === undefined || totalEquity <= 0) {
+    return undefined;
+  }
+  const debt = (longTermDebt ?? 0) + (shortTermDebt ?? 0);
+  const cash = monetaryFunds ?? 0;
+  const invested = totalEquity + debt - cash;
+  if (invested <= 0) return undefined;
+  return (operatingProfit * (1 - taxRate)) / invested;
+}
 
 function pickGaapSeries(gaap: GaapFacts | undefined, keys: string[]): FactPoint[] {
   if (!gaap) return [];
@@ -110,30 +143,90 @@ function fyPoints(series: FactPoint[]): Map<number, number> {
   return map;
 }
 
+function pickYearValue(maps: Map<number, number>[], year: number): number | undefined {
+  for (const map of maps) {
+    const value = map.get(year);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
 export function parseCompanyFactsAnnualRows(body: FactsBody): AnnualFinancialRow[] {
   const gaap = body.facts?.["us-gaap"] ?? {};
   const revenueMap = fyPoints(pickRevenueTag(gaap));
   const netIncomeMap = fyPoints(gaap.NetIncomeLoss?.units?.USD ?? []);
+  const operatingMap = fyPoints(pickGaapSeries(gaap, ["OperatingIncomeLoss"]));
+  const assetsMap = fyPoints(pickGaapSeries(gaap, ["Assets"]));
+  const liabilitiesMap = fyPoints(pickGaapSeries(gaap, ["Liabilities"]));
+  const equityMap = fyPoints(pickGaapSeries(gaap, ["StockholdersEquity"]));
+  const cashMap = fyPoints(pickGaapSeries(gaap, ["CashAndCashEquivalentsAtCarryingValue"]));
+  const ltdMaps = [
+    fyPoints(gaap.LongTermDebtNoncurrent?.units?.USD ?? []),
+    fyPoints(gaap.LongTermDebt?.units?.USD ?? []),
+  ];
+  const stdMaps = [
+    fyPoints(gaap.DebtCurrent?.units?.USD ?? []),
+    fyPoints(gaap.ShortTermBorrowings?.units?.USD ?? []),
+  ];
+  const taxMap = fyPoints(pickGaapSeries(gaap, ["IncomeTaxExpenseBenefit"]));
+  const pretaxMap = fyPoints(
+    pickGaapSeries(gaap, [
+      "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+    ])
+  );
   const ocfMap = fyPoints(
     gaap.NetCashProvidedByUsedInOperatingActivities?.units?.USD ?? []
   );
   const grossProfitMap = fyPoints(gaap.GrossProfit?.units?.USD ?? []);
+  const cogsMap = fyPoints(
+    pickGaapSeries(gaap, ["CostOfRevenue", "CostOfGoodsAndServicesSold"])
+  );
   const capexMap = fyPoints(pickCapexTag(gaap));
   const inventoryMap = fyPoints(gaap.InventoryNet?.units?.USD ?? []);
 
-  const years = new Set<number>([
-    ...revenueMap.keys(),
-    ...netIncomeMap.keys(),
-  ]);
-
   const rows: AnnualFinancialRow[] = [];
+  const years = [...revenueMap.keys()].sort((a, b) => a - b);
   for (const year of years) {
     const revenue = revenueMap.get(year);
     if (revenue === undefined || revenue <= 0) continue;
-    const netIncome = netIncomeMap.get(year) ?? 0;
-    const grossProfit = grossProfitMap.get(year) ?? revenue * 0.35;
-    const operatingCashFlow = ocfMap.get(year) ?? netIncome;
-    const roe = netIncome > 0 ? Math.min(0.6, netIncome / (revenue * 0.3)) : 0;
+
+    const netIncome = netIncomeMap.get(year);
+    if (netIncome === undefined) continue;
+
+    let grossProfit = grossProfitMap.get(year);
+    if (grossProfit === undefined) {
+      const cogs = cogsMap.get(year);
+      if (cogs === undefined) continue;
+      grossProfit = revenue - cogs;
+    }
+
+    const operatingCashFlow = ocfMap.get(year);
+    if (operatingCashFlow === undefined) continue;
+
+    const totalEquity = equityMap.get(year);
+    if (totalEquity === undefined) continue;
+    const prevEquity = equityMap.get(year - 1);
+    const averageEquity =
+      prevEquity !== undefined ? (prevEquity + totalEquity) / 2 : totalEquity;
+    if (averageEquity <= 0) continue;
+    const roe = netIncome / averageEquity;
+
+    const assets = assetsMap.get(year);
+    const totalLiabilities = liabilitiesMap.get(year);
+    if (assets === undefined || assets <= 0 || totalLiabilities === undefined) continue;
+    const assetLiabilityRatio = totalLiabilities / assets;
+
+    const operatingProfit = operatingMap.get(year);
+    const monetaryFunds = cashMap.get(year);
+    const taxRate = effectiveTaxRate(taxMap, pretaxMap, year);
+    const roic = deriveUsRoicForYear(year, {
+      operatingProfit,
+      taxRate,
+      totalEquity,
+      longTermDebt: pickYearValue(ltdMaps, year),
+      shortTermDebt: pickYearValue(stdMaps, year),
+      monetaryFunds,
+    });
 
     rows.push({
       year,
@@ -142,13 +235,18 @@ export function parseCompanyFactsAnnualRows(body: FactsBody): AnnualFinancialRow
       netIncome,
       operatingCashFlow,
       roe,
-      assetLiabilityRatio: 0.45,
+      assetLiabilityRatio,
+      operatingProfit,
+      totalEquity,
+      totalLiabilities,
+      monetaryFunds,
+      roic,
       capex: capexMap.get(year),
       inventory: inventoryMap.get(year),
     });
   }
 
-  return rows.sort((a, b) => a.year - b.year);
+  return rows;
 }
 
 export async function fetchUsAnnualRows(cik: string): Promise<AnnualFinancialRow[]> {

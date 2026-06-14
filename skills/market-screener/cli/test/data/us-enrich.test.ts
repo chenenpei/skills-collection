@@ -27,8 +27,14 @@ describe("mergeUsEnrichment", () => {
       grossProfit: 170e9,
       netIncome: 97e9,
       operatingCashFlow: 110e9,
-      roe: 1.47,
-      assetLiabilityRatio: 0.82,
+      roe: 0.176,
+      assetLiabilityRatio: 0.35,
+      operatingProfit: 115e9,
+      totalEquity: 62e9,
+      totalLiabilities: 290e9,
+      monetaryFunds: 30e9,
+      roic: 0.28,
+      capex: 10e9,
     },
     {
       year: 2024,
@@ -36,15 +42,24 @@ describe("mergeUsEnrichment", () => {
       grossProfit: 180e9,
       netIncome: 94e9,
       operatingCashFlow: 118e9,
-      roe: 1.52,
-      assetLiabilityRatio: 0.80,
+      roe: 0.162,
+      assetLiabilityRatio: 0.33,
+      operatingProfit: 120e9,
+      totalEquity: 65e9,
+      totalLiabilities: 280e9,
+      monetaryFunds: 35e9,
+      roic: 0.27,
+      capex: 11e9,
     },
   ];
 
   it("merges annual rows and industry into SecurityRecord", () => {
     const merged = mergeUsEnrichment(base, rows, "Electronic Computers");
     expect(merged.industryProxy).toBe("Electronic Computers");
-    expect(merged.metrics.roe_5y_avg?.value).toBeGreaterThan(1);
+    expect(merged.metrics.roe_5y_avg?.value).toBeGreaterThan(0.1);
+    expect(merged.metrics.roe_5y_avg?.value).toBeLessThan(2);
+    expect(merged.metrics.roic_ttm?.value).toBeCloseTo(0.27, 2);
+    expect(merged.metrics.debt_to_equity?.value).toBeCloseTo(280e9 / 65e9, 2);
   });
 
   it("preserves quote-only metrics while derived financials win on overlap", () => {
@@ -58,7 +73,8 @@ describe("mergeUsEnrichment", () => {
 
     const merged = mergeUsEnrichment(withQuote, rows, "Electronic Computers");
     expect(merged.metrics.trailing_pe?.value).toBe(28.5);
-    expect(merged.metrics.roe_5y_avg?.value).toBeGreaterThan(1);
+    expect(merged.metrics.roe_5y_avg?.value).toBeGreaterThan(0.1);
+    expect(merged.metrics.roe_5y_avg?.value).toBeLessThan(0.2);
     expect(merged.metrics.roe_5y_avg?.dataConfidence).toBe("medium");
   });
 
