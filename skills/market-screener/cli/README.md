@@ -75,6 +75,17 @@ data/cache/{quarter}/{CN|US}/{ticker}.json
 - Cache is keyed by quarter + market + ticker; safe to delete `data/cache/{quarter}/` to force a refresh.
 - Host in-flight caps: East Money datacenter 8, SEC 4 (in addition to `--enrich-concurrency`).
 
+### Metric source hygiene (ADR 0005)
+
+Enrichment must not invent missing metrics. Proxy fallbacks removed in favor of vendor fields or explicit derives; omitted metrics flow through templates as missing (required → fail, `missing: skip` → skip). See [`../docs/adr/0005-metric-source-hygiene.md`](../docs/adr/0005-metric-source-hygiene.md).
+
+| Market | Real sources (no silent proxies) |
+|--------|----------------------------------|
+| CN | East Money `ROIC` column; `debt_to_equity` from `TOTAL_LIABILITIES / TOTAL_EQUITY`; operating margin from operating profit / revenue; EV/EBITDA chain from balance sheet + operating profit only |
+| US | SEC `companyfacts` tags: equity-based ROE, `GrossProfit` / revenue − COGS, `OperatingIncomeLoss`, operating cash flow tag only; ROIC from NOPAT / invested capital when inputs exist |
+
+**Cache invalidation:** After metric-source changes, delete `data/cache/{quarter}/` or rerun live enrichment with `--skip-cache` for **both CN and US** on the sign-off quarter before funnel sign-off. Stale cache files can retain pre-hygiene proxy values. On cache hit, enrich automatically refetches annual rows when the latest cached year lacks `roic` or `totalEquity` (ADR 0005 fields).
+
 ## E2E scripts
 
 Offline and live end-to-end checks live in `scripts/` and are **not** part of `npm test`.
