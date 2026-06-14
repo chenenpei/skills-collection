@@ -71,6 +71,13 @@ export function pickCnDividendYieldFromBonusRows(
 
 type RawRow = Record<string, string | number | null | undefined>;
 
+function parseRoicField(raw: string | number | null | undefined): number | undefined {
+  if (raw === null || raw === undefined || raw === "") return undefined;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return undefined;
+  return n / 100;
+}
+
 function cnExchangeCodes(ticker: string): { secid: string; secucode: string } {
   const sh = ticker.startsWith("6");
   return {
@@ -123,6 +130,7 @@ export function parseEastMoneyAnnualRows(data: RawRow[]): AnnualFinancialRow[] {
         roe: Number(r.ROEJQ ?? 0) / 100,
         assetLiabilityRatio: Number(r.ZCFZL ?? 0) / 100,
         operatingProfit: Number(r.OPERATE_PROFIT_PK ?? 0) || undefined,
+        roic: parseRoicField(r.ROIC),
       };
     })
     .filter((r) => r.year > 1900 && r.revenue > 0);
@@ -134,7 +142,7 @@ export async function fetchCnAnnualRows(ticker: string): Promise<AnnualFinancial
     buildDatacenterParams({
       reportName: "RPT_F10_FINANCE_MAINFINADATA",
       columns:
-        "SECUCODE,REPORT_DATE,REPORT_TYPE,TOTALOPERATEREVE,PARENTNETPROFIT,MLR,ROEJQ,NETCASH_OPERATE_PK,ZCFZL,OPERATE_PROFIT_PK",
+        "SECUCODE,REPORT_DATE,REPORT_TYPE,TOTALOPERATEREVE,PARENTNETPROFIT,MLR,ROEJQ,ROIC,NETCASH_OPERATE_PK,ZCFZL,OPERATE_PROFIT_PK",
       filter: `(SECUCODE="${secucode}")(REPORT_TYPE="年报")`,
     })
   );
@@ -152,7 +160,13 @@ export function parseAnnualReportDateYear(reportDate: string): number {
   return Number(String(reportDate).slice(0, 4));
 }
 
-export type SupplementalAnnualFields = { capex?: number; inventory?: number };
+export type SupplementalAnnualFields = {
+  capex?: number;
+  inventory?: number;
+  totalLiabilities?: number;
+  totalEquity?: number;
+  monetaryFunds?: number;
+};
 
 export function mergeSupplementalIntoAnnualRows(
   rows: AnnualFinancialRow[],
@@ -166,6 +180,9 @@ export function mergeSupplementalIntoAnnualRows(
       ...row,
       capex: extra.capex ?? row.capex,
       inventory: extra.inventory ?? row.inventory,
+      totalLiabilities: extra.totalLiabilities ?? row.totalLiabilities,
+      totalEquity: extra.totalEquity ?? row.totalEquity,
+      monetaryFunds: extra.monetaryFunds ?? row.monetaryFunds,
     };
   });
 }
@@ -190,7 +207,19 @@ function parseSupplementalRows(
       rows: balanceData,
       apply: (existing, row) => ({
         ...existing,
-        inventory: Number(row.INVENTORY ?? 0),
+        inventory: Number(row.INVENTORY ?? 0) || existing.inventory,
+        totalLiabilities:
+          row.TOTAL_LIABILITIES != null && row.TOTAL_LIABILITIES !== ""
+            ? Number(row.TOTAL_LIABILITIES)
+            : existing.totalLiabilities,
+        totalEquity:
+          row.TOTAL_EQUITY != null && row.TOTAL_EQUITY !== ""
+            ? Number(row.TOTAL_EQUITY)
+            : existing.totalEquity,
+        monetaryFunds:
+          row.MONETARYFUNDS != null && row.MONETARYFUNDS !== ""
+            ? Number(row.MONETARYFUNDS)
+            : existing.monetaryFunds,
       }),
     },
   ];
@@ -229,7 +258,11 @@ export async function fetchCnSupplementalAnnualRows(
   const secucode = cnTickerToSecucode(ticker);
   const [cashflowData, balanceData] = await Promise.all([
     fetchSupplementalReport(secucode, CASHFLOW_REPORT, "CONSTRUCT_LONG_ASSET"),
-    fetchSupplementalReport(secucode, BALANCE_REPORT, "INVENTORY"),
+    fetchSupplementalReport(
+      secucode,
+      BALANCE_REPORT,
+      "INVENTORY,TOTAL_LIABILITIES,TOTAL_EQUITY,MONETARYFUNDS"
+    ),
   ]);
   return parseSupplementalRows(cashflowData, balanceData);
 }

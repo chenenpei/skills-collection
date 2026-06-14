@@ -26,6 +26,43 @@ describe("parseEastMoneyAnnualRows", () => {
     expect(rows[0].assetLiabilityRatio).toBeCloseTo(0.1904, 4);
   });
 
+  it("maps ROIC vendor field to decimal roic on AnnualFinancialRow", () => {
+    const rows = parseEastMoneyAnnualRows([
+      {
+        REPORT_DATE: "2025-12-31 00:00:00",
+        REPORT_TYPE: "年报",
+        TOTALOPERATEREVE: 45787435563,
+        PARENTNETPROFIT: 9312304150,
+        MLR: 17064982645,
+        ROEJQ: 25.56,
+        ROIC: 16.684062504713,
+        NETCASH_OPERATE_PK: 12055090552,
+        ZCFZL: 46.4018008554,
+        OPERATE_PROFIT_PK: 11185389934,
+      },
+    ]);
+
+    expect(rows[0].roic).toBeCloseTo(0.16684062504713, 6);
+  });
+
+  it("leaves roic undefined when ROIC is null", () => {
+    const rows = parseEastMoneyAnnualRows([
+      {
+        REPORT_DATE: "2025-12-31 00:00:00",
+        REPORT_TYPE: "年报",
+        TOTALOPERATEREVE: 1000,
+        PARENTNETPROFIT: 100,
+        MLR: 400,
+        ROEJQ: 10,
+        ROIC: null,
+        NETCASH_OPERATE_PK: 120,
+        ZCFZL: 40,
+      },
+    ]);
+
+    expect(rows[0].roic).toBeUndefined();
+  });
+
   it("merges capex and inventory into annual rows by fiscal year", () => {
     const annual = parseEastMoneyAnnualRows([
       {
@@ -43,5 +80,34 @@ describe("parseEastMoneyAnnualRows", () => {
     const merged = mergeSupplementalIntoAnnualRows(annual, supplemental);
     expect(merged[0].capex).toBe(1_000_000_000);
     expect(merged[0].inventory).toBe(500_000_000);
+  });
+
+  it("merges balance sheet liabilities equity and cash by fiscal year", () => {
+    const annual = parseEastMoneyAnnualRows([
+      {
+        REPORT_DATE: "2024-12-31 00:00:00",
+        REPORT_TYPE: "年报",
+        TOTALOPERATEREVE: 1000,
+        PARENTNETPROFIT: 100,
+        MLR: 400,
+        ROEJQ: 10,
+        NETCASH_OPERATE_PK: 120,
+        ZCFZL: 40,
+      },
+    ]);
+    const supplemental = new Map([
+      [
+        2024,
+        {
+          totalLiabilities: 34200373794,
+          totalEquity: 39138221825,
+          monetaryFunds: 20715842029,
+        },
+      ],
+    ]);
+    const merged = mergeSupplementalIntoAnnualRows(annual, supplemental);
+    expect(merged[0].totalLiabilities).toBe(34200373794);
+    expect(merged[0].totalEquity).toBe(39138221825);
+    expect(merged[0].monetaryFunds).toBe(20715842029);
   });
 });
