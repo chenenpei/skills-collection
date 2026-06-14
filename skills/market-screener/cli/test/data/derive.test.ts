@@ -34,5 +34,39 @@ describe("deriveFromAnnualRows", () => {
     }));
     const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
     expect(derived.metrics.capex_to_revenue?.value).toBeCloseTo(0.12, 4);
+    expect(derived.metrics.capex_to_revenue?.dataConfidence).toBe("high");
+  });
+
+  it("derives capex_to_revenue with 2 years at medium confidence", () => {
+    const rows = [2024, 2025].map((year, i) => ({
+      year,
+      revenue: 100,
+      grossProfit: 40,
+      netIncome: 10,
+      operatingCashFlow: 12,
+      roe: 0.1,
+      assetLiabilityRatio: 0.4,
+      capex: 10 + i * 2,
+    }));
+    const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
+    expect(derived.metrics.capex_to_revenue?.value).toBeCloseTo(0.11, 4);
+    expect(derived.metrics.capex_to_revenue?.dataConfidence).toBe("medium");
+  });
+
+  it("omits capex_to_revenue when only one capex year", () => {
+    const rows = [
+      {
+        year: 2025,
+        revenue: 100,
+        grossProfit: 40,
+        netIncome: 10,
+        operatingCashFlow: 12,
+        roe: 0.1,
+        assetLiabilityRatio: 0.4,
+        capex: 15,
+      },
+    ];
+    const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
+    expect(derived.metrics.capex_to_revenue).toBeUndefined();
   });
 });

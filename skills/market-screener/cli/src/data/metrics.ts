@@ -137,10 +137,11 @@ export function deriveFromAnnualRows(
     roic_5y_avg: mv(avg(roes) * 0.85),
   };
 
-  const last3Capex = sorted.slice(-3).filter((r) => r.revenue > 0 && r.capex !== undefined);
-  if (last3Capex.length >= 3) {
-    const ratios = last3Capex.map((r) => Math.abs(r.capex!) / r.revenue);
-    metrics.capex_to_revenue = mv(avg(ratios));
+  const capexYears = sorted.slice(-3).filter((r) => r.revenue > 0 && r.capex !== undefined);
+  if (capexYears.length >= 2) {
+    const ratios = capexYears.map((r) => Math.abs(r.capex!) / r.revenue);
+    const confidence = capexYears.length >= 3 ? "high" : "medium";
+    metrics.capex_to_revenue = mv(avg(ratios), confidence);
   }
 
   if (sorted.length >= 2) {

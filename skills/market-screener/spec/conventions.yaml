@@ -64,7 +64,9 @@ derived_metrics:
     note: Requires operating_margin from derive; not a ROE proxy
 
   capex_to_revenue:
-    meaning: Three-year average of abs(capex) / revenue from annual rows
+    meaning: Average of abs(capex) / revenue over last 2–3 fiscal years with capex data
+    min_years: 2
+    confidence: medium when 2 years, high when 3 years
     unit: ratio
     compute_from: cli/src/data/metrics.ts — CONSTRUCT_LONG_ASSET (CN) or SEC capex tags (US)
     threshold_example: { max: 0.15 }  # manufacturing quality track
