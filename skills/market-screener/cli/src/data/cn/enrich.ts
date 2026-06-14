@@ -7,6 +7,7 @@ import {
   type DividendWithConfidence,
   type EnrichCachePayload,
 } from "../merge-enrichment.js";
+import { annualRowsNeedMetricRefresh, type AnnualFinancialRow } from "../metrics.js";
 import {
   fetchCnAnnualRows,
   fetchCnDividendYield,
@@ -16,6 +17,18 @@ import {
 } from "./eastmoney.js";
 
 export { mergeEnrichment as mergeCnEnrichment } from "../merge-enrichment.js";
+
+async function refreshCnAnnualRows(
+  ticker: string,
+  existing: AnnualFinancialRow[]
+): Promise<AnnualFinancialRow[]> {
+  const [freshAnnual, supplemental] = await Promise.all([
+    fetchCnAnnualRows(ticker).catch(() => [] as AnnualFinancialRow[]),
+    fetchCnSupplementalAnnualRows(ticker).catch(() => new Map()),
+  ]);
+  const base = freshAnnual.length > 0 ? freshAnnual : existing;
+  return mergeSupplementalIntoAnnualRows(base, supplemental);
+}
 
 async function resolveDividendYield(
   ticker: string,
@@ -67,16 +80,21 @@ export async function enrichCnRecord(
       record.ticker
     );
     if (cached?.annualRows.length) {
+      let annualRows = cached.annualRows;
+      if (annualRowsNeedMetricRefresh(annualRows)) {
+        annualRows = await refreshCnAnnualRows(record.ticker, annualRows);
+      }
       const dividend = await resolveDividendYield(record.ticker, cached);
       const enriched = mergeEnrichment(
         record,
-        cached.annualRows,
+        annualRows,
         cached.industryProxy,
         dividend,
         { quarter: opts.quarter, quoteHistory: cached.quoteHistory }
       );
       const payload: EnrichCachePayload = {
         ...cached,
+        annualRows,
         dividendYield: cached.dividendYield ?? dividend?.yield,
         dividendYieldConfidence: cached.dividendYieldConfidence ?? dividend?.dataConfidence,
       };

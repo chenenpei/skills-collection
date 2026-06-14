@@ -6,10 +6,19 @@ import {
   updatedQuoteHistory,
   type EnrichCachePayload,
 } from "../merge-enrichment.js";
+import { annualRowsNeedMetricRefresh, type AnnualFinancialRow } from "../metrics.js";
 import { fetchUsAnnualRows, fetchUsIndustryProxy, resolveCik } from "./sec.js";
 import { fetchUsDividendYield, fetchUsQuoteBulk } from "./quotes.js";
 
 export { mergeEnrichment as mergeUsEnrichment } from "../merge-enrichment.js";
+
+async function refreshUsAnnualRows(
+  cik: string,
+  existing: AnnualFinancialRow[]
+): Promise<AnnualFinancialRow[]> {
+  const fresh = await fetchUsAnnualRows(cik).catch(() => [] as AnnualFinancialRow[]);
+  return fresh.length > 0 ? fresh : existing;
+}
 
 async function resolveDividendYield(
   ticker: string,
@@ -67,16 +76,24 @@ export async function enrichUsRecord(
       record.ticker
     );
     if (cached?.annualRows.length) {
+      let annualRows = cached.annualRows;
+      if (annualRowsNeedMetricRefresh(annualRows)) {
+        const cik = await resolveCik(record.ticker);
+        if (cik) {
+          annualRows = await refreshUsAnnualRows(cik, annualRows);
+        }
+      }
       const dividendYield = await resolveDividendYield(record.ticker, cached.dividendYield);
       const enriched = mergeEnrichment(
         recordWithQuote,
-        cached.annualRows,
+        annualRows,
         cached.industryProxy,
         dividendYield,
         { quarter: opts.quarter, quoteHistory: cached.quoteHistory }
       );
       const payload: EnrichCachePayload = {
         ...cached,
+        annualRows,
         dividendYield: cached.dividendYield ?? dividendYield,
       };
       await persistEnrichCache(opts, record.ticker, payload, enriched);
