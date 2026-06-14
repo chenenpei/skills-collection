@@ -53,8 +53,8 @@ npm run dev -- run \
 
 产出（每市场）：
 
-- `CN/candidates.yaml` — rank 1–20（软顶，Package M）
-- `CN/deferred.yaml` — 通过漏斗但 rank > 20（watchlist 最多 20）
+- `CN/candidates.yaml` — rank 1–20（席位分配后的 Deep 队列优先级，非跨模板综合分）
+- `CN/deferred.yaml` — 通过漏斗但未入选 candidates（watchlist 最多 20；额外 passer 仅记入 funnel-diagnostics）
 - `CN/excluded.yaml` — 对 **已 enrichment** 宇宙应用 Kill Gate 后的排除（含 `enrichment_failure` 可选字段）
 - `CN/prefilter-excluded.yaml` — **仅 live**：quote prefilter 跳过、未 enrichment 的标的（status/市值/年限）
 - `CN/routing-diagnostics.yaml` — Kill Gate 存活标的的路由分布（`by_method`、`fallback_rate`）
@@ -165,10 +165,11 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 
 1. Run funnel + `filter-breakdown` for the quarter.
 2. Check `funnel-diagnostics.yaml` → `enrichment.cache_missing_count`. If > 3% of enriched survivors, run `repair-enrich-cache.ts` then re-run funnel or document residual tickers.
-3. **Medical devices (医疗器械):** L2 routes to `manufacturing` only; strong names may appear in `deferred`, not top 25 — expected after P0 healthcare fix.
+3. **Medical devices (医疗器械):** L2 routes to `manufacturing` only; strong names may appear in `deferred`, not top 20 — expected after P0 healthcare fix.
 4. **Healthcare pass rate ~15–20%:** monitor in diagnostics; do not tighten template without Deep false-positive review.
 5. **688617 class:** absent from candidates when `inventory_turnover_vs_industry` fails under full-universe benchmarks — sector_filtered, not YAML omission bug.
-6. **Cyclicals also_run on 半导体:** retained; pass rate may be 0% until `mid_cycle_*` enrichment ships.
+6. **Cyclicals also_run on 半导体:** retained; pass rate should improve now that `mid_cycle_*` and quote overlays ship — still monitor in `funnel-diagnostics.yaml`.
+7. **Seat allocation:** candidates span multiple `winning_template` values when passers exist; check `by_pool_selected` in funnel-diagnostics if one sector dominates unexpectedly.
 
 ---
 

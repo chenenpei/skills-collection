@@ -265,7 +265,7 @@ _Avoid_: treating all biotech like SaaS growth names, mechanical ROE/FCF on pre-
 **Healthcare Pass Rate Review**:
 Quarterly review of healthcare sector-template pass rate against other templates; template tightening waits on Deep false-positive evidence, not pass-rate alone.
 slug: healthcare_pass_rate_review
-_Avoid_: tightening healthcare required bars only because top-25 names cluster in pharma
+_Avoid_: tightening healthcare required bars only because top-20 names cluster in pharma
 
 **Cyclicals Template**:
 Sector funnel for materials, energy, industrials, and other cycle-driven companies. Uses mid-cycle normalized earnings for valuation metrics, not peak or trough snapshots.
@@ -280,7 +280,7 @@ Classification of funnel metrics by implementation cost: low (derive or quote bu
 slug: enrichment_scope_tier
 
 **CN Bank Routing Proxy**:
-Temporary grill decision (ADR 0003): CN 申万 L1 银行 routes to `financials.other_financials` instead of `banks` until bank regulatory enrich exists. Mispricing uses ROE + P/B only; credit-quality dimensions are manual in Deep. Requires `bank_routed_via_other_financials_proxy` funnel flag and CN template overrides (`net_debt_to_equity` skip, relaxed `revenue_3y_cagr`, quality `roe_ttm` CN min 0.10).
+Temporary grill decision (ADR 0003): CN 申万 L1 银行 routes to `financials.banks_proxy` instead of `banks` until bank regulatory enrich exists. Mispricing uses ROE + P/B only; credit-quality dimensions are manual in Deep. Requires `bank_routed_via_other_financials_proxy` funnel flag and CN template overrides (`net_debt_to_equity` skip, relaxed `revenue_3y_cagr`, quality `roe_ttm` CN min 0.10).
 slug: cn_bank_routing_proxy
 _Avoid_: treating proxy pass as bank credit approval
 
@@ -435,5 +435,5 @@ Scheduled quarterly run must not start until max(CN anchor, US anchor) for the a
 slug: later_market_gate
 
 **Tightening Profile Package M**:
-Moderate sector-template tightening applied after initial spec; includes higher supporting bars and funnel soft cap 25 per market.
+Moderate sector-template tightening applied after initial spec; includes higher supporting bars, funnel soft cap 20 per market, and template track seat allocation ranker.
 slug: tightening_profile_package_m

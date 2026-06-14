@@ -90,6 +90,17 @@ live_enrichment:
     default: 4
     note: Each ticker may issue 2 HTTP calls; host limits cap East Money (8) and SEC (4) in-flight
 
+enrich_tiers:
+  low:
+    note: All metrics in spec that enrichment can derive — always attempt
+    examples: [roe_ttm, gross_margin, capex_to_revenue, dividend_yield, mid_cycle_pe, rule_of_40]
+  medium:
+    note: Derive when annual rows or quote bulk provide inputs; peer/5y overlays when cache accumulates
+    examples: [pe_ttm, pb, fcf_yield, graham_composite, pe_vs_5y_median, "peer_and_industry_median_overlays"]
+  high:
+    note: Not in CLI MVP — manual in Deep only
+    examples: [bank regulatory ratios, NDR, SBC detail CN, capacity utilization, customer concentration, forward_peg]
+
 pass_logic:
   all_required_and_supporting_min_N_of_M:
     required: all must pass

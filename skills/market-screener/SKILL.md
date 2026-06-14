@@ -26,7 +26,7 @@ When loaded, confirm the user's intent:
 3. **Default Deep limit:** rank 1–20 per market from `candidates.yaml`. Run full Deep on every candidate only when the user explicitly requests it.
 4. **Do not replace stock-analysis-audit** for single-ticker Deep/Lite. Invoke that skill per candidate with funnel context (`audit_hints`, `metric_snapshot`).
 5. **Funnel metrics are coarse.** Deep audit may override funnel snapshots; record conflicts in audit reports. When `routing_method` is `fallback` or `routing_confidence` is `low`, Deep must flag sector classification uncertainty and honor `audit_hints`.
-6. **Sector templates and output caps.** Six sector funnels: `financials`, `tech_saas`, `consumer`, `cyclicals`, `manufacturing`, `healthcare` (`spec/templates/*.yaml`). **Soft cap: 20 candidates per market**; overflow → `deferred.yaml` (watchlist capped at 20). Ranking is a **coarse composite score** within each market (no per-sector quota).
+6. **Sector templates and output caps.** Six sector funnels: `financials`, `tech_saas`, `consumer`, `cyclicals`, `manufacturing`, `healthcare` (`spec/templates/*.yaml`). **Soft cap: 20 candidates per market**; overflow → `deferred.yaml` (watchlist capped at 20). **Ranking uses template track seat allocation** (`winning_template × passed_track` pools with floors/caps/flex in `spec/conventions.yaml#template_seat_allocation`) — not a global supporting-count sort across templates.
 
 ## Default Quarterly Run Sequence
 
