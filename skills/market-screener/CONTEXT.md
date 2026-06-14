@@ -275,6 +275,20 @@ slug: cyclicals_template
 Average financial metric over a multi-year window (MVP: 7 years) used instead of peak or trough earnings for cyclical valuation.
 slug: mid_cycle_normalization
 
+**Enrichment Scope Tier**:
+Classification of funnel metrics by implementation cost: low (derive or quote bulk), medium (peer overlays or enrich-cache history), high (new regulatory, NLP, or SaaS-only sources). MVP ships low and feasible medium only; high-tier metrics stay missing or block only bank-specific sub-templates.
+slug: enrichment_scope_tier
+
+**CN Bank Routing Proxy**:
+Temporary grill decision (ADR 0003): CN 申万 L1 银行 routes to `financials.other_financials` instead of `banks` until bank regulatory enrich exists. Mispricing uses ROE + P/B only; credit-quality dimensions are manual in Deep. Requires `bank_routed_via_other_financials_proxy` funnel flag and CN template overrides (`net_debt_to_equity` skip, relaxed `revenue_3y_cagr`, quality `roe_ttm` CN min 0.10).
+slug: cn_bank_routing_proxy
+_Avoid_: treating proxy pass as bank credit approval
+
+**CN Tech SaaS Quality Skip**:
+Grill decision (ADR 0004): On CN market, `tech_saas` quality supporting metrics `sbc_to_revenue` and `share_dilution_3y` use `missing: skip` until CN sources exist. Emit `verify_sbc_dilution_in_deep_cn` when skipped. US rules unchanged.
+slug: cn_tech_saas_quality_skip
+_Avoid_: inferring SBC or dilution were screened from a CN quality pass
+
 **Peak Cycle Trap**:
 A cyclical false-value signal where trailing multiples look cheap because earnings are at a cycle peak. Excluded by cyclicals kill gates before mispricing scoring.
 slug: peak_cycle_trap
@@ -305,15 +319,61 @@ _Avoid_: treating missing-cache tickers as absent from the enriched universe
 Maximum number of ranked candidates written to primary funnel output per market per run. Overflow passes are written to deferred output, not deleted.
 slug: funnel_soft_cap
 
+**Winning Template**:
+The sector funnel template whose track granted the candidate's pass and supplied its funnel score. When ambiguous union evaluates multiple templates, the winning template is the one with the highest within-template score among passing tracks.
+slug: winning_template
+_Avoid_: primary routed template, Shenwan L1 industry bucket
+
+**Template Seat Allocation**:
+The rule that fills candidates.yaml from template track seat pools using seat floors, seat caps, and a flex seat pool up to the funnel soft cap. Ensures sector-diverse shortlists without comparing incomparable cross-template scores.
+slug: template_seat_allocation
+_Avoid_: global supporting-count sort across templates, Shenwan L1 seat quotas, purely fixed per-template quotas
+
+**Seat Floor**:
+The minimum number of candidates a template track seat pool receives each run when enough passers exist. Guarantees sector representation before flex seats are distributed.
+slug: seat_floor
+
+**Seat Cap**:
+The maximum number of candidates a template track seat pool may receive in one run. Prevents a single sector from consuming the full funnel soft cap.
+slug: seat_cap
+
+**Flex Seat Pool**:
+Seats remaining after seat floors are filled; distributed across template track pools that still have eligible passers, weighted by pool richness and track confluence priority.
+slug: flex_seat_pool
+
+**Track Confluence**:
+When the same winning template passes both quality and mispricing tracks for one security. The name ranks in a priority tier above single-track quality passers within the quality pool, receives doubled flex-seat-pool weighting, but still consumes only one seat.
+slug: track_confluence
+_Avoid_: occupying both a quality seat and a mispricing seat, treating mispricing alone as equal to confluence, confluence ranked only by supporting pass count without priority tier
+
+**Template Track Seat Pool**:
+The seat-allocation bucket defined by winning template and passed track together. Quality and mispricing passes compete only within their own pool, never for each other's seats.
+slug: template_track_seat_pool
+_Avoid_: merging quality and mispricing into one template pool
+
+**Vacant Seat Backfill**:
+When a template track seat pool cannot fill its quota, empty seats refill in two tiers: first to the quality pool of the same winning template, then to a global quality pool across templates until the funnel soft cap is reached.
+slug: vacant_seat_backfill
+_Avoid_: backfilling into mispricing pools, leaving seats permanently empty by default
+
 **Funnel Ranking Role**:
-Coarse within-market ordering after sector templates pass; composite score is a same-run heuristic, not a cross-sector attractiveness verdict. Deep audit on the top limited set provides qualitative re-ranking.
+Coarse within-market ordering after sector templates pass. Under template seat allocation, rank is meaningful only within each template track seat pool; merged candidates.yaml rank is a Deep queue priority order, not a cross-sector attractiveness verdict.
 slug: funnel_ranking_role
-_Avoid_: per-sector seat quotas in candidates.yaml, treating funnel rank as final conviction order
+_Avoid_: treating merged funnel rank as final conviction order, comparing raw supporting pass counts across templates
+
+**Candidate Rank**:
+The integer order on a candidate record in candidates.yaml. Under template seat allocation, rank is the Deep audit queue priority: track confluence first, then remaining quality seats by allocation tier, not a global best-stock score.
+slug: candidate_rank
+_Avoid_: cross-template attractiveness ranking, equating rank 1 with the best security in the market
 
 **Deferred Candidate**:
-A security that passed sector funnel tracks but ranked below the funnel soft cap for its market in that run.
+A security that passed sector funnel tracks but was not allocated a seat in candidates.yaml for its market in that run. Only a capped watchlist is written to deferred.yaml; additional passers are counted in funnel diagnostics only.
 slug: deferred_candidate
-_Avoid_: treating deferred as excluded or kill-gated
+_Avoid_: treating deferred as excluded or kill-gated, writing every sector passer to deferred.yaml
+
+**Deferred Watchlist Cap**:
+The maximum number of deferred candidate records written per market per run. Overflow sector passers appear only in funnel diagnostics counts, not in deferred.yaml.
+slug: deferred_watchlist_cap
 
 **Deep Audit Limit**:
 Maximum number of candidates per market sent to stock-analysis-audit Deep in one scheduled quarterly run. Default is 20 per market unless the user explicitly requests --deep-all.
