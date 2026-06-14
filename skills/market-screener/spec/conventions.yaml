@@ -40,9 +40,41 @@ derived_metrics:
     meaning: Largest peak-to-trough drop in gross margin over the last 3 fiscal years
     unit: percentage_points
     example: 2.5 means a 2.5pp decline from the 3y peak margin
-    compute_from: annual gross_margin series in enrichment layer (cli/src/metrics/derive.ts)
+    compute_from: annual gross_margin series in enrichment layer (cli/src/data/metrics.ts)
     threshold: { max: 5 }
     replaces: gross_margin_3y_stable with max_decline_pp rule (removed — engine ignored it)
+
+  operating_margin:
+    meaning: Latest fiscal-year operating margin (operating profit / revenue when available)
+    unit: ratio
+    compute_from: cli/src/data/metrics.ts — operatingProfit/revenue, else gross_margin × 0.35 proxy
+    used_by: operating_margin_vs_industry benchmark overlay
+
+  gross_margin_vs_industry:
+    meaning: Security gross margin minus industry-peer median gross margin (same market + industryProxy group)
+    unit: ratio
+    compute_from: cli/src/data/metrics.ts after enrichment
+    threshold_example: { min: 0.05 }  # consumer quality track
+
+  operating_margin_vs_industry:
+    meaning: Security operating margin minus industry-peer median operating margin
+    unit: ratio
+    compute_from: cli/src/data/metrics.ts — median of operating_margin within industryProxy group
+    threshold_example: { min: 0 }  # consumer quality track
+    note: Requires operating_margin from derive; not a ROE proxy
+
+live_enrichment:
+  prefilter:
+    ref: kill-gates.yaml#live_quote_prefilter
+    applies: before per-ticker HTTP enrichment (--adapter live only)
+  cache:
+    path: cli/data/cache/{quarter}/{market}/{ticker}.json
+    skip_flag: --skip-cache
+    empty_rows: not cached (refetch on next run)
+  concurrency:
+    flag: --enrich-concurrency
+    default: 4
+    note: Each ticker may issue 2 HTTP calls; host limits cap East Money (8) and SEC (4) in-flight
 
 pass_logic:
   all_required_and_supporting_min_N_of_M:
@@ -80,6 +112,12 @@ funnel_flags:
 audit_hints:
   not_part_of: stock-analysis-audit core schema
   passed_by: orchestrator into Deep audit prompt
+  fallback_note: When routing_method is fallback or routing_confidence is low, Deep must flag sector classification uncertainty and honor audit_hints (e.g. routing_fallback_unmapped_industry)
+
+routing_method:
+  values: [gics, cn_industry_map, industry_proxy, fallback]
+  cn_primary: cn_industry_map
+  fallback_confidence: low
 
 graham_composite:
   formula: pe_3y_avg * pb

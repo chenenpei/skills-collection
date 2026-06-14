@@ -1,0 +1,31 @@
+{
+  "name": "market-screener-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "screener": "./bin/screener.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "tsx bin/screener.ts",
+    "validate": "tsx bin/screener.ts validate ../spec",
+    "e2e:fixture": "tsx scripts/e2e-fixture.ts",
+    "e2e:live": "tsx scripts/e2e-live.ts",
+    "e2e:live:full": "tsx scripts/e2e-live.ts --markets CN,US --quarter 2026-Q1"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "undici": "^7.27.2",
+    "yaml": "^2.8.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

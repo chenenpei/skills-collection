@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Market Screener
 
-Orchestrate the **batch funnel vs on-demand audit** SOP: quantitative funnel → Deep audit → qualitative triage → landmine prices → trigger discipline. Deterministic funnel rules live in `spec/` and the planned TypeScript CLI; this skill drives the **batch workflow** and chains into **stock-analysis-audit** for single-name Deep work.
+Orchestrate the **batch funnel vs on-demand audit** SOP: quantitative funnel → Deep audit → qualitative triage → landmine prices → trigger discipline. Deterministic funnel rules live in `spec/`; the TypeScript CLI at `cli/` executes the funnel. This skill drives the **batch workflow** and chains into **stock-analysis-audit** for single-name Deep work.
 
 All outputs are research assistance only and are not investment advice.
 
@@ -18,7 +18,6 @@ When loaded, confirm the user's intent:
 
 - **Scheduled quarterly run** — full CN+US funnel + Deep batch for a quarter
 - **Partial step** — landmine pricing, audit-summary triage, trigger review, or spec explain for one ticker
-- **Pre-CLI** — manual orchestration while `screener` CLI is not yet available
 
 ## Hard Rules
 
@@ -26,7 +25,7 @@ When loaded, confirm the user's intent:
 2. **Never run the quarterly funnel before the later-market disclosure anchor** for the active cycle. Warn if the user requests early runs; note `data_confidence: low` risk.
 3. **Default Deep limit:** rank 1–20 per market from `candidates.yaml`. Run `--deep-all` only when the user explicitly requests full Deep on every candidate.
 4. **Do not replace stock-analysis-audit** for single-ticker Deep/Lite. Invoke that skill per candidate with funnel context (`audit_hints`, `metric_snapshot`).
-5. **Funnel metrics are coarse.** Deep audit may override funnel snapshots; record conflicts in audit reports.
+5. **Funnel metrics are coarse.** Deep audit may override funnel snapshots; record conflicts in audit reports. When `routing_method` is `fallback` or `routing_confidence` is `low`, Deep must flag sector classification uncertainty and honor `audit_hints`.
 6. **Package M** is the active tightening profile: sector template thresholds + **soft cap 25** candidates per market (overflow → `deferred.yaml`).
 
 ## Default Quarterly Run Sequence
@@ -34,11 +33,10 @@ When loaded, confirm the user's intent:
 Follow `docs/agent-guide.md` unless the user narrows scope.
 
 1. **Schedule check** — read `spec/schedule.yaml`; verify `later_market_gate` for the quarter.
-2. **Quantitative funnel** — `screener run --markets CN,US --quarter YYYY-QN --output ./funnel-output/YYYY-QN/`  
-   If CLI unavailable: apply `spec/kill-gates.yaml`, `spec/routing-map.yaml`, and `spec/templates/*.yaml` manually; write YAML per `spec/output-schema.yaml`.
+2. **Quantitative funnel** — run the CLI from `cli/` (see **CLI** below). Default adapter is `fixture` (offline); use `--adapter live` for CN East Money + US Yahoo when the user wants real universe data.
 3. **Deep audit** — parallel by market (CN session + US session). For each candidate (default top 20/market), load **stock-analysis-audit** Deep with funnel context attached. Reports → `funnel-output/{quarter}/audit/{market}/{ticker}.md`.
 4. **Qualitative triage** — produce `audit-summary.yaml`: `shortlist_for_landmine`, `rejected_after_deep`, `deep_deferred`.
-5. **Landmines** — `screener landmine --from audit-summary.yaml` (or apply `spec/landmine-rules.yaml` manually) → `landmines.yaml`. Remind user to place orders manually.
+5. **Landmines** — `npm run dev -- landmine --from audit-summary.yaml --output landmines.yaml` from `cli/` → `landmines.yaml`. Remind user to place orders manually.
 6. **Trigger discipline** — on price touch, follow `spec/trigger-discipline.yaml` (scenario A default when ambiguous).
 
 ## Required References
@@ -49,14 +47,15 @@ Read only what is needed for the current step:
 - Manifest and integration defaults: `spec/index.yaml`.
 - Scheduled run dates: `spec/schedule.yaml`.
 - Universe and shared kill gates: `spec/kill-gates.yaml`.
-- Sector routing and ambiguous union: `spec/routing-map.yaml`.
+- Sector routing (GICS / keyword fallback): `spec/routing-map.yaml`.
+- A-share Shenwan routing (primary CN path): `spec/cn-industry-map.yaml`.
 - Threshold syntax: `spec/conventions.yaml`.
 - Sector funnels (Package M): `spec/templates/*.yaml`.
 - Output shapes: `spec/output-schema.yaml`.
 - Landmine formulas: `spec/landmine-rules.yaml`.
 - Post-landmine behavior: `spec/trigger-discipline.yaml`.
 
-For a single-ticker explain/debug request: `spec/index.yaml`, `spec/routing-map.yaml`, relevant template under `spec/templates/`, and `spec/kill-gates.yaml`.
+For a single-ticker explain/debug request: `spec/index.yaml`, `spec/routing-map.yaml`, `spec/cn-industry-map.yaml` (CN), relevant template under `spec/templates/`, and `spec/kill-gates.yaml`.
 
 ## Downstream: stock-analysis-audit
 
@@ -68,26 +67,58 @@ For each Deep candidate, attach funnel context in the prompt:
 漏斗上下文（需交叉验证，非最终证据）：
 - passed_track: {quality|mispricing}
 - routed_templates: [...]
-- routing_confidence: {high|ambiguous_union}
+- routing_method: {gics|cn_industry_map|industry_proxy|fallback}
+- routing_confidence: {high|ambiguous_union|low}
 - metric_snapshot: ...
 - audit_hints: ...
 
+若 routing_method 为 fallback 或 routing_confidence 为 low，Deep 须标注 sector 分类不确定并处理 audit_hints。
 若 metric_snapshot 与 Deep 数据冲突，以 Deep 为准并说明。
 ```
 
 Load **stock-analysis-audit** for the actual Deep workflow, templates, and verdict slugs. This skill owns batch orchestration and YAML artifacts only.
 
-## CLI Status
+## CLI
 
-MVP CLI (`cli/`, TypeScript) may not exist yet. When commands fail or are missing, orchestrate manually from `spec/` and document which steps were simulated. Do not invent funnel numbers; use available data adapters or mark fields `N/A` with impact notes.
+The CLI ships at `cli/` (TypeScript, Commander + tsx). **`screener` is not on `$PATH`** — always run from the skill's `cli/` directory:
 
-Planned commands (see `spec/index.yaml`):
+```bash
+cd cli
+npm install   # first time only
+npm run validate
+npm run dev -- run --markets CN,US --quarter YYYY-QN --output ./funnel-output/YYYY-QN/ --spec ../spec --adapter fixture
+npm run dev -- explain 600519 --market CN --spec ../spec --fixture test/fixtures/universe-cn.json
+npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --output ../funnel-output/YYYY-QN/landmines.yaml --quarter YYYY-QN
+```
 
-- `screener run` — funnel
-- `screener validate` — spec lint
-- `screener explain` — single-ticker routing trace
-- `screener landmine` — landmine YAML
-- `screener alert` — Phase 2 placeholder (no auto-buy)
+**Always prefer the CLI** for funnel, explain, validate, and landmine steps. Do **not** re-implement funnel logic by calling East Money/Yahoo APIs directly unless the CLI command fails after a genuine install/`npm install` attempt — then report the error and fall back to `spec/` rules with explicit `N/A` fields.
+
+| Command | Purpose |
+|---------|---------|
+| `run` | Quantitative funnel → `candidates.yaml`, `deferred.yaml`, `excluded.yaml` (+ live `prefilter-excluded.yaml`) |
+| `validate` | Lint `spec/` YAML |
+| `explain` | Single-ticker routing trace |
+| `landmine` | Landmine YAML from audit-summary |
+| `alert` | Phase 2 placeholder (not implemented) |
+
+**Adapters:** `--adapter fixture` (default, offline) | `--adapter live` (CN East Money + US Yahoo + per-ticker financial enrichment; requires network).
+
+## Live full funnel (M3)
+
+With `--adapter live`, the CLI loads quote universes, applies **quote prefilter** (status/cap/age — skips written to `prefilter-excluded.yaml`), then enriches survivors with annual financials and industry proxy (CN: East Money datacenter + orginfo; US: SEC companyfacts + submissions). Derived metrics include `operating_margin`; industry median overlays populate `gross_margin_vs_industry` and `operating_margin_vs_industry`. Enrichment responses are cached per quarter under `cli/data/cache/{quarter}/` (empty rows not cached).
+
+### Quarterly live run
+
+```bash
+cd skills/market-screener/cli
+npm install
+npm run validate
+npm run e2e:live -- --markets CN,US --quarter YYYY-QN
+```
+
+First CN run may take 30–60 min (4000+ enrichment requests). Subsequent runs use quarter cache under `data/cache/`.
+
+Optional `run` flags: `--enrich-concurrency <n>` (default **4**; each ticker ≈2 HTTP calls), `--skip-cache` (no cache read/write).
 
 ## Output Locale
 
@@ -112,6 +143,8 @@ Ask one question at a time. Prefer multiple-choice options when possible.
 After a scheduled quarterly run, verify:
 
 - [ ] `candidates.yaml`, `deferred.yaml`, `excluded.yaml` for CN and US
+- [ ] Live runs with prefilter skips: `prefilter-excluded.yaml` per market
+- [ ] `routing-diagnostics.yaml`, `funnel-diagnostics.yaml` per market (CN `fallback_rate` target < 5%)
 - [ ] Deep reports under `audit/{market}/` (≤20 per market unless `--deep-all`)
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml` if shortlist exists

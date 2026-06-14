@@ -19,8 +19,8 @@ quality_track:
     gross_margin_3y_max_decline_pp: { max: 5 }
     net_debt_to_ebitda: { max: 2.5 }
   supporting:
-    - { metric: capex_to_revenue, max: 0.15, gics_override_semiconductors: 0.25 }
-    - { metric: inventory_turnover_vs_industry, min: 0 }
+    - { metric: capex_to_revenue, max: 0.15, gics_override_semiconductors: 0.25, missing: skip }
+    - { metric: inventory_turnover_vs_industry, min: 0, missing: skip }
     - { metric: capacity_utilization, min: 0.70, max: 0.90, missing: skip }
     - { metric: top_customer_concentration, max: 0.30, missing: skip }
     - { metric: roe_5y_avg, min: 0.12 }

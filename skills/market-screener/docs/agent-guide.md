@@ -2,7 +2,7 @@
 
 本指南面向编排 **季度批量漏斗 → Deep 审计 → landmine 限价 → 到价纪律** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
 
-**MVP 状态：** `screener` CLI 尚未实现；Agent 可按本指南手工编排，或等 CLI 落地后改为调用命令。
+**CLI 状态：** `screener` CLI 已在 `cli/` 落地（validate / run / explain / landmine）；**M3** 已完成 live adapter 全量 enrichment 管线（quote universe → 逐票财务/行业补全 → 漏斗）。Agent **必须优先调用 CLI** 执行定量漏斗与 landmine；`screener` 不在 `$PATH`，需在 `cli/` 目录通过 `npm run dev -- <command>` 运行（见 §2）。仅当 CLI 安装或执行真实失败时，才回退到 `spec/` 手工编排并标注 `N/A`。
 
 ---
 
@@ -29,18 +29,39 @@ Phase 2 占位：`screener schedule --year YYYY` 打印解析日期。
 
 ### Step 1 — 定量漏斗
 
+在 skill 目录下的 `cli/` 中执行（首次需 `npm install`）：
+
 ```bash
-screener run --markets CN,US --quarter 2026-Q2 --output ./funnel-output/2026-Q2/
+cd cli
+npm run dev -- run \
+  --markets CN,US \
+  --quarter 2026-Q2 \
+  --output ./funnel-output/2026-Q2/ \
+  --spec ../spec \
+  --adapter fixture
 ```
+
+- **`--adapter fixture`** — 离线 fixture，适合本地验证
+- **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙 → **quote prefilter**（status/市值/上市年限，未 enrichment 的写入 `prefilter-excluded.yaml`）→ **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；US：`sec_companyfacts` + `sec_submissions`），需联网
+
+**Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。
+
+**Live run 可选参数：**
+
+- `--enrich-concurrency <n>` — 并行 enrichment **ticker** 数（默认 **4**；每 ticker 约 2 次 HTTP；另有 East Money/SEC host 上限）
+- `--skip-cache` — 忽略磁盘缓存（不读不写），强制重新拉取
 
 产出（每市场）：
 
 - `CN/candidates.yaml` — rank 1–25（软顶，Package M）
 - `CN/deferred.yaml` — 通过漏斗但 rank > 25
-- `CN/excluded.yaml` — Kill Gate 排除
+- `CN/excluded.yaml` — 对 **已 enrichment** 宇宙应用 Kill Gate 后的排除（含 `enrichment_failure` 可选字段）
+- `CN/prefilter-excluded.yaml` — **仅 live**：quote prefilter 跳过、未 enrichment 的标的（status/市值/年限）
+- `CN/routing-diagnostics.yaml` — Kill Gate 存活标的的路由分布（`by_method`、`fallback_rate`）
+- `CN/funnel-diagnostics.yaml` — 全漏斗回放统计（prefilter/kill 原因占比、sector 通过率）；可用 `scripts/funnel-replay.ts` 打印可读报告
 - `US/` 同上
 
-Agent 若无 CLI：按 `spec/` 规则说明本轮应用 **Package M** 收紧后的 sector templates。
+**禁止** Agent 自行调用东方财富/Yahoo API 重实现漏斗逻辑；数据拉取由 CLI adapter 负责。
 
 ### Step 2 — Deep 审计（stock-analysis-audit）
 
@@ -57,10 +78,12 @@ Agent 若无 CLI：按 `spec/` 规则说明本轮应用 **Package M** 收紧后�
 漏斗上下文（需交叉验证，非最终证据）：
 - passed_track: {quality|mispricing}
 - routed_templates: [...]
-- routing_confidence: {high|ambiguous_union}
+- routing_method: {gics|cn_industry_map|industry_proxy|fallback}
+- routing_confidence: {high|ambiguous_union|low}
 - metric_snapshot: ...
 - audit_hints: ...
 
+若 routing_method 为 fallback 或 routing_confidence 为 low，Deep 须标注 sector 分类不确定并处理 audit_hints。
 若 metric_snapshot 与 Deep 数据冲突，以 Deep 为准并说明。
 ```
 
@@ -81,8 +104,11 @@ Deep 合格输出标准见 stock-analysis-audit `docs/agent-guide.md`。
 ## 3. 等待期 — landmine 限价（Phase 2）
 
 ```bash
-screener landmine --from funnel-output/2026-Q2/audit-summary.yaml \
-  --output funnel-output/2026-Q2/landmines.yaml
+cd cli
+npm run dev -- landmine \
+  --from ../funnel-output/2026-Q2/audit-summary.yaml \
+  --output ../funnel-output/2026-Q2/landmines.yaml \
+  --quarter 2026-Q2
 ```
 
 公式见 `spec/landmine-rules.yaml`：
@@ -113,7 +139,7 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 
 | 阶段 | market-screener | stock-analysis-audit |
 |------|-----------------|---------------------|
-| 全市场定量 | `screener run` + `spec/templates/` | 不参与 |
+| 全市场定量 | `cli/` → `npm run dev -- run` + `spec/templates/` | 不参与 |
 | 单票 Deep | 编排 + audit_hints | Deep workflow |
 | 到价后复核 | trigger-discipline | 可选再 Deep |
 
@@ -124,6 +150,8 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 季度运行结束应存在：
 
 - [ ] `candidates.yaml` / `deferred.yaml` / `excluded.yaml`（CN、US）
+- [ ] live 跑批时若有 quote prefilter 跳过：`prefilter-excluded.yaml`（CN、US）
+- [ ] `routing-diagnostics.yaml` / `funnel-diagnostics.yaml`（CN、US）；CN `fallback_rate` 宜 < 5%
 - [ ] `audit/{market}/*.md`（Deep，每市场 ≤20）
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml`（若有 shortlist）
@@ -147,8 +175,9 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 | `spec/index.yaml` | Manifest |
 | `spec/schedule.yaml` | 何时跑 |
 | `spec/kill-gates.yaml` | 共享 Kill Gate |
-| `spec/routing-map.yaml` | 行业路由 |
-| `spec/conventions.yaml` | 阈值语法 |
+| `spec/routing-map.yaml` | GICS / keyword fallback → sector templates |
+| `spec/cn-industry-map.yaml` | A-share Shenwan L1/L2 → sector templates（CN 主路径） |
+| `spec/conventions.yaml` | 阈值语法、`routing_method` |
 | `spec/templates/*.yaml` | Sector 漏斗（Package M） |
 | `spec/landmine-rules.yaml` | landmine 限价公式 |
 | `spec/trigger-discipline.yaml` | 场景 A/B |

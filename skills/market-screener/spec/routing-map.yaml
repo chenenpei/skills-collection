@@ -1,4 +1,5 @@
 # GICS L2/L3 (or Yahoo industry proxy) → sector funnel template
+# A-share structured routing: spec/cn-industry-map.yaml (referenced below). This file holds GICS mappings, shared keyword fallback, and classifier defaults.
 # Ambiguous entries run parallel templates; pass if ANY track passes (dedupe by ticker)
 
 version: "0.1.0"
@@ -7,6 +8,9 @@ classifier:
   primary: gics_level_2_or_3
   proxy: yahoo_industry
   proxy_map_ref: industry_proxy_map
+  cn_industry_map_ref: cn-industry-map.yaml
+  fallback_template: manufacturing
+  fallback_confidence: low
 
 routing_confidence:
   high: single_template
@@ -124,7 +128,7 @@ industry_proxy_map:
   - keywords: [insurance, 保险, life insurance, property insurance]
     template: financials
     sub_template: insurance
-  - keywords: [broker, 券商, securities, asset management]
+  - keywords: [broker, 券商, 证券, securities, asset management]
     template: financials
     sub_template: other_financials
   - keywords: [software, saas, 软件, cloud]
@@ -134,7 +138,7 @@ industry_proxy_map:
     also_run: [tech_saas, cyclicals]
   - keywords: [oil, gas, 石油, 煤炭, mining, 钢铁, chemical]
     template: cyclicals
-  - keywords: [retail, 消费, beverage, food, apparel]
+  - keywords: [retail, beverage, food, apparel]
     template: consumer
   - keywords: [machinery, industrial, 制造, hardware]
     template: manufacturing

@@ -3,7 +3,7 @@
 # Downstream audit: ../../stock-analysis-audit/
 
 version: "0.1.0"
-status: spec_only  # CLI not implemented yet
+status: cli_m3_live_funnel_done  # validate, run (fixture + live enriched), explain, landmine
 tightening_profile: package_m  # 2026 grill: sector templates tightened; soft cap 25 per market
 
 delivery:
@@ -43,13 +43,21 @@ data_sources:
     providers: [sec_edgar, yahoo_finance]
     uses: [financials_bulk, quotes, industry_proxy]
   industry_routing: yahoo_industry_to_gics_proxy
-  cache: data/cache/{quarter}/
+  enrichment:
+    cn: eastmoney_datacenter_annual + orginfo
+    us: sec_companyfacts + sec_submissions
+    cache: data/cache/{quarter}/
+    prefilter: quote-only universe gates before HTTP (status, cap, age)
+    host_limits: { eastmoney_datacenter: 8, sec_edgar: 4 }
+    default_enrich_concurrency: 4
   ref: ../CONTEXT.md#Data Sources (MVP)
 
 routing:
   classifier: gics_level_2_or_3
+  cn_primary: cn-industry-map.yaml   # A-share enriched universe; routing_method cn_industry_map
   industry_proxy: true
   ambiguous_union: true
+  diagnostics: [routing-diagnostics.yaml, funnel-diagnostics.yaml]
   ref: routing-map.yaml
 
 templates:
@@ -83,6 +91,12 @@ output:
     - "{output}/{quarter}/US/deferred.yaml"
     - "{output}/{quarter}/CN/excluded.yaml"
     - "{output}/{quarter}/US/excluded.yaml"
+    - "{output}/{quarter}/CN/prefilter-excluded.yaml"   # live only; when non-empty
+    - "{output}/{quarter}/US/prefilter-excluded.yaml"   # live only; when non-empty
+    - "{output}/{quarter}/CN/routing-diagnostics.yaml"
+    - "{output}/{quarter}/US/routing-diagnostics.yaml"
+    - "{output}/{quarter}/CN/funnel-diagnostics.yaml"
+    - "{output}/{quarter}/US/funnel-diagnostics.yaml"
     - "{output}/{quarter}/audit/CN/{ticker}.md"
     - "{output}/{quarter}/audit/US/{ticker}.md"
     - "{output}/{quarter}/audit-summary.yaml"
