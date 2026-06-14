@@ -110,13 +110,35 @@ pass_logic:
 funnel_soft_cap:
   max_candidates_per_market: 20
   overflow: deferred.yaml
-  ranking: composite funnel score within market
+  ranking: template track seat allocation (see template_seat_allocation)
 
 deferred_watchlist_cap:
   max_deferred_per_market: 20
 
+template_seat_allocation:
+  pools:
+    healthcare_quality: { floor: 2, cap: 5 }
+    consumer_quality: { floor: 2, cap: 4 }
+    manufacturing_quality: { floor: 2, cap: 4 }
+    cyclicals_quality: { floor: 0, cap: 3 }
+    financials_quality: { floor: 0, cap: 3 }
+    tech_saas_quality: { floor: 0, cap: 3 }
+    healthcare_mispricing: { floor: 0, cap: 1 }
+    consumer_mispricing: { floor: 0, cap: 1 }
+    cyclicals_mispricing: { floor: 0, cap: 1 }
+    manufacturing_mispricing: { floor: 0, cap: 1 }
+    financials_mispricing: { floor: 0, cap: 1 }
+    tech_saas_mispricing: { floor: 0, cap: 1 }
+  flex:
+    confluence_weight_multiplier: 2
+  backfill:
+    tier1: same_template_quality
+    tier2: global_quality
+
 ranking:
-  tie_break: higher data_confidence, then higher supporting pass count
+  method: template_seat_allocation
+  tie_break: track confluence, then pool_score, then data_confidence
+  note: merged candidates.yaml rank is Deep queue priority, not cross-template conviction
 
 metric_snapshot:
   include_on_pass: all metrics evaluated for the passed track

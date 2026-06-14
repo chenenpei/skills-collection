@@ -1,5 +1,9 @@
 import path from "node:path";
-import { deferredWatchlistCapFromBundle, funnelSoftCapFromBundle } from "../spec/conventions.js";
+import {
+  deferredWatchlistCapFromBundle,
+  funnelSoftCapFromBundle,
+  seatAllocationFromBundle,
+} from "../spec/conventions.js";
 import type { SpecBundle, SectorTemplateSpec } from "../spec/types.js";
 import { writeYamlArtifact } from "../io/artifacts.js";
 import type { ProgressLogger } from "../lib/progress.js";
@@ -8,7 +12,7 @@ import {
   routingDiagnosticsFromFunnel,
 } from "./diagnostics.js";
 import { applyKillGates, type KillGateResult, type SecurityRecord } from "./kill-gates.js";
-import { rankCandidates } from "./ranker.js";
+import { allocateTemplateSeats } from "./ranker.js";
 import { routeSecurity, type RouteResult } from "./router.js";
 import { evaluateTemplateTrack, type TemplateEvalResult } from "./template-evaluator.js";
 import { getUniverseProfileFailureReason } from "./universe.js";
@@ -24,6 +28,13 @@ export interface TemplateTrackResult {
   result: TemplateEvalResult;
 }
 
+export type SeatSource =
+  | "floor"
+  | "cap"
+  | "flex"
+  | "backfill_same_template"
+  | "backfill_global";
+
 export interface PassingCandidate {
   ticker: string;
   market: SecurityRecord["market"];
@@ -34,7 +45,11 @@ export interface PassingCandidate {
   routing_confidence: RouteResult["routingConfidence"];
   routing_method: RouteResult["routingMethod"];
   matched_rule?: string;
+  winning_template: string;
+  track_confluence: boolean;
   passed_track: FunnelTrack;
+  pool_score: number;
+  seat_source?: SeatSource;
   sub_template?: string;
   metric_snapshot: TemplateEvalResult["metricSnapshot"];
   data_confidence: KillGateResult["dataConfidence"];
@@ -82,6 +97,91 @@ export function listTemplateTrackResults(
   return results;
 }
 
+interface TemplatePassTracks {
+  quality?: TemplateTrackResult;
+  mispricing?: TemplateTrackResult;
+}
+
+function buildPassingCandidate(
+  record: SecurityRecord,
+  kill: KillGateResult,
+  route: RouteResult,
+  entries: TemplateTrackResult[]
+): PassingCandidate | null {
+  const routedTemplates = route.templates.map((t) => t.id);
+  const byTemplate = new Map<string, TemplatePassTracks>();
+
+  for (const entry of entries) {
+    if (!entry.result.passed || !entry.result.passedTrack) continue;
+    const bucket = byTemplate.get(entry.template) ?? {};
+    if (entry.track === "quality") bucket.quality = entry;
+    else bucket.mispricing = entry;
+    byTemplate.set(entry.template, bucket);
+  }
+
+  if (byTemplate.size === 0) return null;
+
+  let winningTemplate = "";
+  let winningTracks: TemplatePassTracks = {};
+  let bestTemplateScore = -1;
+
+  for (const [template, tracks] of byTemplate) {
+    const scores: number[] = [];
+    if (tracks.quality?.result.passed) {
+      scores.push(tracks.quality.result.supportingPassCount);
+    }
+    if (tracks.mispricing?.result.passed) {
+      scores.push(tracks.mispricing.result.supportingPassCount);
+    }
+    const templateScore = Math.max(...scores);
+    if (templateScore > bestTemplateScore) {
+      bestTemplateScore = templateScore;
+      winningTemplate = template;
+      winningTracks = tracks;
+    } else if (templateScore === bestTemplateScore && template.localeCompare(winningTemplate) < 0) {
+      winningTemplate = template;
+      winningTracks = tracks;
+    }
+  }
+
+  const qualityPassed = winningTracks.quality?.result.passed === true;
+  const mispricingPassed = winningTracks.mispricing?.result.passed === true;
+  const trackConfluence = qualityPassed && mispricingPassed;
+  const passedTrack: FunnelTrack = trackConfluence
+    ? "quality"
+    : qualityPassed
+      ? "quality"
+      : "mispricing";
+
+  const winningEntry =
+    passedTrack === "quality" ? winningTracks.quality! : winningTracks.mispricing!;
+  const poolScore = winningEntry.result.supportingPassCount;
+
+  return {
+    ticker: record.ticker,
+    market: record.market,
+    company_name: record.companyName,
+    currency: record.currency,
+    industry_proxy: record.industryProxy,
+    routed_templates: routedTemplates,
+    routing_confidence: route.routingConfidence,
+    routing_method: route.routingMethod,
+    matched_rule: route.matchedRule,
+    winning_template: winningTemplate,
+    track_confluence: trackConfluence,
+    passed_track: passedTrack,
+    pool_score: poolScore,
+    sub_template: winningEntry.subTemplate,
+    metric_snapshot: winningEntry.result.metricSnapshot,
+    data_confidence: kill.dataConfidence,
+    funnel_flags: [...kill.funnelFlags, ...winningEntry.result.funnelFlags],
+    audit_mode: "deep",
+    audit_hints: [...route.auditHints, ...winningEntry.result.auditHints],
+    compositeScore: poolScore,
+    supportingPassCount: poolScore,
+  };
+}
+
 export function bestPassingCandidate(
   bundle: SpecBundle,
   record: SecurityRecord,
@@ -90,38 +190,7 @@ export function bestPassingCandidate(
   trackResults?: TemplateTrackResult[]
 ): PassingCandidate | null {
   const entries = trackResults ?? listTemplateTrackResults(bundle, record, route);
-  const routedTemplates = route.templates.map((t) => t.id);
-  let best: PassingCandidate | null = null;
-
-  for (const entry of entries) {
-    if (!entry.result.passed || !entry.result.passedTrack) continue;
-
-    const score = entry.result.supportingPassCount;
-    if (best && score <= best.compositeScore) continue;
-
-    best = {
-      ticker: record.ticker,
-      market: record.market,
-      company_name: record.companyName,
-      currency: record.currency,
-      industry_proxy: record.industryProxy,
-      routed_templates: routedTemplates,
-      routing_confidence: route.routingConfidence,
-      routing_method: route.routingMethod,
-      matched_rule: route.matchedRule,
-      passed_track: entry.result.passedTrack,
-      sub_template: entry.subTemplate,
-      metric_snapshot: entry.result.metricSnapshot,
-      data_confidence: kill.dataConfidence,
-      funnel_flags: [...kill.funnelFlags, ...entry.result.funnelFlags],
-      audit_mode: "deep",
-      audit_hints: [...route.auditHints, ...entry.result.auditHints],
-      compositeScore: score,
-      supportingPassCount: score,
-    };
-  }
-
-  return best;
+  return buildPassingCandidate(record, kill, route, entries);
 }
 
 export interface FunnelRunOptions {
@@ -181,30 +250,18 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
       if (best) passed.push(best);
     }
 
-    const pairs = passed.map((p) => {
-      const { compositeScore, supportingPassCount, ...output } = p;
-      return {
-        rankable: {
-          ticker: p.ticker,
-          compositeScore,
-          dataConfidence: p.data_confidence,
-          supportingPassCount,
-        },
-        output,
-      };
-    });
+    const seatConfig = seatAllocationFromBundle(opts.bundle);
+    const allocation = allocateTemplateSeats(passed, seatConfig, softCap, deferredCap);
 
-    const ranked = rankCandidates(pairs.map((p) => p.rankable));
-    const outputByTicker = new Map(pairs.map((p) => [p.rankable.ticker, p.output]));
-    const rankedRecords = ranked.map((r, idx) => ({
-      ...outputByTicker.get(r.ticker)!,
-      rank: idx + 1,
-    }));
+    const stripInternalFields = ({
+      compositeScore: _compositeScore,
+      supportingPassCount: _supportingPassCount,
+      ...output
+    }: PassingCandidate) => output;
 
-    const primary = rankedRecords.slice(0, softCap);
-    const overflow = rankedRecords.slice(softCap);
-    const deferred = overflow.slice(0, deferredCap);
-    const sectorPassOverflow = overflow.length - deferred.length;
+    const primary = allocation.candidates.map(stripInternalFields);
+    const deferred = allocation.deferred.map(stripInternalFields);
+    const sectorPassOverflow = allocation.overflowCount;
     const universeCount = marketUniverse.length + marketPrefilterExcluded.length;
     const funnelDiagnostics = diagnostics.finalize({
       bundle: opts.bundle,
@@ -217,6 +274,7 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
       deferredCount: deferred.length,
       sectorPassOverflow,
       deferredWatchlistCap: deferredCap,
+      byPoolSelected: allocation.byPoolSelected,
       enrichStats: opts.enrichStatsByMarket?.[market],
       cacheGap: opts.cacheGapByMarket?.[market],
     });

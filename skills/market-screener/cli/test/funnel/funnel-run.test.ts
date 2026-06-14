@@ -43,6 +43,9 @@ describe("runFunnel", () => {
       candidates: Array<{
         ticker: string;
         passed_track: string;
+        winning_template: string;
+        track_confluence: boolean;
+        seat_source: string;
         rank: number;
         routed_templates?: string[];
         audit_hints?: string[];
@@ -50,10 +53,18 @@ describe("runFunnel", () => {
       }>;
     };
     expect(candidates.candidates).toHaveLength(2);
+    const winningTemplates = new Set(candidates.candidates.map((c) => c.winning_template));
+    expect(winningTemplates.size).toBeGreaterThanOrEqual(2);
     const moutai = candidates.candidates.find((c) => c.ticker === "600519");
     const pharma = candidates.candidates.find((c) => c.ticker === "600276");
-    expect(moutai).toMatchObject({ passed_track: "quality" });
-    expect(pharma).toMatchObject({ passed_track: "quality" });
+    expect(moutai).toMatchObject({
+      passed_track: "quality",
+      winning_template: "consumer",
+    });
+    expect(pharma).toMatchObject({
+      passed_track: "quality",
+      winning_template: "healthcare",
+    });
     expect(pharma!.routed_templates).toEqual(["healthcare"]);
     expect(pharma!.routed_templates).not.toContain("consumer");
     expect(pharma!.audit_hints).toContain("verify_patent_cliff_if_margin_declining");
@@ -87,6 +98,10 @@ describe("runFunnel", () => {
     expect(funnelDiagnostics.stages.kill_survivors).toBe(2);
     expect(funnelDiagnostics.stages.sector_passed).toBe(2);
     expect(Object.keys(funnelDiagnostics.sector_by_template).length).toBeGreaterThan(0);
+    const funnelDiagnosticsFull = parseYaml(
+      await fs.readFile(path.join(outDir, "CN/funnel-diagnostics.yaml"), "utf8")
+    ) as { by_pool_selected?: Record<string, number> };
+    expect(funnelDiagnosticsFull.by_pool_selected).toBeDefined();
   });
 
   it("includes capex_to_revenue in metric_snapshot when manufacturing fixture provides it", async () => {
@@ -140,6 +155,65 @@ describe("runFunnel", () => {
     const mfg = candidates.candidates.find((c) => c.ticker === "301626");
     expect(mfg).toBeDefined();
     expect(mfg!.metric_snapshot.capex_to_revenue).toBeDefined();
+  });
+
+  it("ranks track confluence above same-pool single-track with lower pool score", async () => {
+    const consumerBase = universe.find((r) => r.ticker === "600519")!;
+    const confluenceRecord: SecurityRecord = {
+      ...consumerBase,
+      ticker: "CONFLU",
+      companyName: "Confluence Fixture",
+      metrics: {
+        ...consumerBase.metrics,
+        fcf_yield: { value: 0.06, dataConfidence: "high" },
+        graham_composite: { value: 18, dataConfidence: "high" },
+        pe_vs_5y_median: { value: 0.7, dataConfidence: "high" },
+        fcf_yield_vs_risk_free: { value: 0.05, dataConfidence: "high" },
+        price_vs_52w_high: { value: 0.6, dataConfidence: "high" },
+      },
+    };
+    const singleTrackRecord: SecurityRecord = {
+      ...consumerBase,
+      ticker: "SINGLE",
+      companyName: "Single Track Fixture",
+      metrics: {
+        ...consumerBase.metrics,
+        roe_5y_avg: { value: 0.5, dataConfidence: "high" },
+        roic_5y_avg: { value: 0.4, dataConfidence: "high" },
+        gross_margin_vs_industry: { value: 0.4, dataConfidence: "high" },
+        operating_margin_vs_industry: { value: 0.3, dataConfidence: "high" },
+        revenue_3y_cagr: { value: 0.2, dataConfidence: "high" },
+        fcf_yield: { value: 0.01, dataConfidence: "high" },
+      },
+    };
+
+    const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "screener-confluence-"));
+    await runFunnel({
+      bundle,
+      universe: [confluenceRecord, singleTrackRecord],
+      quarter: "2026-Q2",
+      marketScope: "CN",
+      outputDir: outDir,
+    });
+
+    const candidates = parseYaml(
+      await fs.readFile(path.join(outDir, "CN/candidates.yaml"), "utf8")
+    ) as {
+      candidates: Array<{
+        ticker: string;
+        rank: number;
+        track_confluence: boolean;
+        winning_template: string;
+      }>;
+    };
+
+    expect(candidates.candidates.length).toBeLessThanOrEqual(20);
+    expect(candidates.candidates[0]?.ticker).toBe("CONFLU");
+    expect(candidates.candidates[0]?.track_confluence).toBe(true);
+    expect(candidates.candidates[0]?.winning_template).toBe("consumer");
+    const single = candidates.candidates.find((c) => c.ticker === "SINGLE");
+    expect(single?.track_confluence).toBe(false);
+    expect(single!.rank).toBeGreaterThan(candidates.candidates[0]!.rank);
   });
 
   it("caps candidates at 20 and deferred at 20 with sector_pass_overflow in diagnostics", async () => {

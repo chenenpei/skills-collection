@@ -39,6 +39,7 @@ export interface FunnelDiagnosticsDoc {
     string,
     { routed: number; passed_any_track: number; pass_rate: number }
   >;
+  by_pool_selected: Record<string, number>;
   unmapped_samples: Array<{ ticker: string; industry_proxy?: string }>;
   enrichment?: {
     enrich_failed_count: number;
@@ -134,6 +135,7 @@ export class FunnelDiagnosticsCollector {
     deferredCount: number;
     sectorPassOverflow: number;
     deferredWatchlistCap: number;
+    byPoolSelected?: Record<string, number>;
     enrichStats?: EnrichRunStats;
     cacheGap?: { count: number; samples: string[] };
   }): FunnelDiagnosticsDoc {
@@ -183,6 +185,7 @@ export class FunnelDiagnosticsCollector {
         fallback_rate: killSurvivors > 0 ? this.fallbackCount / killSurvivors : 0,
       },
       sector_by_template: sectorByTemplateOut,
+      by_pool_selected: opts.byPoolSelected ?? {},
       unmapped_samples: this.unmappedSamples,
     };
 
@@ -337,6 +340,17 @@ export function formatFunnelReplayReport(doc: FunnelDiagnosticsDoc, market: Mark
     lines.push("");
   }
 
+  if (Object.keys(doc.by_pool_selected).length > 0) {
+    lines.push("## Template track seat pools — selected counts");
+    lines.push("");
+    lines.push("| Pool | Selected |");
+    lines.push("|------|----------|");
+    for (const [pool, count] of sortedEntries(doc.by_pool_selected)) {
+      lines.push(`| ${pool} | ${count} |`);
+    }
+    lines.push("");
+  }
+
   if (doc.unmapped_samples.length > 0) {
     lines.push("## Unmapped industry samples (fallback routing, up to 50)");
     lines.push("");
@@ -430,6 +444,7 @@ export function buildFunnelDiagnosticsFromArtifacts(
       fallback_rate: routing?.fallback_rate ?? 0,
     },
     sector_by_template: {},
+    by_pool_selected: {},
     unmapped_samples: artifacts.routing_diagnostics?.unmapped_samples ?? [],
   };
 }
