@@ -238,19 +238,34 @@ Sector funnel for consumer discretionary and consumer staples companies, aligned
 slug: consumer_template
 
 **Consumer Dividend Supporting**:
-Optional consumer quality-track supporting metric for mature cash-return signal. Uses missing skip when quote enrichment lacks dividend data; not a compounder requirement.
+Optional consumer quality-track supporting metric for mature cash-return signal. Uses missing skip when dividend enrichment lacks data; not a compounder requirement.
 slug: consumer_dividend_supporting
 _Avoid_: requiring dividend yield for growth consumer names
+
+**Dividend Yield Row Policy**:
+When multiple dividend records exist, prefer the latest implemented cash dividend yield; if none implemented, use the latest announced yield and treat confidence as lower.
+slug: dividend_yield_row_policy
+_Avoid_: mixing pre-disclosure placeholder rows with implemented trailing yield
 
 **Healthcare Template**:
 Sector funnel for pharmaceutical, biotech, vaccine, CXO, and healthcare-services companies. Medical devices route to manufacturing; traditional Chinese medicine and pharmacy retail/distribution route to consumer.
 slug: healthcare_template
 _Avoid_: pharma_template, screening pharma via consumer union
 
+**Medical Device Funnel Placement**:
+Medical-device names route to the manufacturing template only; passing names may rank in deferred rather than the primary top band under the global funnel ranker. Deep audit remains the path for qualitative review of deferred device names.
+slug: medical_device_funnel_placement
+_Avoid_: re-routing devices to consumer for funnel convenience, treating deferred device names as funnel failures
+
 **Healthcare Quality Dual Path**:
 Healthcare quality track admits two archetypes: (1) profitable compounders via ROE/FCF/margin stability (Buffett/Li Lu), and (2) a small biotech exception for unprofitable but high-gross-margin growers that must pass stricter unit-economics and anti-deterioration gates before Deep audit applies classification.md sector exceptions.
 slug: healthcare_quality_dual_path
 _Avoid_: treating all biotech like SaaS growth names, mechanical ROE/FCF on pre-profit R&D names in Deep
+
+**Healthcare Pass Rate Review**:
+Quarterly review of healthcare sector-template pass rate against other templates; template tightening waits on Deep false-positive evidence, not pass-rate alone.
+slug: healthcare_pass_rate_review
+_Avoid_: tightening healthcare required bars only because top-25 names cluster in pharma
 
 **Cyclicals Template**:
 Sector funnel for materials, energy, industrials, and other cycle-driven companies. Uses mid-cycle normalized earnings for valuation metrics, not peak or trough snapshots.
@@ -269,9 +284,9 @@ Sector funnel for manufacturing, hardware, semiconductors, and industrial produc
 slug: manufacturing_template
 
 **Capex to Revenue Ratio**:
-Capital expenditure divided by revenue, using a multi-year average in funnel enrichment to smooth one-off capacity builds. Aligns with Buffett/Munger capex-discipline screens for manufacturers.
+Capital expenditure divided by revenue, using a multi-year average in funnel enrichment to smooth one-off capacity builds. Requires at least two fiscal years with capex data; two-year averages use medium data confidence, three-year averages use high. Aligns with Buffett/Munger capex-discipline screens for manufacturers.
 slug: capex_to_revenue_ratio
-_Avoid_: single-year capex spikes as the only funnel signal
+_Avoid_: single-year capex spikes as the only funnel signal, treating a one-year capex print as a full multi-year average
 
 **Inventory Turnover vs Industry**:
 A company's inventory turnover minus the median turnover of its industry-peer group in the same market. Proxy for supply-chain efficiency and channel health in manufacturing screens.
@@ -280,6 +295,11 @@ slug: inventory_turnover_vs_industry
 **Semiconductor Capex Override**:
 Manufacturing quality-track capex-to-revenue supporting threshold uses 25% for semiconductor GICS codes instead of the default 15%.
 slug: semiconductor_capex_override
+
+**Enrichment Cache Repair**:
+When live enrichment leaves tickers without a cache file, operators may run a targeted repair pass for the missing tickers before quarterly sign-off; diagnostics should report missing-cache counts and sample tickers.
+slug: enrichment_cache_repair
+_Avoid_: treating missing-cache tickers as absent from the enriched universe
 
 **Funnel Soft Cap**:
 Maximum number of ranked candidates written to primary funnel output per market per run. Overflow passes are written to deferred output, not deleted.
