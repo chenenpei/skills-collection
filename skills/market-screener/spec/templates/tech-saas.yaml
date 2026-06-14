@@ -17,8 +17,8 @@ quality_track:
     - { metric: gross_margin, min: 0.55 }
     - { metric: ndr, min: 1.05, missing: skip }
     - { metric: roic, min: 0.15, if_unprofitable: skip }
-    - { metric: sbc_to_revenue, max: 0.20, market_overrides: { CN: 0.10, US: 0.20 } }
-    - { metric: share_dilution_3y, max: 0.10 }
+    - { metric: sbc_to_revenue, max: 0.20, market_overrides: { CN: 0.10, US: 0.20 }, market_missing_overrides: { CN: skip } }
+    - { metric: share_dilution_3y, max: 0.10, market_missing_overrides: { CN: skip } }
     - { metric: fcf_margin, min: 0.15, if_fcf_negative: skip }
 
   funnel_flags:

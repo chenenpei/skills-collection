@@ -10,13 +10,21 @@ function resolveBound(rule: ThresholdRule, market: Market): { min?: number; max?
   return { min: rule.min, max: rule.max };
 }
 
+export function isMarketMissingOverrideSkip(rule: ThresholdRule, market: Market): boolean {
+  return rule.market_missing_overrides?.[market] === "skip";
+}
+
+export function shouldSkipMissingMetric(rule: ThresholdRule, market: Market): boolean {
+  return rule.missing === "skip" || isMarketMissingOverrideSkip(rule, market);
+}
+
 export function evaluateThreshold(
   metric: MetricValue | undefined,
   rule: ThresholdRule,
   market: Market
 ): ThresholdResult {
   if (metric?.value === undefined) {
-    if (rule.missing === "skip") {
+    if (shouldSkipMissingMetric(rule, market)) {
       return { passed: true, skipped: true, dataConfidence: "medium" };
     }
     return { passed: false, skipped: false, dataConfidence: "low" };

@@ -54,6 +54,7 @@ routing:
   use_passed_track_from: audit-summary or candidates.yaml
   override_by_sector:
     financials_banks: financials_banks
+    financials_banks_proxy: financials_insurance_other
     financials_insurance: financials_insurance_other
     financials_other: financials_insurance_other
     cyclicals: cyclicals

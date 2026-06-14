@@ -72,7 +72,8 @@ export function listTemplateTrackResults(
         result: evaluateTemplateTrack(
           tpl as SectorTemplateSpec & Record<string, unknown>,
           track,
-          record
+          record,
+          tplRef.subTemplate
         ),
       });
     }

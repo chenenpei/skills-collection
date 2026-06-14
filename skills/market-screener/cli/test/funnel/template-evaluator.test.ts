@@ -38,6 +38,7 @@ const strongSaasRecord = (): SecurityRecord => ({
 
 describe("evaluateTemplateTrack", () => {
   let techSaas: SectorTemplateSpec & Record<string, unknown>;
+  let financials: SectorTemplateSpec & Record<string, unknown>;
   let consumer: SectorTemplateSpec & Record<string, unknown>;
   let manufacturing: SectorTemplateSpec & Record<string, unknown>;
   let healthcare: SectorTemplateSpec & Record<string, unknown>;
@@ -46,6 +47,7 @@ describe("evaluateTemplateTrack", () => {
   beforeAll(async () => {
     const bundle = await loadSpecBundle(SPEC_DIR);
     techSaas = bundle.templates.tech_saas as SectorTemplateSpec & Record<string, unknown>;
+    financials = bundle.templates.financials as SectorTemplateSpec & Record<string, unknown>;
     consumer = bundle.templates.consumer as SectorTemplateSpec & Record<string, unknown>;
     manufacturing = bundle.templates.manufacturing as SectorTemplateSpec &
       Record<string, unknown>;
@@ -197,5 +199,85 @@ describe("evaluateTemplateTrack", () => {
 
   it("consumer quality still passes when dividend_yield is missing (skip)", () => {
     expect(evaluateTemplateTrack(consumer, "quality", strongConsumerRecord()).passed).toBe(true);
+  });
+
+  const banksProxyMispricingRecord = (): SecurityRecord => ({
+    ticker: "601398",
+    market: "CN",
+    companyName: "CN Bank Proxy",
+    currency: "CNY",
+    status: "active",
+    marketCap: 2e12,
+    listingAgeYears: 20,
+    metrics: {
+      roe_ttm: { value: 0.13, dataConfidence: "high" },
+      pb: { value: 0.65, dataConfidence: "high" },
+      roe_3y_avg: { value: 0.11, dataConfidence: "high" },
+      dividend_yield: { value: 0.05, dataConfidence: "high" },
+      roe_vs_industry_median: { value: 0.01, dataConfidence: "high" },
+      revenue: { value: 1e11, dataConfidence: "high" },
+      net_income: { value: 3e10, dataConfidence: "high" },
+      operating_cash_flow: { value: 4e10, dataConfidence: "high" },
+    },
+    revenueYoyHistory: [0.02, 0.03, 0.02],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 4,
+  });
+
+  it("passes financials banks_proxy mispricing with proxy funnel flag", () => {
+    const result = evaluateTemplateTrack(
+      financials,
+      "mispricing",
+      banksProxyMispricingRecord(),
+      "banks_proxy"
+    );
+    expect(result).toMatchObject({
+      passed: true,
+      passedTrack: "mispricing",
+      funnelFlags: expect.arrayContaining(["bank_routed_via_other_financials_proxy"]),
+    });
+    expect(result.auditHints).toEqual(
+      expect.arrayContaining([
+        "verify_credit_quality_in_deep_not_funnel",
+        "bank_proxy_template_active",
+      ])
+    );
+  });
+
+  const cnTechQualityWithoutSbc = (): SecurityRecord => ({
+    ticker: "CNTECH",
+    market: "CN",
+    companyName: "CN Tech",
+    currency: "CNY",
+    status: "active",
+    marketCap: 5e9,
+    listingAgeYears: 5,
+    metrics: {
+      rule_of_40: { value: 42, dataConfidence: "high" },
+      gross_margin: { value: 0.56, dataConfidence: "high" },
+      revenue_growth_yoy: { value: 0.15, dataConfidence: "high" },
+      ndr: { value: 1.08, dataConfidence: "high" },
+      roic: { value: 0.18, dataConfidence: "high" },
+      fcf_margin: { value: 0.2, dataConfidence: "high" },
+      revenue: { value: 1e9, dataConfidence: "high" },
+      net_income: { value: 1e8, dataConfidence: "high" },
+      operating_cash_flow: { value: 2e8, dataConfidence: "high" },
+    },
+    revenueYoyHistory: [0.1, 0.12, 0.15],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 3,
+  });
+
+  it("passes CN tech_saas quality when SBC and dilution are missing with verify flag", () => {
+    const result = evaluateTemplateTrack(techSaas, "quality", cnTechQualityWithoutSbc());
+    expect(result).toMatchObject({
+      passed: true,
+      passedTrack: "quality",
+      funnelFlags: expect.arrayContaining(["verify_sbc_dilution_in_deep_cn"]),
+    });
   });
 });

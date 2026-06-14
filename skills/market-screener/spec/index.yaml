@@ -64,7 +64,7 @@ templates:
   - id: financials
     file: templates/financials.yaml
     tracks: [quality, mispricing]
-    sub_templates: [banks, insurance, other_financials]
+    sub_templates: [banks, banks_proxy, insurance, other_financials]
   - id: tech_saas
     file: templates/tech-saas.yaml
     tracks: [quality, mispricing]

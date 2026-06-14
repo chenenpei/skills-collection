@@ -1,6 +1,6 @@
 import type { SectorTemplateSpec } from "../spec/types.js";
 import type { SecurityRecord } from "./kill-gates.js";
-import { evaluateThreshold } from "./threshold.js";
+import { evaluateThreshold, isMarketMissingOverrideSkip, shouldSkipMissingMetric } from "./threshold.js";
 import type { MetricValue, ThresholdRule } from "./types.js";
 
 export interface TemplateEvalResult {
@@ -27,6 +27,19 @@ function toThresholdRule(rule: Record<string, unknown>): ThresholdRule {
   return threshold;
 }
 
+export function resolveTemplateForEvaluation(
+  template: SectorTemplateSpec & Record<string, unknown>,
+  subTemplateId?: string
+): SectorTemplateSpec & Record<string, unknown> {
+  if (!subTemplateId) return template;
+  const subTemplates = template.sub_templates as Record<string, Record<string, unknown>> | undefined;
+  const sub = subTemplates?.[subTemplateId];
+  if (!sub) return template;
+  const merged = { ...template, ...sub };
+  delete merged.sub_templates;
+  return merged;
+}
+
 type SupportingSkipReason = "missing" | "conditional";
 
 function getSupportingSkipReason(
@@ -42,7 +55,7 @@ function getSupportingSkipReason(
     const fcf = record.metrics.fcf_margin?.value ?? record.metrics.free_cash_flow?.value;
     if (fcf !== undefined && fcf < 0) return "conditional";
   }
-  if (metric?.value === undefined && rule.missing === "skip") {
+  if (metric?.value === undefined && shouldSkipMissingMetric(toThresholdRule(rule), record.market)) {
     return "missing";
   }
   return undefined;
@@ -57,11 +70,13 @@ function evalRuleList(
   snapshot: Record<string, MetricValue>;
   missingSkipCount: number;
   otherSkipCount: number;
+  marketMissingSkippedMetrics: string[];
 } {
   let passCount = 0;
   let total = 0;
   let missingSkipCount = 0;
   let otherSkipCount = 0;
+  const marketMissingSkippedMetrics: string[] = [];
   const snapshot: Record<string, MetricValue> = {};
 
   for (const rule of rules) {
@@ -72,6 +87,9 @@ function evalRuleList(
     const skipReason = getSupportingSkipReason(rule, record, mv);
     if (skipReason === "missing") {
       missingSkipCount += 1;
+      if (isMarketMissingOverrideSkip(toThresholdRule(rule), record.market)) {
+        marketMissingSkippedMetrics.push(metric);
+      }
       continue;
     }
     if (skipReason === "conditional") {
@@ -85,7 +103,7 @@ function evalRuleList(
     if (result.passed) passCount += 1;
   }
 
-  return { passCount, total, snapshot, missingSkipCount, otherSkipCount };
+  return { passCount, total, snapshot, missingSkipCount, otherSkipCount, marketMissingSkippedMetrics };
 }
 
 /** Downgrade supportingMin only when fewer metrics are evaluable solely due to missing: skip. */
@@ -115,7 +133,8 @@ function resolveSupportingPass(
 export function evaluateTemplateTrack(
   template: SectorTemplateSpec & Record<string, unknown>,
   track: "quality" | "mispricing",
-  record: SecurityRecord
+  record: SecurityRecord,
+  subTemplateId?: string
 ): TemplateEvalResult {
   const empty: TemplateEvalResult = {
     passed: false,
@@ -126,7 +145,8 @@ export function evaluateTemplateTrack(
     funnelFlags: [],
   };
 
-  const trackDef = template[`${track}_track`] as Record<string, unknown> | undefined;
+  const evalTemplate = resolveTemplateForEvaluation(template, subTemplateId);
+  const trackDef = evalTemplate[`${track}_track`] as Record<string, unknown> | undefined;
   if (!trackDef) return empty;
 
   const snapshot: Record<string, MetricValue> = {};
@@ -139,8 +159,14 @@ export function evaluateTemplateTrack(
   }
 
   const supportingRules = (trackDef.supporting as Array<Record<string, unknown>>) ?? [];
-  const { passCount, total, snapshot: supportingSnapshot, missingSkipCount, otherSkipCount } =
-    evalRuleList(supportingRules, record);
+  const {
+    passCount,
+    total,
+    snapshot: supportingSnapshot,
+    missingSkipCount,
+    otherSkipCount,
+    marketMissingSkippedMetrics,
+  } = evalRuleList(supportingRules, record);
   Object.assign(snapshot, supportingSnapshot);
 
   const passIf = (trackDef.pass_if as string) ?? "";
@@ -153,8 +179,18 @@ export function evaluateTemplateTrack(
     otherSkipCount
   );
 
-  const auditHints = ((template.audit_hints as string[]) ?? []).slice();
-  const funnelFlags = ((trackDef.funnel_flags as string[]) ?? []).slice();
+  const auditHints = ((evalTemplate.audit_hints as string[]) ?? []).slice();
+  const funnelFlags = [
+    ...((evalTemplate.funnel_flags as string[]) ?? []),
+    ...((trackDef.funnel_flags as string[]) ?? []),
+  ];
+
+  if (
+    record.market === "CN" &&
+    marketMissingSkippedMetrics.some((m) => m === "sbc_to_revenue" || m === "share_dilution_3y")
+  ) {
+    funnelFlags.push("verify_sbc_dilution_in_deep_cn");
+  }
 
   return {
     passed,

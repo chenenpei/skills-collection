@@ -169,6 +169,11 @@ export function routeSecurity(
   cnIndustryMap: CnIndustryMapSpec | undefined,
   input: RouteInput
 ): RouteResult {
+  if (input.market === "CN" && cnIndustryMap) {
+    const cnRoute = routeViaCnIndustryMap(cnIndustryMap, input.industryProxy);
+    if (cnRoute) return cnRoute;
+  }
+
   if (input.gicsCode) {
     for (const mapping of routingMap.mappings) {
       const prefix = mapping.gics_prefix as string;
@@ -182,11 +187,6 @@ export function routeSecurity(
       };
       return buildRouteFromRule(rule, `gics:${prefix}`, "gics");
     }
-  }
-
-  if (input.market === "CN" && cnIndustryMap) {
-    const cnRoute = routeViaCnIndustryMap(cnIndustryMap, input.industryProxy);
-    if (cnRoute) return cnRoute;
   }
 
   const proxyRoute = routeViaIndustryProxy(routingMap, cnIndustryMap, input.industryProxy);

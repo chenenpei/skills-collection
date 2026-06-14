@@ -139,6 +139,17 @@ describe("routeSecurity", () => {
       expect(result.templates.map((t) => t.id).sort()).toEqual(["cyclicals", "manufacturing"]);
       expect(result.templates.map((t) => t.id)).not.toContain("tech_saas");
     });
+
+    it("routes CN 银行 to financials/banks_proxy via cn_industry_map before GICS", () => {
+      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+        market: "CN",
+        gicsCode: "401010",
+        industryProxy: "银行-国有大型银行Ⅱ-国有大型银行Ⅲ",
+      });
+      expect(result.routingMethod).toBe("cn_industry_map");
+      expect(result.matchedRule).toBe("l1:银行");
+      expect(result.templates).toEqual([{ id: "financials", subTemplate: "banks_proxy" }]);
+    });
   });
 
   it("routes GICS 3520 to healthcare", () => {

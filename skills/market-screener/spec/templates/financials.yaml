@@ -80,6 +80,40 @@ sub_templates:
         - { metric: dividend_yield, min: 0.04 }
         - { metric: price_vs_52w_high, max: 0.75 }
 
+  banks_proxy:
+    funnel_flags:
+      - bank_routed_via_other_financials_proxy
+
+    audit_hints:
+      - verify_credit_quality_in_deep_not_funnel
+      - bank_proxy_template_active
+
+    quality_track:
+      pass_if: all_required_and_supporting_min_4_of_5
+      required:
+        roe_ttm:
+          min: 0.12
+          market_overrides: { CN: 0.10 }
+        pb: { max: 2.0 }
+      supporting:
+        - { metric: roe_3y_avg, min: 0.10 }
+        - { metric: net_debt_to_equity, max: 1.0, missing: skip }
+        - { metric: revenue_3y_cagr, min: 0.05, missing: skip }
+        - { metric: dividend_yield, min: 0.02 }
+        - { metric: roe_vs_industry_median, min: 0 }
+
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_3_of_4
+      required:
+        roe_ttm: { min: 0.08 }
+        pb: { max: 1.5 }
+      supporting:
+        - { metric: pb_vs_5y_median, max: 0.80, missing: skip }
+        - { metric: graham_composite, max: 22.5, missing: skip }
+        - { metric: price_vs_52w_high, max: 0.70, missing: skip }
+        - { metric: revenue_yoy, min: 0, missing: skip }
+        - { metric: roe_ttm, min: 0.12 }
+
   other_financials:
     gics_codes: ["402030", "404020"]
 
