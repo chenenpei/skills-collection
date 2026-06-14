@@ -157,6 +157,17 @@ export function mergeEnrichment(
   if (pbVs5y) metrics.pb_vs_5y_median = pbVs5y;
   if (psVs5y) metrics.ps_vs_5y_median = psVs5y;
 
+  const midPe = metrics.mid_cycle_pe?.value;
+  if (midPe !== undefined && midPe > 0 && history.length >= 2) {
+    const histPe = history.map((e) => e.pe).filter((v): v is number => v !== undefined && v > 0);
+    if (histPe.length >= 2) {
+      const med = median(histPe);
+      if (med > 0) {
+        metrics.mid_cycle_pe_vs_10y_median = { value: midPe / med, dataConfidence: "medium" };
+      }
+    }
+  }
+
   return {
     ...record,
     ...derivedFields,

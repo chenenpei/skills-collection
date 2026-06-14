@@ -34,7 +34,7 @@ mispricing_track:
     net_debt_to_ebitda: { max: 3.0 }
     gross_margin: { min: 0.20 }
   supporting:
-    - { metric: ev_ebitda_vs_5y_median, max: 0.80 }
+    - { metric: ev_ebitda_vs_5y_median, max: 0.80, missing: skip }
     - { metric: pb_vs_peer_median, max: 0.85 }
     - { metric: fcf_yield, min: 0.05 }
     - { metric: mid_cycle_pe, max: 12, when_cyclical: true }

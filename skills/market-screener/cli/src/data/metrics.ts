@@ -29,6 +29,17 @@ export interface AnnualFinancialRow {
   operatingProfit?: number;
   capex?: number; // abs(CONSTRUCT_LONG_ASSET)
   inventory?: number;
+  roic?: number;
+  totalLiabilities?: number;
+  totalEquity?: number;
+  monetaryFunds?: number;
+}
+
+/** Pre-ADR-0005 cache rows lack ROIC / balance fields — refresh without full skipCache. */
+export function annualRowsNeedMetricRefresh(rows: AnnualFinancialRow[]): boolean {
+  const latest = rows[rows.length - 1];
+  if (!latest) return false;
+  return latest.roic === undefined || latest.totalEquity === undefined;
 }
 
 function mv(value: number, confidence: MetricValue["dataConfidence"] = "medium"): MetricValue {
@@ -44,25 +55,15 @@ function cagr(start: number, end: number, years: number): number {
   return Math.pow(end / start, 1 / years) - 1;
 }
 
-function debtToEquityFromAlr(alr: number): number {
-  if (alr <= 0 || alr >= 1) return 0;
-  return alr / (1 - alr);
+function operatingMargin(row: AnnualFinancialRow): number | undefined {
+  if (row.revenue <= 0) return undefined;
+  if (row.operatingProfit === undefined || row.operatingProfit <= 0) return undefined;
+  return row.operatingProfit / row.revenue;
 }
 
-function netDebtToEbitdaProxy(row: AnnualFinancialRow): number {
-  const ebitda = row.operatingProfit ?? row.grossProfit * 0.7;
-  if (ebitda <= 0) return 99;
-  const debtProxy = row.revenue * row.assetLiabilityRatio;
-  return Math.max(0, (debtProxy - row.operatingCashFlow * 0.1) / ebitda);
-}
-
-function operatingMargin(row: AnnualFinancialRow): number {
-  if (row.revenue <= 0) return 0;
-  if (row.operatingProfit !== undefined && row.operatingProfit > 0) {
-    return row.operatingProfit / row.revenue;
-  }
-  // Proxy when operating profit is unavailable (see spec/conventions.yaml).
-  return (row.grossProfit / row.revenue) * 0.35;
+function netDebtFromBalance(row: AnnualFinancialRow): number | undefined {
+  if (row.totalLiabilities === undefined || row.monetaryFunds === undefined) return undefined;
+  return Math.max(0, row.totalLiabilities - row.monetaryFunds);
 }
 
 function inventoryTurnover(row: AnnualFinancialRow, prev?: AnnualFinancialRow): number | undefined {
@@ -86,28 +87,12 @@ export interface DeriveContext {
 }
 
 const MID_CYCLE_WINDOW_YEARS = 7;
-const PE_HISTORY_YEARS = 10;
 /** Consumer/healthcare mispricing supporting floor (fcf_yield_vs_risk_free min 0.04). */
 const RISK_FREE_RATE = 0.04;
 
-function ebitdaForRow(row: AnnualFinancialRow): number {
-  return row.operatingProfit ?? row.grossProfit * 0.7;
-}
-
-function netDebtProxy(row: AnnualFinancialRow): number {
-  const debt = row.revenue * row.assetLiabilityRatio;
-  const cash = row.operatingCashFlow * 0.1;
-  return Math.max(0, debt - cash);
-}
-
-function evEbitdaForRow(row: AnnualFinancialRow, marketCap: number): number | undefined {
-  const ebitda = ebitdaForRow(row);
-  if (ebitda <= 0 || marketCap <= 0) return undefined;
-  return (marketCap + netDebtProxy(row)) / ebitda;
-}
-
-function roicProxyFromRoe(roe: number): number {
-  return roe * 0.85;
+function ebitdaForRow(row: AnnualFinancialRow): number | undefined {
+  if (row.operatingProfit === undefined || row.operatingProfit <= 0) return undefined;
+  return row.operatingProfit;
 }
 
 function fcfForRow(row: AnnualFinancialRow): number {
@@ -163,18 +148,18 @@ export function deriveFromAnnualRows(
     roe_ttm: mv(latest.roe),
     roe_5y_avg: mv(avg(roes)),
     gross_margin: mv(grossMargin),
-    operating_margin: mv(opMargin),
     gross_margin_3y_max_decline_pp: mv(computeGrossMarginMaxDeclinePp(grossMargins)),
     fcf_conversion_5y: mv(avg(fcfConversions.length ? fcfConversions : [0])),
-    net_debt_to_ebitda: mv(netDebtToEbitdaProxy(latest)),
-    debt_to_equity: mv(debtToEquityFromAlr(latest.assetLiabilityRatio)),
     revenue_3y_cagr: mv(
       sorted.length >= 4
         ? cagr(sorted[sorted.length - 4].revenue, latest.revenue, 3)
         : cagr(sorted[0].revenue, latest.revenue, Math.max(1, sorted.length - 1))
     ),
-    roic_5y_avg: mv(avg(roes) * 0.85),
   };
+
+  if (opMargin !== undefined) {
+    metrics.operating_margin = mv(opMargin);
+  }
 
   const capexYears = sorted.slice(-3).filter((r) => r.revenue > 0 && r.capex !== undefined);
   if (capexYears.length >= 2) {
@@ -218,46 +203,34 @@ export function deriveFromAnnualRows(
     metrics.mid_cycle_fcf = mv(midCycleFcf);
     metrics.mid_cycle_fcf_yield = mv(midCycleFcf / ctx.marketCap);
   }
-  const midCycleOpMargin = midCycleAverage(last7.map((r) => operatingMargin(r)));
+  const midCycleOpMargin = midCycleAverage(
+    last7
+      .map((r) => operatingMargin(r))
+      .filter((v): v is number => v !== undefined)
+  );
   if (midCycleOpMargin !== undefined) {
     metrics.mid_cycle_operating_margin = mv(midCycleOpMargin);
   }
 
-  const midCycleEbitda = midCycleAverage(last7.map((r) => ebitdaForRow(r)));
+  const midCycleEbitda = midCycleAverage(
+    last7
+      .map((r) => ebitdaForRow(r))
+      .filter((v): v is number => v !== undefined)
+  );
   if (midCycleEbitda !== undefined && midCycleEbitda > 0) {
     metrics.mid_cycle_ebitda = mv(midCycleEbitda);
-    if (ctx.marketCap > 0) {
-      metrics.mid_cycle_ev_ebitda = mv((ctx.marketCap + netDebtProxy(latest)) / midCycleEbitda);
+    const netDebt = netDebtFromBalance(latest);
+    if (ctx.marketCap > 0 && netDebt !== undefined) {
+      metrics.mid_cycle_ev_ebitda = mv((ctx.marketCap + netDebt) / midCycleEbitda);
     }
   }
 
-  const peHistory = sorted
-    .slice(-PE_HISTORY_YEARS)
-    .map((r) => (r.netIncome > 0 && ctx.marketCap > 0 ? ctx.marketCap / r.netIncome : undefined))
-    .filter((v): v is number => v !== undefined && v > 0);
-  if (metrics.mid_cycle_pe?.value !== undefined && peHistory.length >= 2) {
-    const peMed = median(peHistory);
-    if (peMed > 0) {
-      metrics.mid_cycle_pe_vs_10y_median = mv(metrics.mid_cycle_pe.value / peMed);
-    }
-  }
-
-  const evHistory = sorted
-    .slice(-PE_HISTORY_YEARS)
-    .map((r) => evEbitdaForRow(r, ctx.marketCap))
-    .filter((v): v is number => v !== undefined && v > 0);
-  const currentEvEbitda = evEbitdaForRow(latest, ctx.marketCap);
-  if (currentEvEbitda !== undefined && evHistory.length >= 2) {
-    const evMed = median(evHistory);
-    if (evMed > 0) {
-      metrics.ev_ebitda_vs_5y_median = mv(currentEvEbitda / evMed);
-    }
-  }
-
-  const marginHistory = sorted.slice(-MID_CYCLE_WINDOW_YEARS).map((r) => operatingMargin(r));
-  if (marginHistory.length >= 2) {
-    const marginMedian = median(marginHistory);
-    metrics.operating_margin_vs_10y_median = mv(opMargin - marginMedian);
+  const marginHistory = sorted
+    .slice(-MID_CYCLE_WINDOW_YEARS)
+    .map((r) => operatingMargin(r))
+    .filter((v): v is number => v !== undefined);
+  if (marginHistory.length >= 2 && opMargin !== undefined) {
+    metrics.operating_margin_vs_10y_median = mv(opMargin - median(marginHistory));
   }
 
   if (sorted.length >= 11) {
@@ -273,6 +246,29 @@ export function deriveFromAnnualRows(
   const roe3y = sorted.slice(-3).map((r) => r.roe);
   if (roe3y.length > 0) metrics.roe_3y_avg = mv(avg(roe3y));
 
+  const roicHistory = last5.map((r) => r.roic).filter((v): v is number => v !== undefined);
+  if (latest.roic !== undefined) {
+    metrics.roic_ttm = mv(latest.roic, "high");
+    metrics.roic = metrics.roic_ttm;
+  }
+  if (roicHistory.length >= 3) {
+    metrics.roic_5y_avg = mv(avg(roicHistory), roicHistory.length >= 5 ? "high" : "medium");
+  }
+
+  if (
+    latest.totalEquity !== undefined &&
+    latest.totalEquity > 0 &&
+    latest.totalLiabilities !== undefined
+  ) {
+    metrics.debt_to_equity = mv(latest.totalLiabilities / latest.totalEquity, "high");
+    metrics.net_debt_to_equity = metrics.debt_to_equity;
+  }
+  const ebitda = ebitdaForRow(latest);
+  const netDebt = netDebtFromBalance(latest);
+  if (ebitda !== undefined && netDebt !== undefined) {
+    metrics.net_debt_to_ebitda = mv(netDebt / ebitda, "high");
+  }
+
   const latestRevenueYoy = revenueYoyHistory[revenueYoyHistory.length - 1];
   if (latestRevenueYoy !== undefined) {
     metrics.revenue_yoy = mv(latestRevenueYoy);
@@ -284,11 +280,6 @@ export function deriveFromAnnualRows(
   if (latest.revenue > 0) metrics.fcf_margin = mv(fcfMargin);
   metrics.rule_of_40 = mv(((latestRevenueYoy ?? 0) + fcfMargin) * 100);
 
-  metrics.roic_ttm = mv(roicProxyFromRoe(latest.roe));
-  metrics.roic = metrics.roic_ttm;
-  if (metrics.debt_to_equity) {
-    metrics.net_debt_to_equity = metrics.debt_to_equity;
-  }
   if (ctx.marketCap > 0 && latest.revenue > 0) {
     metrics.revenue_yield = mv(latest.revenue / ctx.marketCap);
   }

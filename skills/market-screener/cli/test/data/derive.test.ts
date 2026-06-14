@@ -129,7 +129,7 @@ describe("deriveFromAnnualRows", () => {
     expect(derived.metrics.rule_of_40?.value).toBeCloseTo((revenueGrowth + fcfMargin) * 100, 4);
   });
 
-  it("derives mid_cycle_ebitda and mid_cycle_pe_vs_10y_median", () => {
+  it("derives mid_cycle_ebitda but not mid_cycle_pe_vs_10y_median from annual derive", () => {
     const rows = Array.from({ length: 10 }, (_, i) => ({
       year: 2016 + i,
       revenue: 100 + i * 5,
@@ -143,18 +143,39 @@ describe("deriveFromAnnualRows", () => {
     const marketCap = 200;
     const derived = deriveFromAnnualRows(rows, { marketCap, currency: "CNY" });
     expect(derived.metrics.mid_cycle_ebitda?.value).toBeGreaterThan(0);
-    expect(derived.metrics.mid_cycle_pe_vs_10y_median?.value).toBeGreaterThan(0);
+    expect(derived.metrics.mid_cycle_pe_vs_10y_median).toBeUndefined();
   });
 
-  it("derives roic_ttm, net_debt_to_equity alias, and fcf_yield_vs_risk_free", () => {
+  function avgRoic5y(rows: AnnualFinancialRow[]): number {
+    const vals = rows.slice(-5).map((r) => r.roic).filter((v): v is number => v !== undefined);
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+
+  it("derives roic from vendor field only and omits when missing", () => {
+    const withRoic = moutaiLike.map((r, i) =>
+      i === moutaiLike.length - 1 ? { ...r, roic: 0.229 } : { ...r, roic: 0.15 + i * 0.01 }
+    );
+    const derived = deriveFromAnnualRows(withRoic, {
+      marketCap: 2e12,
+      currency: "CNY",
+      fcf: 5e10,
+    });
+    expect(derived.metrics.roic_ttm?.value).toBeCloseTo(0.229, 4);
+    expect(derived.metrics.roic?.value).toBeCloseTo(0.229, 4);
+    expect(derived.metrics.roic_5y_avg?.value).toBeCloseTo(avgRoic5y(withRoic), 4);
+
+    const noRoic = deriveFromAnnualRows(moutaiLike, { marketCap: 2e12, currency: "CNY" });
+    expect(noRoic.metrics.roic_ttm).toBeUndefined();
+    expect(noRoic.metrics.roic).toBeUndefined();
+    expect(noRoic.metrics.roic_5y_avg).toBeUndefined();
+  });
+
+  it("still derives fcf_yield_vs_risk_free when fcf provided", () => {
     const derived = deriveFromAnnualRows(moutaiLike, {
       marketCap: 2e12,
       currency: "CNY",
       fcf: 5e10,
     });
-    expect(derived.metrics.roic_ttm?.value).toBeCloseTo(moutaiLike[4].roe * 0.85, 4);
-    expect(derived.metrics.roic?.value).toBe(derived.metrics.roic_ttm?.value);
-    expect(derived.metrics.net_debt_to_equity?.value).toBe(derived.metrics.debt_to_equity?.value);
     expect(derived.metrics.fcf_yield_vs_risk_free?.value).toBeDefined();
   });
 
@@ -190,7 +211,7 @@ describe("deriveFromAnnualRows", () => {
     );
   });
 
-  it("derives ev_ebitda_vs_5y_median from annual EV/EBITDA history", () => {
+  it("does not derive ev_ebitda_vs_5y_median from annual EV/EBITDA history", () => {
     const rows = Array.from({ length: 6 }, (_, i) => ({
       year: 2020 + i,
       revenue: 100,
@@ -200,8 +221,75 @@ describe("deriveFromAnnualRows", () => {
       operatingProfit: 20 + i,
       roe: 0.1,
       assetLiabilityRatio: 0.3,
+      totalLiabilities: 50,
+      monetaryFunds: 20,
     }));
     const derived = deriveFromAnnualRows(rows, { marketCap: 500, currency: "CNY" });
-    expect(derived.metrics.ev_ebitda_vs_5y_median?.value).toBeGreaterThan(0);
+    expect(derived.metrics.ev_ebitda_vs_5y_median).toBeUndefined();
+  });
+
+  it("omits operating_margin when operating profit missing", () => {
+    const rows = [
+      {
+        year: 2025,
+        revenue: 100,
+        grossProfit: 40,
+        netIncome: 10,
+        operatingCashFlow: 12,
+        roe: 0.1,
+        assetLiabilityRatio: 0.4,
+      },
+    ];
+    const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
+    expect(derived.metrics.operating_margin).toBeUndefined();
+  });
+
+  it("derives debt_to_equity and net_debt_to_ebitda from balance sheet only", () => {
+    const rows = [
+      {
+        year: 2025,
+        revenue: 100,
+        grossProfit: 40,
+        netIncome: 10,
+        operatingCashFlow: 12,
+        roe: 0.1,
+        assetLiabilityRatio: 0.4,
+        operatingProfit: 25,
+        totalLiabilities: 50,
+        totalEquity: 100,
+        monetaryFunds: 20,
+      },
+    ];
+    const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
+    expect(derived.metrics.debt_to_equity?.value).toBeCloseTo(0.5, 4);
+    expect(derived.metrics.net_debt_to_ebitda?.value).toBeCloseTo(1.2, 4);
+  });
+
+  it("omits debt_to_equity when balance fields missing", () => {
+    const derived = deriveFromAnnualRows(moutaiLike, { marketCap: 2e12, currency: "CNY" });
+    expect(derived.metrics.debt_to_equity).toBeUndefined();
+    expect(derived.metrics.net_debt_to_ebitda).toBeUndefined();
+  });
+
+  it("uses row.roic for US-shaped annual rows without roe scaling", () => {
+    const rows: AnnualFinancialRow[] = [
+      {
+        year: 2024,
+        revenue: 100,
+        grossProfit: 40,
+        netIncome: 10,
+        operatingCashFlow: 12,
+        roe: 0.15,
+        assetLiabilityRatio: 0.5,
+        operatingProfit: 20,
+        totalEquity: 80,
+        totalLiabilities: 50,
+        monetaryFunds: 10,
+        roic: 0.18,
+      },
+    ];
+    const derived = deriveFromAnnualRows(rows, { marketCap: 500, currency: "USD" });
+    expect(derived.metrics.roic_ttm?.value).toBeCloseTo(0.18, 4);
+    expect(derived.metrics.debt_to_equity?.value).toBeCloseTo(50 / 80, 4);
   });
 });

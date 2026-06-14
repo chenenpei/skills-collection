@@ -19,7 +19,8 @@ mispricing_track:
     net_debt_to_ebitda: { max: 2.5 }
     revenue_10y_cagr: { min: 0.0 }
   supporting:
-    - { metric: mid_cycle_pe_vs_10y_median, max: 0.85 }
+    - { metric: mid_cycle_pe_vs_10y_median, max: 0.85, missing: skip }
+    - { metric: pe_vs_5y_median, max: 0.85, missing: skip }
     - { metric: mid_cycle_ev_ebitda_vs_peer, max: 0.90 }
     - { metric: pb, max: 1.5 }
     - { metric: mid_cycle_fcf_yield, min: 0.06 }
