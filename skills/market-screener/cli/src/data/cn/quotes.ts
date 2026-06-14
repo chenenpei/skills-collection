@@ -19,12 +19,12 @@ export function withAdapterDefaults(
   };
 }
 
+import { EASTMONEY_UT } from "./eastmoney.js";
 import { httpFetch } from "../../lib/http-fetch.js";
 import type { Market } from "../../funnel/types.js";
 import type { MarketDataAdapter } from "../types.js";
 
 const CLIST_BASE = "https://push2delay.eastmoney.com/api/qt/clist/get";
-const EASTMONEY_UT = "bd1d9ddb04089700cf9c27f6f7426281";
 const A_SHARE_FS =
   "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048";
 const CLIST_FIELDS = "f12,f14,f20,f116,f127";

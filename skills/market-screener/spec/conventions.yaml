@@ -63,6 +63,18 @@ derived_metrics:
     threshold_example: { min: 0 }  # consumer quality track
     note: Requires operating_margin from derive; not a ROE proxy
 
+  capex_to_revenue:
+    meaning: Three-year average of abs(capex) / revenue from annual rows
+    unit: ratio
+    compute_from: cli/src/data/metrics.ts — CONSTRUCT_LONG_ASSET (CN) or SEC capex tags (US)
+    threshold_example: { max: 0.15 }  # manufacturing quality track
+
+  inventory_turnover_vs_industry:
+    meaning: Security inventory turnover minus industry-peer median turnover
+    unit: ratio
+    compute_from: cli/src/data/metrics.ts — COGS / avg inventory vs industry median
+    threshold_example: { min: 0 }  # manufacturing quality track
+
 live_enrichment:
   prefilter:
     ref: kill-gates.yaml#live_quote_prefilter
@@ -113,6 +125,10 @@ audit_hints:
   not_part_of: stock-analysis-audit core schema
   passed_by: orchestrator into Deep audit prompt
   fallback_note: When routing_method is fallback or routing_confidence is low, Deep must flag sector classification uncertainty and honor audit_hints (e.g. routing_fallback_unmapped_industry)
+
+sector_kill_gates:
+  execution: spec_contract_only
+  note: Declared per sector template; NOT evaluated by CLI MVP. Shared kill-gates.yaml + template thresholds enforce subset at funnel time. Deep checks use audit_hints on candidate_record, not sector_kill_gates.
 
 routing_method:
   values: [gics, cn_industry_map, industry_proxy, fallback]

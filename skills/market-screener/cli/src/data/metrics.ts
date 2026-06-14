@@ -27,6 +27,8 @@ export interface AnnualFinancialRow {
   roe: number; // decimal, e.g. 0.36 for 36%
   assetLiabilityRatio: number; // decimal, liabilities/assets
   operatingProfit?: number;
+  capex?: number; // abs(CONSTRUCT_LONG_ASSET)
+  inventory?: number;
 }
 
 function mv(value: number, confidence: MetricValue["dataConfidence"] = "medium"): MetricValue {
@@ -61,6 +63,16 @@ function operatingMargin(row: AnnualFinancialRow): number {
   }
   // Proxy when operating profit is unavailable (see spec/conventions.yaml).
   return (row.grossProfit / row.revenue) * 0.35;
+}
+
+function inventoryTurnover(row: AnnualFinancialRow, prev?: AnnualFinancialRow): number | undefined {
+  if (row.inventory === undefined || row.revenue <= 0) return undefined;
+  const cogs = row.revenue - row.grossProfit;
+  if (cogs <= 0) return undefined;
+  const avgInv =
+    prev?.inventory !== undefined ? (row.inventory + prev.inventory) / 2 : row.inventory;
+  if (avgInv <= 0) return undefined;
+  return cogs / avgInv;
 }
 
 export interface DeriveContext {
@@ -125,6 +137,20 @@ export function deriveFromAnnualRows(
     roic_5y_avg: mv(avg(roes) * 0.85),
   };
 
+  const last3Capex = sorted.slice(-3).filter((r) => r.revenue > 0 && r.capex !== undefined);
+  if (last3Capex.length >= 3) {
+    const ratios = last3Capex.map((r) => Math.abs(r.capex!) / r.revenue);
+    metrics.capex_to_revenue = mv(avg(ratios));
+  }
+
+  if (sorted.length >= 2) {
+    const latestIdx = sorted.length - 1;
+    const turnover = inventoryTurnover(sorted[latestIdx], sorted[latestIdx - 1]);
+    if (turnover !== undefined) {
+      metrics.inventory_turnover = mv(turnover);
+    }
+  }
+
   if (fcfYield !== undefined) metrics.fcf_yield = mv(fcfYield);
   if (ctx.trailingPe !== undefined && ctx.priceToBook !== undefined) {
     metrics.graham_composite = mv(ctx.trailingPe * ctx.priceToBook);
@@ -139,8 +165,6 @@ export function deriveFromAnnualRows(
   };
 }
 
-import type { SecurityRecord } from "../funnel/kill-gates.js";
-
 function median(nums: number[]): number {
   if (nums.length === 0) return 0;
   const sorted = [...nums].sort((a, b) => a - b);
@@ -154,14 +178,21 @@ function industryGroupKey(record: SecurityRecord): string {
   return `${record.market}::${record.industryProxy ?? "unknown"}`;
 }
 
-function metricValues(
-  group: SecurityRecord[],
-  key: string
-): number[] {
+function metricValues(group: SecurityRecord[], key: string): number[] {
   return group
     .map((r) => r.metrics[key]?.value)
     .filter((v): v is number => v !== undefined);
 }
+
+const VS_INDUSTRY_SPECS = [
+  { base: "gross_margin", vs: "gross_margin_vs_industry" },
+  { base: "operating_margin", vs: "operating_margin_vs_industry" },
+  {
+    base: "inventory_turnover",
+    vs: "inventory_turnover_vs_industry",
+    requirePositiveMedian: true,
+  },
+] as const;
 
 export function applyIndustryBenchmarks(records: SecurityRecord[]): SecurityRecord[] {
   const groups = new Map<string, SecurityRecord[]>();
@@ -173,38 +204,31 @@ export function applyIndustryBenchmarks(records: SecurityRecord[]): SecurityReco
     groups.set(key, list);
   }
 
-  const grossMedians = new Map<string, number>();
-  const operatingMedians = new Map<string, number>();
-  for (const [key, group] of groups) {
-    grossMedians.set(key, median(metricValues(group, "gross_margin")));
-    operatingMedians.set(key, median(metricValues(group, "operating_margin")));
-  }
+  const mediansBySpec = VS_INDUSTRY_SPECS.map((spec) => {
+    const medians = new Map<string, number>();
+    for (const [key, group] of groups) {
+      medians.set(key, median(metricValues(group, spec.base)));
+    }
+    return { spec, medians };
+  });
 
   return records.map((record) => {
     const key = industryGroupKey(record);
-    const gm = record.metrics.gross_margin?.value;
-    const om = record.metrics.operating_margin?.value;
-    const grossMed = grossMedians.get(key);
-    const opMed = operatingMedians.get(key);
-
     const metrics = { ...record.metrics };
-    if (gm !== undefined && grossMed !== undefined) {
-      metrics.gross_margin_vs_industry = {
-        value: gm - grossMed,
+    let changed = false;
+
+    for (const { spec, medians } of mediansBySpec) {
+      const value = record.metrics[spec.base]?.value;
+      const med = medians.get(key);
+      if (value === undefined || med === undefined) continue;
+      if (spec.requirePositiveMedian && med <= 0) continue;
+      metrics[spec.vs] = {
+        value: value - med,
         dataConfidence: "medium" as const,
       };
-    }
-    if (om !== undefined && opMed !== undefined) {
-      metrics.operating_margin_vs_industry = {
-        value: om - opMed,
-        dataConfidence: "medium" as const,
-      };
+      changed = true;
     }
 
-    if (metrics.gross_margin_vs_industry === undefined && metrics.operating_margin_vs_industry === undefined) {
-      return record;
-    }
-
-    return { ...record, metrics };
+    return changed ? { ...record, metrics } : record;
   });
 }

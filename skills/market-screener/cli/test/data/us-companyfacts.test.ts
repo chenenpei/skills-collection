@@ -30,4 +30,42 @@ describe("parseCompanyFactsAnnualRows", () => {
     expect(rows.find((r) => r.year === 2024)?.revenue).toBe(120);
     expect(rows.find((r) => r.year === 2024)?.netIncome).toBe(25);
   });
+
+  it("parses capex and inventory onto annual rows", () => {
+    const rows = parseCompanyFactsAnnualRows({
+      facts: {
+        "us-gaap": {
+          RevenueFromContractWithCustomerExcludingAssessedTax: {
+            units: {
+              USD: [{ fy: 2024, fp: "FY", val: 200, form: "10-K" }],
+            },
+          },
+          NetIncomeLoss: {
+            units: {
+              USD: [{ fy: 2024, fp: "FY", val: 30, form: "10-K" }],
+            },
+          },
+          GrossProfit: {
+            units: {
+              USD: [{ fy: 2024, fp: "FY", val: 80, form: "10-K" }],
+            },
+          },
+          PaymentsToAcquirePropertyPlantAndEquipment: {
+            units: {
+              USD: [{ fy: 2024, fp: "FY", val: 25, form: "10-K" }],
+            },
+          },
+          InventoryNet: {
+            units: {
+              USD: [{ fy: 2024, fp: "FY", val: 40, form: "10-K" }],
+            },
+          },
+        },
+      },
+    });
+
+    const latest = rows[rows.length - 1];
+    expect(latest.capex).toBe(25);
+    expect(latest.inventory).toBe(40);
+  });
 });

@@ -21,7 +21,7 @@ quality_track:
     - { metric: same_store_sales_yoy, min: 0.00, missing: skip }
     - { metric: revenue_3y_cagr, min: 0.03 }
     - { metric: debt_to_equity, max: 0.50 }
-    - { metric: dividend_yield, min: 0.02 }
+    - { metric: dividend_yield, min: 0.02, missing: skip }
 
 mispricing_track:
   pass_if: all_required_and_supporting_min_4_of_6

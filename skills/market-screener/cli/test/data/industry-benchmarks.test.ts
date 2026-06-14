@@ -57,4 +57,29 @@ describe("applyIndustryBenchmarks", () => {
     const leader = out.find((r) => r.ticker === "C")!;
     expect(leader.metrics.operating_margin_vs_industry?.value).toBeCloseTo(0.10, 2);
   });
+
+  it("sets inventory_turnover_vs_industry from inventory_turnover median", () => {
+    const mk = (ticker: string, turnover: number): SecurityRecord => ({
+      ticker,
+      market: "CN",
+      companyName: ticker,
+      currency: "CNY",
+      status: "active",
+      marketCap: 5e9,
+      listingAgeYears: 10,
+      industryProxy: "零部件",
+      metrics: {
+        inventory_turnover: { value: turnover, dataConfidence: "medium" },
+      },
+      revenueYoyHistory: [],
+      ocfNegativeYears: 0,
+      netLossWidening: false,
+      nonStandardAudit: false,
+      latestFinancialMonthsOld: 6,
+    });
+
+    const out = applyIndustryBenchmarks([mk("A", 4), mk("B", 6), mk("C", 8)]);
+    const leader = out.find((r) => r.ticker === "C")!;
+    expect(leader.metrics.inventory_turnover_vs_industry?.value).toBeCloseTo(2, 2);
+  });
 });

@@ -76,18 +76,28 @@ type FactsBody = {
   };
 };
 
-function pickRevenueTag(gaap: GaapFacts | undefined): FactPoint[] {
+function pickGaapSeries(gaap: GaapFacts | undefined, keys: string[]): FactPoint[] {
   if (!gaap) return [];
-  const candidates = [
-    "RevenueFromContractWithCustomerExcludingAssessedTax",
-    "Revenues",
-    "SalesRevenueNet",
-  ];
-  for (const key of candidates) {
+  for (const key of keys) {
     const series = gaap[key]?.units?.USD;
     if (series?.length) return series;
   }
   return [];
+}
+
+function pickRevenueTag(gaap: GaapFacts | undefined): FactPoint[] {
+  return pickGaapSeries(gaap, [
+    "RevenueFromContractWithCustomerExcludingAssessedTax",
+    "Revenues",
+    "SalesRevenueNet",
+  ]);
+}
+
+function pickCapexTag(gaap: GaapFacts): FactPoint[] {
+  return pickGaapSeries(gaap, [
+    "PaymentsToAcquirePropertyPlantAndEquipment",
+    "PaymentsToAcquireProductiveAssets",
+  ]);
 }
 
 function fyPoints(series: FactPoint[]): Map<number, number> {
@@ -108,6 +118,8 @@ export function parseCompanyFactsAnnualRows(body: FactsBody): AnnualFinancialRow
     gaap.NetCashProvidedByUsedInOperatingActivities?.units?.USD ?? []
   );
   const grossProfitMap = fyPoints(gaap.GrossProfit?.units?.USD ?? []);
+  const capexMap = fyPoints(pickCapexTag(gaap));
+  const inventoryMap = fyPoints(gaap.InventoryNet?.units?.USD ?? []);
 
   const years = new Set<number>([
     ...revenueMap.keys(),
@@ -131,6 +143,8 @@ export function parseCompanyFactsAnnualRows(body: FactsBody): AnnualFinancialRow
       operatingCashFlow,
       roe,
       assetLiabilityRatio: 0.45,
+      capex: capexMap.get(year),
+      inventory: inventoryMap.get(year),
     });
   }
 

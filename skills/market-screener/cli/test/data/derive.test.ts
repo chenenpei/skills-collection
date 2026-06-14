@@ -20,4 +20,19 @@ describe("deriveFromAnnualRows", () => {
     expect(derived.revenueYoyHistory.length).toBeGreaterThanOrEqual(3);
     expect(derived.metrics.revenue?.value).toBe(moutaiLike[4].revenue);
   });
+
+  it("derives capex_to_revenue as 3-year average ratio", () => {
+    const rows = [2022, 2023, 2024].map((year, i) => ({
+      year,
+      revenue: 100,
+      grossProfit: 40,
+      netIncome: 10,
+      operatingCashFlow: 12,
+      roe: 0.1,
+      assetLiabilityRatio: 0.4,
+      capex: 10 + i * 2,
+    }));
+    const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
+    expect(derived.metrics.capex_to_revenue?.value).toBeCloseTo(0.12, 4);
+  });
 });
