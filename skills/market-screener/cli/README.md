@@ -129,7 +129,13 @@ npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN
 # Custom report path / stdout
 npm run dev -- filter-breakdown --output ./funnel-output/ --quarter 2026-Q1 --markets CN --report ./reports/cn-filters.md
 npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN --stdout
+
+# Append template-track rule failures (required vs supporting metrics):
+npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN --template-tracks
+npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN --template-tracks --template manufacturing --track quality --industry-l1 机械设备
 ```
+
+`--template-tracks` replays spec evaluation from enrichment cache. Filters: `--stage`, `--template`, `--track`, `--industry-l1|l2|l3`, `--track-top`. Appends a section to `filter-breakdown.md`.
 
 ### Routing report (cache)
 

@@ -6,8 +6,12 @@ import {
   aggregateByIndustry,
   formatFilterBreakdownReport,
   loadFilterBreakdown,
+  loadTemplateTrackBreakdown,
   parseIndustryLevels,
 } from "../../src/funnel/filter-breakdown.js";
+import { loadSpecBundle } from "../../src/spec/loader.js";
+
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
 
 describe("parseIndustryLevels", () => {
   it("splits Shenwan L1-L2-L3", () => {
@@ -103,5 +107,69 @@ candidates:
     const report = formatFilterBreakdownReport(doc);
     expect(report).toContain("Filter breakdown — CN");
     expect(report).toContain("医药生物");
+  });
+
+  it("replays template-track failures when cache + spec are available", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "tt-breakdown-"));
+    const outDir = path.join(tmp, "2026-Q2", "CN");
+    const cacheDir = path.join(tmp, "cache");
+    await fs.mkdir(outDir, { recursive: true });
+    await fs.mkdir(path.join(cacheDir, "2026-Q2", "CN"), { recursive: true });
+
+    await fs.writeFile(
+      path.join(outDir, "candidates.yaml"),
+      `run_metadata:
+  quarter: 2026-Q2
+  universe_count: 1
+candidates: []
+`
+    );
+    await fs.writeFile(path.join(outDir, "deferred.yaml"), "deferred: []\n");
+    await fs.writeFile(path.join(outDir, "excluded.yaml"), "excluded: []\n");
+    await fs.writeFile(path.join(outDir, "prefilter-excluded.yaml"), "prefilter_excluded: []\n");
+    await fs.writeFile(
+      path.join(cacheDir, "2026-Q2", "CN", "600001.json"),
+      JSON.stringify({
+        industryProxy: "机械设备-专用设备-能源及重型设备",
+        annualRows: [
+          {
+            year: 2023,
+            revenue: 1e10,
+            grossProfit: 2e9,
+            netIncome: 5e8,
+            operatingCashFlow: 6e8,
+            roe: 0.08,
+          },
+          {
+            year: 2024,
+            revenue: 1.1e10,
+            grossProfit: 2.1e9,
+            netIncome: 5.5e8,
+            operatingCashFlow: 6.5e8,
+            roe: 0.09,
+          },
+        ],
+      })
+    );
+
+    const bundle = await loadSpecBundle(SPEC_DIR);
+    const trackDoc = loadTemplateTrackBreakdown({
+      outputDir: outDir,
+      cacheDir,
+      quarter: "2026-Q2",
+      market: "CN",
+      bundle,
+      filters: { stages: ["sector_filtered"], templates: ["manufacturing"] },
+    });
+
+    expect(trackDoc.analyzedCount).toBe(1);
+    expect(trackDoc.tickers[0]?.primaryFailure).toMatch(/^required:/);
+
+    const report = formatFilterBreakdownReport(
+      loadFilterBreakdown({ outputDir: outDir, cacheDir, quarter: "2026-Q2", market: "CN" }),
+      { templateTrack: trackDoc }
+    );
+    expect(report).toContain("Template track breakdown");
+    expect(report).toContain("manufacturing");
   });
 });

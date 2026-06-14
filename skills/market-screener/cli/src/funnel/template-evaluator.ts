@@ -1,6 +1,6 @@
 import type { SectorTemplateSpec } from "../spec/types.js";
 import type { SecurityRecord } from "./kill-gates.js";
-import { evaluateThreshold, isMarketMissingOverrideSkip, shouldSkipMissingMetric } from "./threshold.js";
+import { evaluateThreshold, formatThresholdMiss, isMarketMissingOverrideSkip, shouldSkipMissingMetric } from "./threshold.js";
 import type { MetricValue, ThresholdRule } from "./types.js";
 
 export interface TemplateEvalResult {
@@ -11,6 +11,32 @@ export interface TemplateEvalResult {
   supportingTotal: number;
   auditHints: string[];
   funnelFlags: string[];
+}
+
+export type RuleOutcomeKind = "pass" | "fail" | "skip";
+
+export interface RuleOutcome {
+  metric: string;
+  kind: RuleOutcomeKind;
+  skipReason?: "missing" | "conditional" | "market_override";
+  detail?: string;
+  value?: number;
+}
+
+export type TemplateFailureStage = "no_track" | "required" | "supporting_min";
+
+export interface TemplateTrackDiagnostic {
+  template: string;
+  subTemplate?: string;
+  track: "quality" | "mispricing";
+  passed: boolean;
+  failureStage?: TemplateFailureStage;
+  requiredOutcomes: RuleOutcome[];
+  supportingOutcomes: RuleOutcome[];
+  supportingPassCount: number;
+  supportingTotal: number;
+  supportingMin: number;
+  supportingSkipped: number;
 }
 
 function parsePassLogic(passIf: string): { supportingMin: number; supportingTotal: number } {
@@ -117,6 +143,174 @@ function evalRuleList(
   }
 
   return { passCount, total, snapshot, missingSkipCount, otherSkipCount, marketMissingSkippedMetrics };
+}
+
+function evalRequiredRules(
+  required: Record<string, ThresholdRule>,
+  record: SecurityRecord
+): { passed: boolean; outcomes: RuleOutcome[]; snapshot: Record<string, MetricValue> } {
+  const outcomes: RuleOutcome[] = [];
+  const snapshot: Record<string, MetricValue> = {};
+
+  for (const [metric, rule] of Object.entries(required)) {
+    const mv = resolveMetricValue(record, metric, rule as Record<string, unknown>);
+    const res = evaluateThreshold(mv, rule, record.market);
+    if (res.skipped) {
+      outcomes.push({
+        metric,
+        kind: "skip",
+        skipReason: shouldSkipMissingMetric(rule, record.market) ? "missing" : "conditional",
+        detail: formatThresholdMiss(mv, rule, record.market),
+      });
+      continue;
+    }
+    if (!res.passed) {
+      outcomes.push({
+        metric,
+        kind: "fail",
+        value: mv?.value,
+        detail: formatThresholdMiss(mv, rule, record.market),
+      });
+      return { passed: false, outcomes, snapshot };
+    }
+    outcomes.push({ metric, kind: "pass", value: mv?.value });
+    if (mv) snapshot[metric] = mv;
+  }
+
+  return { passed: true, outcomes, snapshot };
+}
+
+function evalSupportingRules(
+  rules: Array<Record<string, unknown>>,
+  record: SecurityRecord
+): {
+  passCount: number;
+  total: number;
+  outcomes: RuleOutcome[];
+  missingSkipCount: number;
+  otherSkipCount: number;
+} {
+  let passCount = 0;
+  let total = 0;
+  let missingSkipCount = 0;
+  let otherSkipCount = 0;
+  const outcomes: RuleOutcome[] = [];
+
+  for (const rule of rules) {
+    const metric = rule.metric as string | undefined;
+    if (!metric) continue;
+
+    const mv = resolveMetricValue(record, metric, rule);
+    const thresholdRule = toThresholdRule(rule);
+    const skipReason = getSupportingSkipReason(rule, record, mv);
+    if (skipReason === "missing") {
+      missingSkipCount += 1;
+      outcomes.push({
+        metric,
+        kind: "skip",
+        skipReason: isMarketMissingOverrideSkip(thresholdRule, record.market)
+          ? "market_override"
+          : "missing",
+        detail: formatThresholdMiss(mv, thresholdRule, record.market),
+      });
+      continue;
+    }
+    if (skipReason === "conditional") {
+      otherSkipCount += 1;
+      outcomes.push({
+        metric,
+        kind: "skip",
+        skipReason: "conditional",
+        detail: formatThresholdMiss(mv, thresholdRule, record.market),
+      });
+      continue;
+    }
+
+    total += 1;
+    const result = evaluateThreshold(mv, thresholdRule, record.market);
+    if (result.passed) {
+      passCount += 1;
+      outcomes.push({ metric, kind: "pass", value: mv?.value });
+    } else {
+      outcomes.push({
+        metric,
+        kind: "fail",
+        value: mv?.value,
+        detail: formatThresholdMiss(mv, thresholdRule, record.market),
+      });
+    }
+  }
+
+  return { passCount, total, outcomes, missingSkipCount, otherSkipCount };
+}
+
+export function evaluateTemplateTrackDiagnostic(
+  template: SectorTemplateSpec & Record<string, unknown>,
+  track: "quality" | "mispricing",
+  record: SecurityRecord,
+  subTemplateId?: string
+): TemplateTrackDiagnostic {
+  const evalTemplate = resolveTemplateForEvaluation(template, subTemplateId);
+  const trackDef = evalTemplate[`${track}_track`] as Record<string, unknown> | undefined;
+  const base: TemplateTrackDiagnostic = {
+    template: (evalTemplate.template as string) ?? "unknown",
+    subTemplate: subTemplateId,
+    track,
+    passed: false,
+    requiredOutcomes: [],
+    supportingOutcomes: [],
+    supportingPassCount: 0,
+    supportingTotal: 0,
+    supportingMin: 0,
+    supportingSkipped: 0,
+  };
+
+  if (!trackDef) {
+    return { ...base, failureStage: "no_track" };
+  }
+
+  const required = (trackDef.required as Record<string, ThresholdRule>) ?? {};
+  const {
+    passed: requiredPassed,
+    outcomes: requiredOutcomes,
+  } = evalRequiredRules(required, record);
+
+  const supportingRules = (trackDef.supporting as Array<Record<string, unknown>>) ?? [];
+  const {
+    passCount,
+    total,
+    outcomes: supportingOutcomes,
+    missingSkipCount,
+    otherSkipCount,
+  } = evalSupportingRules(supportingRules, record);
+
+  const passIf = (trackDef.pass_if as string) ?? "";
+  const { supportingMin } = parsePassLogic(passIf);
+  const supportingPassed = resolveSupportingPass(
+    passCount,
+    total,
+    supportingMin,
+    missingSkipCount,
+    otherSkipCount
+  );
+
+  const passed = requiredPassed && supportingPassed;
+  let failureStage: TemplateFailureStage | undefined;
+  if (!passed) {
+    failureStage = !requiredPassed ? "required" : "supporting_min";
+  }
+
+  return {
+    ...base,
+    passed,
+    failureStage,
+    requiredOutcomes,
+    supportingOutcomes,
+    supportingPassCount: passCount,
+    supportingTotal: total,
+    supportingMin,
+    supportingSkipped: missingSkipCount + otherSkipCount,
+  };
 }
 
 /** Downgrade supportingMin only when fewer metrics are evaluable solely due to missing: skip. */

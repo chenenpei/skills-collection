@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { SecurityRecord } from "../funnel/kill-gates.js";
 import type { DataConfidence, MetricValue } from "../funnel/types.js";
 import { deriveFromAnnualRows, type AnnualFinancialRow } from "./metrics.js";
@@ -161,4 +163,96 @@ export function mergeEnrichment(
     industryProxy: industryProxy ?? record.industryProxy,
     metrics,
   };
+}
+
+function stubReplayRecord(
+  ticker: string,
+  market: SecurityRecord["market"],
+  industryProxy?: string
+): SecurityRecord {
+  return {
+    ticker,
+    market,
+    companyName: ticker,
+    currency: market === "CN" ? "CNY" : "USD",
+    status: "active",
+    marketCap: 50_000_000_000,
+    listingAgeYears: 10,
+    industryProxy,
+    metrics: {},
+    revenueYoyHistory: [],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 6,
+  };
+}
+
+function quoteMetricsFromHistory(payload: EnrichCachePayload): SecurityRecord["metrics"] {
+  const latest = payload.quoteHistory?.at(-1);
+  if (!latest) return {};
+
+  const metrics: SecurityRecord["metrics"] = {};
+  if (latest.pe !== undefined && latest.pe > 0) {
+    metrics.pe_ttm = { value: latest.pe, dataConfidence: "medium" };
+  }
+  if (latest.pb !== undefined && latest.pb > 0) {
+    metrics.pb = { value: latest.pb, dataConfidence: "medium" };
+  }
+  if (latest.ps !== undefined && latest.ps > 0) {
+    metrics.ps = { value: latest.ps, dataConfidence: "medium" };
+  }
+  return metrics;
+}
+
+export function enrichRecordFromCachePayload(
+  record: SecurityRecord,
+  payload: EnrichCachePayload,
+  quarter: string
+): SecurityRecord {
+  const dividend: DividendWithConfidence | undefined =
+    payload.dividendYield !== undefined
+      ? {
+          yield: payload.dividendYield,
+          dataConfidence: payload.dividendYieldConfidence ?? "medium",
+        }
+      : undefined;
+
+  return mergeEnrichment(
+    {
+      ...record,
+      industryProxy: payload.industryProxy ?? record.industryProxy,
+      metrics: { ...record.metrics, ...quoteMetricsFromHistory(payload) },
+    },
+    payload.annualRows ?? [],
+    payload.industryProxy,
+    dividend,
+    { quarter, quoteHistory: payload.quoteHistory }
+  );
+}
+
+export function loadEnrichedUniverseFromCache(opts: {
+  cacheDir: string;
+  quarter: string;
+  market: SecurityRecord["market"];
+}): SecurityRecord[] {
+  const marketDir = path.join(opts.cacheDir, opts.quarter, opts.market);
+  if (!fs.existsSync(marketDir)) return [];
+
+  const records: SecurityRecord[] = [];
+  for (const file of fs.readdirSync(marketDir)) {
+    if (!file.endsWith(".json")) continue;
+    const ticker = file.replace(/\.json$/, "");
+    const payload = JSON.parse(
+      fs.readFileSync(path.join(marketDir, file), "utf8")
+    ) as EnrichCachePayload;
+    records.push(
+      enrichRecordFromCachePayload(
+        stubReplayRecord(ticker, opts.market, payload.industryProxy),
+        payload,
+        opts.quarter
+      )
+    );
+  }
+  return records;
 }

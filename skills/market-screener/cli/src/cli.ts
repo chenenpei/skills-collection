@@ -102,6 +102,18 @@ export async function runCli(argv: string[]): Promise<void> {
     .option("--quarter <quarter>", "Reporting quarter, e.g. 2026-Q1")
     .option("--markets <markets>", "CN or US (one market per invocation)")
     .option("--cache-dir <dir>", "Enrichment cache root", DEFAULT_CACHE_DIR)
+    .option("--spec <dir>", "Spec directory (for --template-tracks)")
+    .option("--template-tracks", "Append template-track rule failure breakdown", false)
+    .option(
+      "--stage <stages>",
+      "Template-track stages (default: sector_filtered,deferred,candidate)"
+    )
+    .option("--template <templates>", "Filter template-track breakdown to template ids")
+    .option("--track <tracks>", "Filter template-track breakdown to quality and/or mispricing")
+    .option("--industry-l1 <name>", "Filter template-track breakdown to Shenwan L1")
+    .option("--industry-l2 <name>", "Filter template-track breakdown to Shenwan L2")
+    .option("--industry-l3 <name>", "Filter template-track breakdown to Shenwan L3")
+    .option("--track-top <n>", "Max rows in template-track failure tables", "25")
     .option("--report <path>", "Override report file path")
     .option("--top-l2 <n>", "Max L2 industry rows", "25")
     .option("--top-l3 <n>", "Max L3 industry rows", "25")
@@ -112,6 +124,15 @@ export async function runCli(argv: string[]): Promise<void> {
       quarter?: string;
       markets?: string;
       cacheDir: string;
+      spec?: string;
+      templateTracks: boolean;
+      stage?: string;
+      template?: string;
+      track?: string;
+      industryL1?: string;
+      industryL2?: string;
+      industryL3?: string;
+      trackTop: string;
       report?: string;
       topL2: string;
       topL3: string;
@@ -124,6 +145,15 @@ export async function runCli(argv: string[]): Promise<void> {
         quarter: opts.quarter,
         markets: opts.markets,
         cacheDir: opts.cacheDir,
+        spec: opts.spec,
+        templateTracks: Boolean(opts.templateTracks),
+        stage: opts.stage,
+        template: opts.template,
+        track: opts.track,
+        industryL1: opts.industryL1,
+        industryL2: opts.industryL2,
+        industryL3: opts.industryL3,
+        trackTop: Number.parseInt(opts.trackTop, 10),
         report: opts.report,
         topL2: Number.parseInt(opts.topL2, 10),
         topL3: Number.parseInt(opts.topL3, 10),

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
 import { loadSpecBundle } from "../../src/spec/loader.js";
 import type { SectorTemplateSpec } from "../../src/spec/types.js";
-import { evaluateTemplateTrack } from "../../src/funnel/template-evaluator.js";
+import { evaluateTemplateTrack, evaluateTemplateTrackDiagnostic } from "../../src/funnel/template-evaluator.js";
 import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
 import { loadCnFixtureRecord } from "../helpers/universe-fixture.js";
 
@@ -299,5 +299,71 @@ describe("evaluateTemplateTrack", () => {
     const result = evaluateTemplateTrack(techSaas, "mispricing", record);
     expect(result.supportingTotal).toBeGreaterThan(0);
     expect(result.supportingPassCount).toBeGreaterThan(0);
+  });
+});
+
+describe("evaluateTemplateTrackDiagnostic", () => {
+  let manufacturing: SectorTemplateSpec & Record<string, unknown>;
+
+  const mfgRecord = (metrics: SecurityRecord["metrics"]): SecurityRecord => ({
+    ticker: "MFG",
+    market: "CN",
+    companyName: "Mfg Co",
+    currency: "CNY",
+    status: "active",
+    marketCap: 20e9,
+    listingAgeYears: 10,
+    metrics,
+    revenueYoyHistory: [0.05, 0.06, 0.07],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 6,
+  });
+
+  beforeAll(async () => {
+    const bundle = await loadSpecBundle(SPEC_DIR);
+    manufacturing = bundle.templates.manufacturing as SectorTemplateSpec & Record<string, unknown>;
+  });
+
+  it("reports required failure metric", () => {
+    const diag = evaluateTemplateTrackDiagnostic(
+      manufacturing,
+      "quality",
+      mfgRecord({
+        roic_5y_avg: { value: 0.05, dataConfidence: "high" },
+        fcf_conversion_5y: { value: 0.9, dataConfidence: "high" },
+        gross_margin_3y_max_decline_pp: { value: 2, dataConfidence: "high" },
+        net_debt_to_ebitda: { value: 1.0, dataConfidence: "high" },
+      })
+    );
+
+    expect(diag.passed).toBe(false);
+    expect(diag.failureStage).toBe("required");
+    expect(diag.requiredOutcomes.find((o) => o.metric === "roic_5y_avg")?.kind).toBe("fail");
+  });
+
+  it("reports supporting failure when required passes", () => {
+    const diag = evaluateTemplateTrackDiagnostic(
+      manufacturing,
+      "quality",
+      mfgRecord({
+        roic_5y_avg: { value: 0.15, dataConfidence: "high" },
+        fcf_conversion_5y: { value: 0.9, dataConfidence: "high" },
+        gross_margin_3y_max_decline_pp: { value: 2, dataConfidence: "high" },
+        net_debt_to_ebitda: { value: 1.0, dataConfidence: "high" },
+        capex_to_revenue: { value: 0.25, dataConfidence: "medium" },
+        inventory_turnover_vs_industry: { value: 0.1, dataConfidence: "medium" },
+        roe_5y_avg: { value: 0.14, dataConfidence: "high" },
+        revenue_3y_cagr: { value: 0.05, dataConfidence: "high" },
+        gross_margin: { value: 0.3, dataConfidence: "high" },
+      })
+    );
+
+    expect(diag.passed).toBe(false);
+    expect(diag.failureStage).toBe("supporting_min");
+    expect(
+      diag.supportingOutcomes.some((o) => o.metric === "capex_to_revenue" && o.kind === "fail")
+    ).toBe(true);
   });
 });

@@ -2,7 +2,10 @@ import type { Market, MetricValue, ThresholdRule, ThresholdResult } from "./type
 
 export type { Market, DataConfidence, MetricValue, ThresholdRule, ThresholdResult } from "./types.js";
 
-function resolveBound(rule: ThresholdRule, market: Market): { min?: number; max?: number } {
+export function resolveThresholdBound(
+  rule: ThresholdRule,
+  market: Market
+): { min?: number; max?: number } {
   if (rule.market_overrides && (rule.default !== undefined || rule.min !== undefined)) {
     const floor = rule.market_overrides[market] ?? rule.default ?? rule.min;
     return { min: floor, max: rule.max };
@@ -30,7 +33,7 @@ export function evaluateThreshold(
     return { passed: false, skipped: false, dataConfidence: "low" };
   }
 
-  const { min, max } = resolveBound(rule, market);
+  const { min, max } = resolveThresholdBound(rule, market);
   let passed = true;
   if (min !== undefined && metric.value < min) passed = false;
   if (max !== undefined && metric.value > max) passed = false;
@@ -40,4 +43,23 @@ export function evaluateThreshold(
     skipped: false,
     dataConfidence: metric.dataConfidence,
   };
+}
+
+export function formatThresholdMiss(
+  metric: MetricValue | undefined,
+  rule: ThresholdRule,
+  market: Market
+): string {
+  if (metric?.value === undefined) {
+    return shouldSkipMissingMetric(rule, market) ? "missing (skipped)" : "missing";
+  }
+  const { min, max } = resolveThresholdBound(rule, market);
+  const value = metric.value;
+  if (min !== undefined && value < min) {
+    return `value ${value} < min ${min}`;
+  }
+  if (max !== undefined && value > max) {
+    return `value ${value} > max ${max}`;
+  }
+  return "threshold_not_met";
 }
