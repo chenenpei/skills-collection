@@ -42,6 +42,19 @@ export function resolveTemplateForEvaluation(
 
 type SupportingSkipReason = "missing" | "conditional";
 
+function resolveMetricValue(
+  record: SecurityRecord,
+  metric: string,
+  rule: Record<string, unknown>
+): MetricValue | undefined {
+  const direct = record.metrics[metric];
+  if (direct?.value !== undefined) return direct;
+  if (metric === "ps_vs_5y_median" && rule.missing === "use_ps_vs_peer") {
+    return record.metrics.ps_vs_peer_median;
+  }
+  return direct;
+}
+
 function getSupportingSkipReason(
   rule: Record<string, unknown>,
   record: SecurityRecord,
@@ -83,7 +96,7 @@ function evalRuleList(
     const metric = rule.metric as string | undefined;
     if (!metric) continue;
 
-    const mv = record.metrics[metric];
+    const mv = resolveMetricValue(record, metric, rule);
     const skipReason = getSupportingSkipReason(rule, record, mv);
     if (skipReason === "missing") {
       missingSkipCount += 1;
@@ -152,7 +165,7 @@ export function evaluateTemplateTrack(
   const snapshot: Record<string, MetricValue> = {};
   const required = (trackDef.required as Record<string, ThresholdRule>) ?? {};
   for (const [metric, rule] of Object.entries(required)) {
-    const mv = record.metrics[metric];
+    const mv = resolveMetricValue(record, metric, rule as Record<string, unknown>);
     const res = evaluateThreshold(mv, rule, record.market);
     if (!res.passed && !res.skipped) return empty;
     if (mv) snapshot[metric] = mv;

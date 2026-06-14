@@ -47,7 +47,8 @@ async function persistEnrichCache(
       payload.quoteHistory,
       opts.quarter,
       enriched.metrics.pe_ttm?.value,
-      enriched.metrics.pb?.value
+      enriched.metrics.pb?.value,
+      enriched.metrics.ps?.value
     ),
   });
 }

@@ -6,6 +6,7 @@ export interface QuoteHistoryEntry {
   quarter: string;
   pe?: number;
   pb?: number;
+  ps?: number;
   asOf: string;
 }
 
@@ -75,14 +76,16 @@ export function updatedQuoteHistory(
   history: QuoteHistoryEntry[] | undefined,
   quarter: string,
   pe?: number,
-  pb?: number
+  pb?: number,
+  ps?: number
 ): QuoteHistoryEntry[] | undefined {
-  if (pe === undefined && pb === undefined) return history;
+  if (pe === undefined && pb === undefined && ps === undefined) return history;
   const withoutCurrent = (history ?? []).filter((entry) => entry.quarter !== quarter);
   return appendQuoteHistory(withoutCurrent, {
     quarter,
     pe,
     pb,
+    ps,
     asOf: new Date().toISOString(),
   });
 }
@@ -143,11 +146,14 @@ export function mergeEnrichment(
 
   const currentPe = metrics.pe_ttm?.value;
   const currentPb = metrics.pb?.value;
+  const currentPs = metrics.ps?.value;
   const history = opts?.quoteHistory ?? [];
   const peVs5y = deriveVs5yMedian(currentPe, history, (e) => e.pe);
   const pbVs5y = deriveVs5yMedian(currentPb, history, (e) => e.pb);
+  const psVs5y = deriveVs5yMedian(currentPs, history, (e) => e.ps);
   if (peVs5y) metrics.pe_vs_5y_median = peVs5y;
   if (pbVs5y) metrics.pb_vs_5y_median = pbVs5y;
+  if (psVs5y) metrics.ps_vs_5y_median = psVs5y;
 
   return {
     ...record,

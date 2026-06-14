@@ -128,4 +128,80 @@ describe("deriveFromAnnualRows", () => {
     const fcfMargin = (35 - 3) / 115;
     expect(derived.metrics.rule_of_40?.value).toBeCloseTo((revenueGrowth + fcfMargin) * 100, 4);
   });
+
+  it("derives mid_cycle_ebitda and mid_cycle_pe_vs_10y_median", () => {
+    const rows = Array.from({ length: 10 }, (_, i) => ({
+      year: 2016 + i,
+      revenue: 100 + i * 5,
+      grossProfit: 40,
+      netIncome: 10 + i,
+      operatingCashFlow: 12 + i,
+      operatingProfit: 15 + i,
+      roe: 0.1,
+      assetLiabilityRatio: 0.4,
+    }));
+    const marketCap = 200;
+    const derived = deriveFromAnnualRows(rows, { marketCap, currency: "CNY" });
+    expect(derived.metrics.mid_cycle_ebitda?.value).toBeGreaterThan(0);
+    expect(derived.metrics.mid_cycle_pe_vs_10y_median?.value).toBeGreaterThan(0);
+  });
+
+  it("derives roic_ttm, net_debt_to_equity alias, and fcf_yield_vs_risk_free", () => {
+    const derived = deriveFromAnnualRows(moutaiLike, {
+      marketCap: 2e12,
+      currency: "CNY",
+      fcf: 5e10,
+    });
+    expect(derived.metrics.roic_ttm?.value).toBeCloseTo(moutaiLike[4].roe * 0.85, 4);
+    expect(derived.metrics.roic?.value).toBe(derived.metrics.roic_ttm?.value);
+    expect(derived.metrics.net_debt_to_equity?.value).toBe(derived.metrics.debt_to_equity?.value);
+    expect(derived.metrics.fcf_yield_vs_risk_free?.value).toBeDefined();
+  });
+
+  it("derives inventory_growth_minus_revenue from two inventory years", () => {
+    const rows = [
+      {
+        year: 2024,
+        revenue: 100,
+        grossProfit: 40,
+        netIncome: 10,
+        operatingCashFlow: 12,
+        roe: 0.1,
+        assetLiabilityRatio: 0.4,
+        inventory: 20,
+      },
+      {
+        year: 2025,
+        revenue: 110,
+        grossProfit: 44,
+        netIncome: 11,
+        operatingCashFlow: 13,
+        roe: 0.11,
+        assetLiabilityRatio: 0.4,
+        inventory: 30,
+      },
+    ];
+    const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
+    const invGrowth = (30 - 20) / 20;
+    const revGrowth = (110 - 100) / 100;
+    expect(derived.metrics.inventory_growth_minus_revenue?.value).toBeCloseTo(
+      invGrowth - revGrowth,
+      4
+    );
+  });
+
+  it("derives ev_ebitda_vs_5y_median from annual EV/EBITDA history", () => {
+    const rows = Array.from({ length: 6 }, (_, i) => ({
+      year: 2020 + i,
+      revenue: 100,
+      grossProfit: 40,
+      netIncome: 10,
+      operatingCashFlow: 12,
+      operatingProfit: 20 + i,
+      roe: 0.1,
+      assetLiabilityRatio: 0.3,
+    }));
+    const derived = deriveFromAnnualRows(rows, { marketCap: 500, currency: "CNY" });
+    expect(derived.metrics.ev_ebitda_vs_5y_median?.value).toBeGreaterThan(0);
+  });
 });

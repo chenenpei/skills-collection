@@ -115,4 +115,65 @@ describe("applyIndustryBenchmarks", () => {
     expect(leader.metrics.pb_vs_peer_median?.value).toBeCloseTo(1.5, 2);
     expect(leader.metrics.ps_vs_industry_median?.value).toBeCloseTo(1.5, 2);
   });
+
+  it("sets roe_vs_industry_median and revenue_yield_vs_peer overlays", () => {
+    const mk = (
+      ticker: string,
+      roe: number,
+      revenueYield: number,
+      industry: string
+    ): SecurityRecord => ({
+      ticker,
+      market: "CN",
+      companyName: ticker,
+      currency: "CNY",
+      status: "active",
+      marketCap: 5e9,
+      listingAgeYears: 10,
+      industryProxy: industry,
+      metrics: {
+        roe_ttm: { value: roe, dataConfidence: "medium" },
+        revenue_yield: { value: revenueYield, dataConfidence: "medium" },
+      },
+      revenueYoyHistory: [],
+      ocfNegativeYears: 0,
+      netLossWidening: false,
+      nonStandardAudit: false,
+      latestFinancialMonthsOld: 6,
+    });
+
+    const out = applyIndustryBenchmarks([
+      mk("A", 0.10, 0.05, "银行"),
+      mk("B", 0.12, 0.06, "银行"),
+      mk("C", 0.16, 0.09, "银行"),
+    ]);
+    const leader = out.find((r) => r.ticker === "C")!;
+    expect(leader.metrics.roe_vs_industry_median?.value).toBeCloseTo(0.04, 2);
+    expect(leader.metrics.revenue_yield_vs_peer?.value).toBeCloseTo(1.5, 2);
+  });
+
+  it("sets mid_cycle_ev_ebitda_vs_peer as ratio to industry median", () => {
+    const mk = (ticker: string, evEbitda: number): SecurityRecord => ({
+      ticker,
+      market: "CN",
+      companyName: ticker,
+      currency: "CNY",
+      status: "active",
+      marketCap: 5e9,
+      listingAgeYears: 10,
+      industryProxy: "钢铁",
+      metrics: {
+        mid_cycle_ev_ebitda: { value: evEbitda, dataConfidence: "medium" },
+      },
+      revenueYoyHistory: [],
+      ocfNegativeYears: 0,
+      netLossWidening: false,
+      nonStandardAudit: false,
+      latestFinancialMonthsOld: 6,
+    });
+
+    const out = applyIndustryBenchmarks([mk("A", 4), mk("B", 6), mk("C", 8)]);
+    const leader = out.find((r) => r.ticker === "C")!;
+    expect(leader.metrics.mid_cycle_ev_ebitda_vs_peer?.value).toBeCloseTo(8 / 6, 2);
+  });
 });

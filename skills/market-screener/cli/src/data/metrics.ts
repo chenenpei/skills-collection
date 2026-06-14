@@ -86,6 +86,29 @@ export interface DeriveContext {
 }
 
 const MID_CYCLE_WINDOW_YEARS = 7;
+const PE_HISTORY_YEARS = 10;
+/** Consumer/healthcare mispricing supporting floor (fcf_yield_vs_risk_free min 0.04). */
+const RISK_FREE_RATE = 0.04;
+
+function ebitdaForRow(row: AnnualFinancialRow): number {
+  return row.operatingProfit ?? row.grossProfit * 0.7;
+}
+
+function netDebtProxy(row: AnnualFinancialRow): number {
+  const debt = row.revenue * row.assetLiabilityRatio;
+  const cash = row.operatingCashFlow * 0.1;
+  return Math.max(0, debt - cash);
+}
+
+function evEbitdaForRow(row: AnnualFinancialRow, marketCap: number): number | undefined {
+  const ebitda = ebitdaForRow(row);
+  if (ebitda <= 0 || marketCap <= 0) return undefined;
+  return (marketCap + netDebtProxy(row)) / ebitda;
+}
+
+function roicProxyFromRoe(roe: number): number {
+  return roe * 0.85;
+}
 
 function fcfForRow(row: AnnualFinancialRow): number {
   const capex = row.capex !== undefined ? Math.abs(row.capex) : 0;
@@ -200,6 +223,37 @@ export function deriveFromAnnualRows(
     metrics.mid_cycle_operating_margin = mv(midCycleOpMargin);
   }
 
+  const midCycleEbitda = midCycleAverage(last7.map((r) => ebitdaForRow(r)));
+  if (midCycleEbitda !== undefined && midCycleEbitda > 0) {
+    metrics.mid_cycle_ebitda = mv(midCycleEbitda);
+    if (ctx.marketCap > 0) {
+      metrics.mid_cycle_ev_ebitda = mv((ctx.marketCap + netDebtProxy(latest)) / midCycleEbitda);
+    }
+  }
+
+  const peHistory = sorted
+    .slice(-PE_HISTORY_YEARS)
+    .map((r) => (r.netIncome > 0 && ctx.marketCap > 0 ? ctx.marketCap / r.netIncome : undefined))
+    .filter((v): v is number => v !== undefined && v > 0);
+  if (metrics.mid_cycle_pe?.value !== undefined && peHistory.length >= 2) {
+    const peMed = median(peHistory);
+    if (peMed > 0) {
+      metrics.mid_cycle_pe_vs_10y_median = mv(metrics.mid_cycle_pe.value / peMed);
+    }
+  }
+
+  const evHistory = sorted
+    .slice(-PE_HISTORY_YEARS)
+    .map((r) => evEbitdaForRow(r, ctx.marketCap))
+    .filter((v): v is number => v !== undefined && v > 0);
+  const currentEvEbitda = evEbitdaForRow(latest, ctx.marketCap);
+  if (currentEvEbitda !== undefined && evHistory.length >= 2) {
+    const evMed = median(evHistory);
+    if (evMed > 0) {
+      metrics.ev_ebitda_vs_5y_median = mv(currentEvEbitda / evMed);
+    }
+  }
+
   const marginHistory = sorted.slice(-MID_CYCLE_WINDOW_YEARS).map((r) => operatingMargin(r));
   if (marginHistory.length >= 2) {
     const marginMedian = median(marginHistory);
@@ -229,6 +283,32 @@ export function deriveFromAnnualRows(
   const fcfMargin = latest.revenue > 0 ? latestFcf / latest.revenue : 0;
   if (latest.revenue > 0) metrics.fcf_margin = mv(fcfMargin);
   metrics.rule_of_40 = mv(((latestRevenueYoy ?? 0) + fcfMargin) * 100);
+
+  metrics.roic_ttm = mv(roicProxyFromRoe(latest.roe));
+  metrics.roic = metrics.roic_ttm;
+  if (metrics.debt_to_equity) {
+    metrics.net_debt_to_equity = metrics.debt_to_equity;
+  }
+  if (ctx.marketCap > 0 && latest.revenue > 0) {
+    metrics.revenue_yield = mv(latest.revenue / ctx.marketCap);
+  }
+  if (fcfYield !== undefined) {
+    metrics.fcf_yield_vs_risk_free = mv(fcfYield - RISK_FREE_RATE);
+  }
+  if (sorted.length >= 2) {
+    const prev = sorted[sorted.length - 2];
+    if (
+      prev.inventory !== undefined &&
+      latest.inventory !== undefined &&
+      prev.inventory > 0 &&
+      prev.revenue > 0 &&
+      latest.revenue > 0
+    ) {
+      const invGrowth = (latest.inventory - prev.inventory) / prev.inventory;
+      const revGrowth = (latest.revenue - prev.revenue) / prev.revenue;
+      metrics.inventory_growth_minus_revenue = mv(invGrowth - revGrowth);
+    }
+  }
 
   return {
     metrics,
@@ -270,6 +350,19 @@ const VS_INDUSTRY_SPECS = [
   { base: "pe_ttm", vsPeer: "pe_ttm_vs_peer_median", vsIndustry: "pe_ttm_vs_industry_median", mode: "ratio" as const },
   { base: "pb", vsPeer: "pb_vs_peer_median", vsIndustry: "pb_vs_industry_median", mode: "ratio" as const },
   { base: "ps", vsPeer: "ps_vs_peer_median", vsIndustry: "ps_vs_industry_median", mode: "ratio" as const },
+  { base: "roe_ttm", vs: "roe_vs_industry_median", mode: "diff" as const },
+  {
+    base: "mid_cycle_ev_ebitda",
+    vsPeer: "mid_cycle_ev_ebitda_vs_peer",
+    vsIndustry: "mid_cycle_ev_ebitda_vs_industry",
+    mode: "ratio" as const,
+  },
+  {
+    base: "revenue_yield",
+    vsPeer: "revenue_yield_vs_peer",
+    vsIndustry: "revenue_yield_vs_industry",
+    mode: "ratio" as const,
+  },
 ] as const;
 
 export function applyIndustryBenchmarks(records: SecurityRecord[]): SecurityRecord[] {

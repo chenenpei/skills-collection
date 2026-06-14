@@ -280,4 +280,24 @@ describe("evaluateTemplateTrack", () => {
       funnelFlags: expect.arrayContaining(["verify_sbc_dilution_in_deep_cn"]),
     });
   });
+
+  it("uses ps_vs_peer_median when ps_vs_5y_median is missing (use_ps_vs_peer)", () => {
+    const base = cnTechQualityWithoutSbc();
+    const record: SecurityRecord = {
+      ...base,
+      metrics: {
+        ...base.metrics,
+        gross_margin: { value: 0.45, dataConfidence: "high" },
+        rule_of_40: { value: 30, dataConfidence: "high" },
+        revenue_growth_yoy: { value: 0.05, dataConfidence: "high" },
+        net_debt_to_ebitda: { value: 1.0, dataConfidence: "high" },
+        ps_vs_peer_median: { value: 0.7, dataConfidence: "medium" },
+        revenue_yield_vs_peer: { value: 1.2, dataConfidence: "medium" },
+        price_vs_52w_high: { value: 0.6, dataConfidence: "medium" },
+      },
+    };
+    const result = evaluateTemplateTrack(techSaas, "mispricing", record);
+    expect(result.supportingTotal).toBeGreaterThan(0);
+    expect(result.supportingPassCount).toBeGreaterThan(0);
+  });
 });

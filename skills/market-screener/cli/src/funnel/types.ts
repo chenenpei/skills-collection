@@ -16,7 +16,7 @@ export interface ThresholdRule {
   default?: number;
   market_overrides?: Partial<Record<Market, number>>;
   market_missing_overrides?: Partial<Record<Market, "skip">>;
-  missing?: "skip" | "data_confidence_low";
+  missing?: "skip" | "data_confidence_low" | "use_ps_vs_peer";
   field?: string;
 }
 
