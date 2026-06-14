@@ -322,10 +322,11 @@ function printReasonRanking(
 
 export function formatFilterBreakdownReport(
   doc: FilterBreakdownDoc,
-  opts: { topL2?: number; topL3?: number } = {}
+  opts: { topL2?: number; topL3?: number; softCap?: number } = {}
 ): string {
   const topL2 = opts.topL2 ?? 25;
   const topL3 = opts.topL3 ?? 25;
+  const softCap = opts.softCap ?? 20;
   const lines: string[] = [];
   const { tickers, universeCount, market, quarter } = doc;
 
@@ -400,7 +401,7 @@ export function formatFilterBreakdownReport(
   lines.push(
     "- `sector_template_filtered` means passed kill gates but failed all sector template tracks."
   );
-  lines.push("- `deferred_soft_cap` means passed funnel but ranked below the per-market soft cap (25).");
+  lines.push("- `deferred_soft_cap` means passed funnel but ranked below the per-market soft cap (" + `${softCap}).`);
   lines.push("");
 
   return lines.join("\n");

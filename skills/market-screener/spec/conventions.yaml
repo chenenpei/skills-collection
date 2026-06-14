@@ -108,9 +108,12 @@ pass_logic:
       financials_banks: 4_of_6  # unchanged; sparse bank data
 
 funnel_soft_cap:
-  max_candidates_per_market: 25
+  max_candidates_per_market: 20
   overflow: deferred.yaml
   ranking: composite funnel score within market
+
+deferred_watchlist_cap:
+  max_deferred_per_market: 20
 
 ranking:
   tie_break: higher data_confidence, then higher supporting pass count

@@ -53,8 +53,8 @@ npm run dev -- run \
 
 产出（每市场）：
 
-- `CN/candidates.yaml` — rank 1–25（软顶，Package M）
-- `CN/deferred.yaml` — 通过漏斗但 rank > 25
+- `CN/candidates.yaml` — rank 1–20（软顶，Package M）
+- `CN/deferred.yaml` — 通过漏斗但 rank > 20（watchlist 最多 20）
 - `CN/excluded.yaml` — 对 **已 enrichment** 宇宙应用 Kill Gate 后的排除（含 `enrichment_failure` 可选字段）
 - `CN/prefilter-excluded.yaml` — **仅 live**：quote prefilter 跳过、未 enrichment 的标的（status/市值/年限）
 - `CN/routing-diagnostics.yaml` — Kill Gate 存活标的的路由分布（`by_method`、`fallback_rate`）
@@ -88,7 +88,7 @@ npm run dev -- run \
 若 metric_snapshot 与 Deep 数据冲突，以 Deep 为准并说明。
 ```
 
-rank 21–25 写入 `audit-summary.yaml` 的 `deep_deferred`，本季不 Deep。
+`deferred.yaml` watchlist 条目本季不 Deep（除非用户扩大 Deep 范围）。
 
 ### Step 3 — 定性筛选 & audit-summary
 

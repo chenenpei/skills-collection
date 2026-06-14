@@ -5,7 +5,7 @@ version: "0.1.0"
 artifacts:
   candidates:
     filename: candidates.yaml
-    description: Top-ranked securities after funnel soft cap (max 25 per market by default)
+    description: Top-ranked securities after funnel soft cap (max 20 per market by default)
 
   deferred:
     filename: deferred.yaml
@@ -46,7 +46,7 @@ candidates_schema:
       universe_count: integer   # quote universe size incl. prefilter_excluded (live)
       candidate_count: integer
       deferred_count: integer   # passed funnel but below soft-cap rank
-      funnel_soft_cap: integer  # e.g. 25
+      funnel_soft_cap: integer  # e.g. 20
       spec_version: string
       tightening_profile: package_m
       data_source_profile: scheme_f

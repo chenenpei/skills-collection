@@ -9,7 +9,7 @@ const REQUIRED_TEMPLATE_IDS = [
   "manufacturing",
 ] as const;
 
-const FUNNEL_SOFT_CAP = 25;
+const FUNNEL_SOFT_CAP = 20;
 const KILL_MARKET_CAP_SLUG = "kill_market_cap_below_floor";
 const CORE_SPEC_FILES = 8;
 const FUNNEL_TRACKS = ["quality_track", "mispricing_track"] as const;

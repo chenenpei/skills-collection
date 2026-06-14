@@ -16,7 +16,7 @@ export function rankCandidates(candidates: RankableCandidate[]): RankableCandida
   });
 }
 
-export function splitBySoftCap<T>(ranked: T[], softCap = 25): { primary: T[]; deferred: T[] } {
+export function splitBySoftCap<T>(ranked: T[], softCap = 20): { primary: T[]; deferred: T[] } {
   return {
     primary: ranked.slice(0, softCap),
     deferred: ranked.slice(softCap),

@@ -24,7 +24,9 @@ export interface FunnelDiagnosticsDoc {
     sector_filtered: number;
     candidates: number;
     deferred: number;
+    sector_pass_overflow: number;
   };
+  deferred_watchlist_cap: number;
   prefilter_by_reason: Record<string, number>;
   kill_by_reason: Record<string, number>;
   routing: {
@@ -130,6 +132,8 @@ export class FunnelDiagnosticsCollector {
     prefilterExcluded: number;
     candidateCount: number;
     deferredCount: number;
+    sectorPassOverflow: number;
+    deferredWatchlistCap: number;
     enrichStats?: EnrichRunStats;
     cacheGap?: { count: number; samples: string[] };
   }): FunnelDiagnosticsDoc {
@@ -143,17 +147,21 @@ export class FunnelDiagnosticsCollector {
       };
     }
 
-    const run_metadata = buildRunMetadata({
-      bundle: opts.bundle,
-      quarter: opts.quarter,
-      marketScope: opts.market,
-      universeCount: opts.universeCount,
-      candidateCount: opts.candidateCount,
-      deferredCount: opts.deferredCount,
-    });
+    const run_metadata = {
+      ...buildRunMetadata({
+        bundle: opts.bundle,
+        quarter: opts.quarter,
+        marketScope: opts.market,
+        universeCount: opts.universeCount,
+        candidateCount: opts.candidateCount,
+        deferredCount: opts.deferredCount,
+      }),
+      deferred_watchlist_cap: opts.deferredWatchlistCap,
+    };
 
     const doc: FunnelDiagnosticsDoc = {
       run_metadata,
+      deferred_watchlist_cap: opts.deferredWatchlistCap,
       stages: {
         quote_universe: opts.universeCount,
         prefilter_excluded: opts.prefilterExcluded,
@@ -164,6 +172,7 @@ export class FunnelDiagnosticsCollector {
         sector_filtered: killSurvivors - this.sectorPassed,
         candidates: opts.candidateCount,
         deferred: opts.deferredCount,
+        sector_pass_overflow: opts.sectorPassOverflow,
       },
       prefilter_by_reason: this.prefilterByReason,
       kill_by_reason: this.killByReason,
@@ -265,6 +274,11 @@ export function formatFunnelReplayReport(doc: FunnelDiagnosticsDoc, market: Mark
   );
   lines.push(`| Candidates | ${s.candidates} | ${pct(s.candidates, s.quote_universe)} |`);
   lines.push(`| Deferred | ${s.deferred} | ${pct(s.deferred, s.quote_universe)} |`);
+  if (s.sector_pass_overflow > 0) {
+    lines.push(
+      `| Sector pass overflow (not in deferred.yaml) | ${s.sector_pass_overflow} | ${pct(s.sector_pass_overflow, s.quote_universe)} |`
+    );
+  }
   lines.push("");
 
   if (s.prefilter_excluded > 0) {
@@ -383,19 +397,27 @@ export function buildFunnelDiagnosticsFromArtifacts(
   const enrichedInRun = totalRouted + killExcluded;
   const candidates = artifacts.candidates?.length ?? meta.candidate_count ?? 0;
   const deferred = artifacts.deferred?.length ?? meta.deferred_count ?? 0;
+  const sectorPassed =
+    (meta as { sector_passed?: number }).sector_passed ?? candidates + deferred;
+  const sectorPassOverflow =
+    (meta as { sector_pass_overflow?: number }).sector_pass_overflow ??
+    Math.max(0, sectorPassed - candidates - deferred);
 
   return {
     run_metadata: meta,
+    deferred_watchlist_cap:
+      (meta as { deferred_watchlist_cap?: number }).deferred_watchlist_cap ?? 20,
     stages: {
       quote_universe: quoteUniverse,
       prefilter_excluded: prefilterExcluded,
       enriched_in_run: enrichedInRun,
       kill_excluded: killExcluded,
       kill_survivors: totalRouted,
-      sector_passed: candidates + deferred,
-      sector_filtered: Math.max(0, totalRouted - candidates - deferred),
+      sector_passed: sectorPassed,
+      sector_filtered: Math.max(0, totalRouted - sectorPassed),
       candidates,
       deferred,
+      sector_pass_overflow: sectorPassOverflow,
     },
     prefilter_by_reason: prefilterByReason,
     kill_by_reason: killByReason,

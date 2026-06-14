@@ -141,4 +141,48 @@ describe("runFunnel", () => {
     expect(mfg).toBeDefined();
     expect(mfg!.metric_snapshot.capex_to_revenue).toBeDefined();
   });
+
+  it("caps candidates at 20 and deferred at 20 with sector_pass_overflow in diagnostics", async () => {
+    const base = universe.find((r) => r.ticker === "600519")!;
+    const passers: SecurityRecord[] = Array.from({ length: 50 }, (_, i) => ({
+      ...base,
+      ticker: `CAP${String(i + 1).padStart(4, "0")}`,
+      companyName: `Cap Fixture ${i + 1}`,
+    }));
+
+    const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "screener-cap-"));
+    const result = await runFunnel({
+      bundle,
+      universe: passers,
+      quarter: "2026-Q2",
+      marketScope: "CN",
+      outputDir: outDir,
+    });
+
+    expect(result.candidateCount).toBe(20);
+    expect(result.deferredCount).toBe(20);
+
+    const candidates = parseYaml(
+      await fs.readFile(path.join(outDir, "CN/candidates.yaml"), "utf8")
+    ) as { candidates: unknown[] };
+    const deferred = parseYaml(
+      await fs.readFile(path.join(outDir, "CN/deferred.yaml"), "utf8")
+    ) as { deferred: unknown[] };
+    expect(candidates.candidates).toHaveLength(20);
+    expect(deferred.deferred).toHaveLength(20);
+
+    const funnelDiagnostics = parseYaml(
+      await fs.readFile(path.join(outDir, "CN/funnel-diagnostics.yaml"), "utf8")
+    ) as {
+      stages: { sector_passed: number; sector_pass_overflow: number };
+      deferred_watchlist_cap: number;
+      run_metadata: { funnel_soft_cap: number; deferred_watchlist_cap: number };
+    };
+    expect(funnelDiagnostics.stages.sector_passed).toBe(50);
+    expect(funnelDiagnostics.stages.sector_pass_overflow).toBeGreaterThan(0);
+    expect(funnelDiagnostics.stages.sector_pass_overflow).toBe(10);
+    expect(funnelDiagnostics.deferred_watchlist_cap).toBe(20);
+    expect(funnelDiagnostics.run_metadata.funnel_soft_cap).toBe(20);
+    expect(funnelDiagnostics.run_metadata.deferred_watchlist_cap).toBe(20);
+  });
 });

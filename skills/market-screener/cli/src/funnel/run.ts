@@ -1,5 +1,5 @@
 import path from "node:path";
-import { funnelSoftCapFromBundle } from "../spec/conventions.js";
+import { deferredWatchlistCapFromBundle, funnelSoftCapFromBundle } from "../spec/conventions.js";
 import type { SpecBundle, SectorTemplateSpec } from "../spec/types.js";
 import { writeYamlArtifact } from "../io/artifacts.js";
 import type { ProgressLogger } from "../lib/progress.js";
@@ -8,7 +8,7 @@ import {
   routingDiagnosticsFromFunnel,
 } from "./diagnostics.js";
 import { applyKillGates, type KillGateResult, type SecurityRecord } from "./kill-gates.js";
-import { rankCandidates, splitBySoftCap } from "./ranker.js";
+import { rankCandidates } from "./ranker.js";
 import { routeSecurity, type RouteResult } from "./router.js";
 import { evaluateTemplateTrack, type TemplateEvalResult } from "./template-evaluator.js";
 import { getUniverseProfileFailureReason } from "./universe.js";
@@ -144,6 +144,7 @@ export interface FunnelRunResult {
 
 export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult> {
   const softCap = funnelSoftCapFromBundle(opts.bundle);
+  const deferredCap = deferredWatchlistCapFromBundle(opts.bundle);
   const markets =
     opts.marketScope === "CN,US" ? (["CN", "US"] as Market[]) : [opts.marketScope as Market];
 
@@ -200,7 +201,10 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
       rank: idx + 1,
     }));
 
-    const { primary, deferred } = splitBySoftCap(rankedRecords, softCap);
+    const primary = rankedRecords.slice(0, softCap);
+    const overflow = rankedRecords.slice(softCap);
+    const deferred = overflow.slice(0, deferredCap);
+    const sectorPassOverflow = overflow.length - deferred.length;
     const universeCount = marketUniverse.length + marketPrefilterExcluded.length;
     const funnelDiagnostics = diagnostics.finalize({
       bundle: opts.bundle,
@@ -211,6 +215,8 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
       prefilterExcluded: marketPrefilterExcluded.length,
       candidateCount: primary.length,
       deferredCount: deferred.length,
+      sectorPassOverflow,
+      deferredWatchlistCap: deferredCap,
       enrichStats: opts.enrichStatsByMarket?.[market],
       cacheGap: opts.cacheGapByMarket?.[market],
     });
