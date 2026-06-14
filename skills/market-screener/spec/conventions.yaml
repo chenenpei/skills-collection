@@ -47,7 +47,7 @@ derived_metrics:
   operating_margin:
     meaning: Latest fiscal-year operating margin (operating profit / revenue when available)
     unit: ratio
-    compute_from: cli/src/data/metrics.ts — operatingProfit/revenue, else gross_margin × 0.35 proxy
+    compute_from: cli/src/data/metrics.ts — operatingProfit/revenue only; omit when missing
     used_by: operating_margin_vs_industry benchmark overlay
 
   gross_margin_vs_industry:
@@ -109,6 +109,47 @@ enrich_tiers:
   high:
     note: Not in CLI MVP — manual in Deep only
     examples: [bank regulatory ratios, NDR, SBC detail CN, capacity utilization, customer concentration, forward_peg]
+
+metric_source_hygiene:
+  ref: docs/adr/0005-metric-source-hygiene.md
+  policy: missing_over_proxy
+  cn_vendor_roic:
+    report: RPT_F10_FINANCE_MAINFINADATA
+    column: ROIC
+    unit: percent_to_decimal
+  cn_balance_derive:
+    report: RPT_DMSK_FN_BALANCE
+    columns: [TOTAL_LIABILITIES, TOTAL_EQUITY, MONETARYFUNDS]
+  forbidden_silent_proxies:
+    - roic_from_roe_scale
+    - debt_from_revenue_times_alr
+    - cash_from_ocf_scale
+    - ebitda_from_gross_margin_scale
+    - operating_margin_from_gross_margin_scale
+    - us_roe_from_revenue_times_constant
+    - us_alr_hardcoded
+    - us_gross_profit_revenue_scale
+    - us_ocf_net_income_fallback
+  us_gaap_tags:
+    revenue: [RevenueFromContractWithCustomerExcludingAssessedTax, Revenues, SalesRevenueNet]
+    net_income: [NetIncomeLoss]
+    operating_cash_flow: [NetCashProvidedByUsedInOperatingActivities]
+    gross_profit: [GrossProfit]
+    cost_of_revenue: [CostOfRevenue, CostOfGoodsAndServicesSold]
+    operating_profit: [OperatingIncomeLoss]
+    assets: [Assets]
+    liabilities: [Liabilities]
+    equity: [StockholdersEquity]
+    cash: [CashAndCashEquivalentsAtCarryingValue]
+    long_term_debt: [LongTermDebtNoncurrent, LongTermDebt]
+    short_term_debt: [DebtCurrent, ShortTermBorrowings]
+    income_tax: [IncomeTaxExpenseBenefit]
+    pretax_income: [IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest]
+  us_roic_derive:
+    nopat: operatingProfit * (1 - effectiveTaxRate)
+    effective_tax_rate: clamp(incomeTax / pretaxIncome, 0, 0.35) when both present else 0.21
+    invested_capital: totalEquity + longTermDebt + shortTermDebt - monetaryFunds
+    omit_when: any required component missing or <= 0
 
 pass_logic:
   all_required_and_supporting_min_N_of_M:
