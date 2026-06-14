@@ -19,7 +19,7 @@ export function withAdapterDefaults(
   };
 }
 
-import { httpFetch } from "../../lib/http-fetch.js";
+import { yahooFetch } from "../../lib/yahoo-session.js";
 import { withHostLimit } from "../../lib/host-limit.js";
 import type { ProgressLogger } from "../../lib/progress.js";
 import type { Market } from "../../funnel/types.js";
@@ -73,7 +73,7 @@ function buildScreenerBody(offset: number): string {
   return JSON.stringify({
     size: PAGE_SIZE,
     offset,
-    sortField: "marketcap",
+    sortField: "intradaymarketcap",
     sortType: "DESC",
     quoteType: "EQUITY",
     query: {
@@ -123,7 +123,7 @@ export function createUsYahooAdapter(_opts: { cacheDir: string }): MarketDataAda
       let total = Number.POSITIVE_INFINITY;
 
       while (offset < total) {
-        const res = await httpFetch(SCREENER_URL, {
+        const res = await yahooFetch(SCREENER_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: buildScreenerBody(offset),
@@ -157,9 +157,7 @@ export async function fetchUsQuoteBulk(ticker: string): Promise<SecurityRecord["
   const path =
     `/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=summaryDetail,defaultKeyStatistics`;
   const res = await withHostLimit(YAHOO_QUOTE_HOST, YAHOO_MAX_CONCURRENT, () =>
-    httpFetch(`https://${YAHOO_QUOTE_HOST}${path}`, {
-      headers: { "User-Agent": "market-screener-cli/0.1" },
-    })
+    yahooFetch(`https://${YAHOO_QUOTE_HOST}${path}`)
   );
   if (!res.ok) return undefined;
 
@@ -195,9 +193,7 @@ export async function fetchUsQuoteBulk(ticker: string): Promise<SecurityRecord["
 export async function fetchUsDividendYield(ticker: string): Promise<number | undefined> {
   const path = `/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=summaryDetail`;
   const res = await withHostLimit(YAHOO_QUOTE_HOST, YAHOO_MAX_CONCURRENT, () =>
-    httpFetch(`https://${YAHOO_QUOTE_HOST}${path}`, {
-      headers: { "User-Agent": "market-screener-cli/0.1" },
-    })
+    yahooFetch(`https://${YAHOO_QUOTE_HOST}${path}`)
   );
   if (!res.ok) return undefined;
 

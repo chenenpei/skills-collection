@@ -5,6 +5,10 @@ vi.mock("../../src/data/us/sec.js", () => ({
   resolveCik: vi.fn(async () => undefined),
 }));
 
+vi.mock("../../src/lib/yahoo-session.js", () => ({
+  yahooFetch: vi.fn(async () => ({ ok: false, status: 404 })),
+}));
+
 describe("enrichUsRecord", () => {
   it("marks cik_unresolved when resolveCik returns undefined", async () => {
     const { enrichUsRecord } = await import("../../src/data/us/enrich.js");
