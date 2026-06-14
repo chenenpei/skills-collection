@@ -134,7 +134,7 @@ industry_proxy_map:
     template: tech_saas
   - keywords: [semiconductor, 半导体, chip]
     template: manufacturing
-    also_run: [tech_saas, cyclicals]
+    also_run: [cyclicals]
   - keywords: [oil, gas, 石油, 煤炭, mining, 钢铁, chemical]
     template: cyclicals
   - keywords: [retail, beverage, food, apparel]

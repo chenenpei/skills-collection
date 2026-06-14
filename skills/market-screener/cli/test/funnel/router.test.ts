@@ -119,6 +119,26 @@ describe("routeSecurity", () => {
       });
       expect(result.templates).toEqual([{ id: "manufacturing" }]);
     });
+
+    it("routes 电子 L1 to manufacturing high without tech_saas", () => {
+      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+        market: "CN",
+        industryProxy: "电子-元件-被动元件",
+      });
+      expect(result.templates).toEqual([{ id: "manufacturing" }]);
+      expect(result.routingConfidence).toBe("high");
+      expect(result.templates.map((t) => t.id)).not.toContain("tech_saas");
+    });
+
+    it("routes 电子-半导体 to manufacturing + cyclicals only", () => {
+      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+        market: "CN",
+        industryProxy: "电子-半导体-集成电路",
+      });
+      expect(result.matchedRule).toBe("l2:电子/半导体");
+      expect(result.templates.map((t) => t.id).sort()).toEqual(["cyclicals", "manufacturing"]);
+      expect(result.templates.map((t) => t.id)).not.toContain("tech_saas");
+    });
   });
 
   it("routes GICS 3520 to healthcare", () => {
