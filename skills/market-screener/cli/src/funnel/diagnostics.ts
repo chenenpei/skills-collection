@@ -1,3 +1,4 @@
+import type { EnrichRunStats } from "../data/types.js";
 import type { SpecBundle } from "../spec/types.js";
 import { buildRunMetadata } from "../io/artifacts.js";
 import { pct, sortedEntries } from "../lib/report-format.js";
@@ -37,6 +38,14 @@ export interface FunnelDiagnosticsDoc {
     { routed: number; passed_any_track: number; pass_rate: number }
   >;
   unmapped_samples: Array<{ ticker: string; industry_proxy?: string }>;
+  enrichment?: {
+    enrich_failed_count: number;
+    enrich_failed_samples: string[];
+    empty_annual_count: number;
+    empty_annual_samples: string[];
+    cache_missing_count: number;
+    cache_missing_samples: string[];
+  };
 }
 
 export class FunnelDiagnosticsCollector {
@@ -121,6 +130,8 @@ export class FunnelDiagnosticsCollector {
     prefilterExcluded: number;
     candidateCount: number;
     deferredCount: number;
+    enrichStats?: EnrichRunStats;
+    cacheGap?: { count: number; samples: string[] };
   }): FunnelDiagnosticsDoc {
     const killSurvivors = opts.enrichedInRun - this.killExcluded;
     const sectorByTemplateOut: FunnelDiagnosticsDoc["sector_by_template"] = {};
@@ -141,7 +152,7 @@ export class FunnelDiagnosticsCollector {
       deferredCount: opts.deferredCount,
     });
 
-    return {
+    const doc: FunnelDiagnosticsDoc = {
       run_metadata,
       stages: {
         quote_universe: opts.universeCount,
@@ -165,6 +176,19 @@ export class FunnelDiagnosticsCollector {
       sector_by_template: sectorByTemplateOut,
       unmapped_samples: this.unmappedSamples,
     };
+
+    if (opts.enrichStats || opts.cacheGap) {
+      doc.enrichment = {
+        enrich_failed_count: opts.enrichStats?.enrichFailedCount ?? 0,
+        enrich_failed_samples: opts.enrichStats?.enrichFailedSamples ?? [],
+        empty_annual_count: opts.enrichStats?.emptyAnnualCount ?? 0,
+        empty_annual_samples: opts.enrichStats?.emptyAnnualSamples ?? [],
+        cache_missing_count: opts.cacheGap?.count ?? 0,
+        cache_missing_samples: opts.cacheGap?.samples ?? [],
+      };
+    }
+
+    return doc;
   }
 }
 

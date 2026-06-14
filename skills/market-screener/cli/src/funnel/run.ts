@@ -13,6 +13,7 @@ import { routeSecurity, type RouteResult } from "./router.js";
 import { evaluateTemplateTrack, type TemplateEvalResult } from "./template-evaluator.js";
 import { getUniverseProfileFailureReason } from "./universe.js";
 import type { Market } from "./types.js";
+import type { EnrichRunStats } from "../data/types.js";
 
 export type FunnelTrack = "quality" | "mispricing";
 
@@ -130,6 +131,8 @@ export interface FunnelRunOptions {
   marketScope: Market | "CN,US";
   outputDir: string;
   progress?: ProgressLogger;
+  enrichStatsByMarket?: Partial<Record<Market, EnrichRunStats>>;
+  cacheGapByMarket?: Partial<Record<Market, { count: number; samples: string[] }>>;
 }
 
 export interface FunnelRunResult {
@@ -207,6 +210,8 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
       prefilterExcluded: marketPrefilterExcluded.length,
       candidateCount: primary.length,
       deferredCount: deferred.length,
+      enrichStats: opts.enrichStatsByMarket?.[market],
+      cacheGap: opts.cacheGapByMarket?.[market],
     });
 
     const base = path.join(opts.outputDir, market);

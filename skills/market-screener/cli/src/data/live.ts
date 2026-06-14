@@ -1,10 +1,56 @@
 import { mapPool } from "../lib/concurrency.js";
-import { getUniverseProfileFailureReason } from "../funnel/universe.js";
+import { ENRICH_STATS_SAMPLE_CAP } from "../lib/cache.js";
+import { partitionQuotePrefilter } from "./quote-prefilter.js";
 import { applyIndustryBenchmarks } from "./metrics.js";
-import type { EnrichOptions, EnrichResult } from "./types.js";
+import type { EnrichOptions, EnrichResult, EnrichRunStats } from "./types.js";
 import type { SecurityRecord } from "../funnel/kill-gates.js";
+import type { Market } from "../funnel/types.js";
 import { enrichCnRecord } from "./cn/enrich.js";
 import { enrichUsRecord } from "./us/enrich.js";
+
+export function summarizeEnrichRunStats(
+  records: SecurityRecord[],
+  market?: Market
+): EnrichRunStats {
+  const scoped = market ? records.filter((r) => r.market === market) : records;
+
+  let enrichFailedCount = 0;
+  let emptyAnnualCount = 0;
+  let cnMissingIndustryCount = 0;
+  const enrichFailedSamples: string[] = [];
+  const emptyAnnualSamples: string[] = [];
+
+  for (const r of scoped) {
+    if (r.enrichmentFailure) {
+      enrichFailedCount += 1;
+      if (enrichFailedSamples.length < ENRICH_STATS_SAMPLE_CAP) {
+        enrichFailedSamples.push(r.ticker);
+      }
+      continue;
+    }
+
+    const noAnnual = (r.revenueYoyHistory?.length ?? 0) === 0 && !r.industryProxy;
+    if (noAnnual) {
+      emptyAnnualCount += 1;
+      if (emptyAnnualSamples.length < ENRICH_STATS_SAMPLE_CAP) {
+        emptyAnnualSamples.push(r.ticker);
+      }
+    }
+
+    if (r.market === "CN" && !r.industryProxy) {
+      cnMissingIndustryCount += 1;
+    }
+  }
+
+  return {
+    enrichFailedCount,
+    enrichFailedSamples,
+    emptyAnnualCount,
+    emptyAnnualSamples,
+    cnMissingIndustryCount: market === "CN" ? cnMissingIndustryCount : undefined,
+    cnEnrichedCount: market === "CN" ? scoped.length : undefined,
+  };
+}
 
 async function enrichOne(record: SecurityRecord, opts: EnrichOptions): Promise<SecurityRecord> {
   try {
@@ -16,27 +62,25 @@ async function enrichOne(record: SecurityRecord, opts: EnrichOptions): Promise<S
   }
 }
 
-function summarizeEnrichment(
-  enriched: SecurityRecord[],
-  opts: EnrichOptions
-): void {
+function summarizeEnrichment(enrichStats: EnrichRunStats, opts: EnrichOptions): void {
   const progress = opts.progress;
   if (!progress) return;
 
-  const failed = enriched.filter((r) => r.enrichmentFailure).length;
-  if (failed > 0) {
+  if (enrichStats.enrichFailedCount > 0) {
     progress.warn(
-      `${failed} ticker(s) failed enrichment (enrichment_failure on excluded/candidate records)`
+      `${enrichStats.enrichFailedCount} ticker(s) failed enrichment` +
+        (enrichStats.enrichFailedSamples.length
+          ? ` (e.g. ${enrichStats.enrichFailedSamples.slice(0, 5).join(", ")})`
+          : "")
     );
   }
 
-  const cnRecords = enriched.filter((r) => r.market === "CN");
-  const cnMissingIndustry = cnRecords.filter(
-    (r) => !r.industryProxy && r.enrichmentFailure !== "fetch_failed"
-  ).length;
-  if (cnRecords.length > 0 && cnMissingIndustry / cnRecords.length >= 0.5) {
+  const cnStats = enrichStats;
+  const cnMissing = cnStats.cnMissingIndustryCount ?? 0;
+  const cnTotal = cnStats.cnEnrichedCount ?? 0;
+  if (cnTotal > 0 && cnMissing / cnTotal >= 0.5) {
     progress.warn(
-      `CN industry proxy missing on ${cnMissingIndustry}/${cnRecords.length} tickers — ` +
+      `CN industry proxy missing on ${cnMissing}/${cnTotal} tickers — ` +
         "routing will mostly fall back to manufacturing; check East Money orginfo enrichment"
     );
   }
@@ -51,16 +95,7 @@ export async function enrichLiveUniverse(
   }
 
   const progress = opts.progress;
-  const survivors: SecurityRecord[] = [];
-  const prefilterExcluded: SecurityRecord[] = [];
-  for (const record of records) {
-    const reason = getUniverseProfileFailureReason(opts.killGates, record);
-    if (reason === null) {
-      survivors.push(record);
-    } else {
-      prefilterExcluded.push(record);
-    }
-  }
+  const { survivors, prefilterExcluded } = partitionQuotePrefilter(opts.killGates, records);
 
   progress?.phase(
     `Quote prefilter: ${survivors.length} survivors, ${prefilterExcluded.length} excluded ` +
@@ -84,11 +119,21 @@ export async function enrichLiveUniverse(
     (done, total) => progress?.tick(done, total, "enrichment")
   );
 
-  summarizeEnrichment(enriched, opts);
+  const enrichStatsByMarket: Partial<Record<Market, EnrichRunStats>> = {};
+  for (const market of ["CN", "US"] as Market[]) {
+    if (enriched.some((r) => r.market === market)) {
+      enrichStatsByMarket[market] = summarizeEnrichRunStats(enriched, market);
+    }
+  }
+  summarizeEnrichment(
+    enrichStatsByMarket.CN ?? summarizeEnrichRunStats(enriched),
+    opts
+  );
   progress?.phase("Applying industry benchmark overlays…");
 
   return {
     universe: applyIndustryBenchmarks(enriched),
     prefilterExcluded,
+    enrichStatsByMarket,
   };
 }

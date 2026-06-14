@@ -12,9 +12,19 @@ export interface EnrichOptions {
   progress?: ProgressLogger;
 }
 
+export interface EnrichRunStats {
+  enrichFailedCount: number;
+  enrichFailedSamples: string[];
+  emptyAnnualCount: number;
+  emptyAnnualSamples: string[];
+  cnMissingIndustryCount?: number;
+  cnEnrichedCount?: number;
+}
+
 export interface EnrichResult {
   universe: SecurityRecord[];
   prefilterExcluded: SecurityRecord[];
+  enrichStatsByMarket?: Partial<Record<Market, EnrichRunStats>>;
 }
 
 export interface MarketDataAdapter {
