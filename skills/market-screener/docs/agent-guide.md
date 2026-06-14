@@ -161,6 +161,17 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 
 ---
 
+## Post-run quarterly gate (CN live)
+
+1. Run funnel + `filter-breakdown` for the quarter.
+2. Check `funnel-diagnostics.yaml` → `enrichment.cache_missing_count`. If > 3% of enriched survivors, run `repair-enrich-cache.ts` then re-run funnel or document residual tickers.
+3. **Medical devices (医疗器械):** L2 routes to `manufacturing` only; strong names may appear in `deferred`, not top 25 — expected after P0 healthcare fix.
+4. **Healthcare pass rate ~15–20%:** monitor in diagnostics; do not tighten template without Deep false-positive review.
+5. **688617 class:** absent from candidates when `inventory_turnover_vs_industry` fails under full-universe benchmarks — sector_filtered, not YAML omission bug.
+6. **Cyclicals also_run on 半导体:** retained; pass rate may be 0% until `mid_cycle_*` enrichment ships.
+
+---
+
 ## 7. Phase 2 占位（勿在 MVP 承诺）
 
 - `screener schedule` — 解析季度运行日期

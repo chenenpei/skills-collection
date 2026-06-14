@@ -141,6 +141,16 @@ npx tsx scripts/routing-report.ts --quarter 2026-Q1 --market CN --spec ../spec
 
 Use after a live enrichment run to verify CN map coverage (`fallback_rate < 5%`) before quarterly funnel.
 
+### Repair enrichment cache gaps
+
+After a live CN run, if `funnel-diagnostics.yaml` shows `enrichment.cache_missing_count` above 3% of enriched survivors:
+
+```bash
+npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
+```
+
+Re-runs `enrichCnRecord` for quote-prefilter survivors missing cache files or empty `annualRows`. Then re-run funnel or document residual tickers.
+
 ## Tests
 
 ```bash
