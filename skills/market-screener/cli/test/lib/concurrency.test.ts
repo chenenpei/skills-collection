@@ -16,4 +16,19 @@ describe("mapPool", () => {
 
     expect(maxInFlight).toBeLessThanOrEqual(2);
   });
+
+  it("reports progress after each completed item", async () => {
+    const seen: Array<[number, number]> = [];
+
+    const results = await mapPool([1, 2, 3], 2, async (n) => n * 2, (done, total) => {
+      seen.push([done, total]);
+    });
+
+    expect(results).toEqual([2, 4, 6]);
+    expect(seen).toEqual([
+      [1, 3],
+      [2, 3],
+      [3, 3],
+    ]);
+  });
 });

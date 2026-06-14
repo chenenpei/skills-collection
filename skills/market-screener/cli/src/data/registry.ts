@@ -6,6 +6,7 @@ import { createUsYahooAdapter } from "./us/quotes.js";
 import type { EnrichOptions, MarketDataAdapter } from "./types.js";
 import type { Market } from "../funnel/types.js";
 import type { SecurityRecord } from "../funnel/kill-gates.js";
+import type { ProgressLogger } from "../lib/progress.js";
 
 export type AdapterKind = "fixture" | "live";
 
@@ -14,13 +15,16 @@ export function createLiveAdapter(cacheDir = DEFAULT_CACHE_DIR): MarketDataAdapt
   const usAdapter = createUsYahooAdapter({ cacheDir });
 
   return {
-    async loadUniverse(markets: Market[]): Promise<SecurityRecord[]> {
+    async loadUniverse(
+      markets: Market[],
+      opts?: { progress?: ProgressLogger }
+    ): Promise<SecurityRecord[]> {
       const records: SecurityRecord[] = [];
       if (markets.includes("CN")) {
-        records.push(...(await cnAdapter.loadUniverse(["CN"])));
+        records.push(...(await cnAdapter.loadUniverse(["CN"], opts)));
       }
       if (markets.includes("US")) {
-        records.push(...(await usAdapter.loadUniverse(["US"])));
+        records.push(...(await usAdapter.loadUniverse(["US"], opts)));
       }
       return records;
     },

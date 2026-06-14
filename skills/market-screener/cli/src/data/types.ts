@@ -1,6 +1,7 @@
 import type { SecurityRecord } from "../funnel/kill-gates.js";
 import type { KillGatesSpec } from "../spec/types.js";
 import type { Market } from "../funnel/types.js";
+import type { ProgressLogger } from "../lib/progress.js";
 
 export interface EnrichOptions {
   quarter: string;
@@ -8,6 +9,7 @@ export interface EnrichOptions {
   concurrency: number;
   skipCache?: boolean;
   killGates?: KillGatesSpec;
+  progress?: ProgressLogger;
 }
 
 export interface EnrichResult {
@@ -16,7 +18,10 @@ export interface EnrichResult {
 }
 
 export interface MarketDataAdapter {
-  loadUniverse(markets: Market[]): Promise<SecurityRecord[]>;
+  loadUniverse(
+    markets: Market[],
+    opts?: { progress?: ProgressLogger }
+  ): Promise<SecurityRecord[]>;
   enrichRecords?(
     records: SecurityRecord[],
     opts: EnrichOptions

@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { parseMarket } from "./lib/markets.js";
+import { DEFAULT_CACHE_DIR } from "./lib/paths.js";
 
 export async function runCli(argv: string[]): Promise<void> {
   const program = new Command();
@@ -87,6 +88,46 @@ export async function runCli(argv: string[]): Promise<void> {
         from: opts.from,
         output: opts.output,
         quarter: opts.quarter,
+      });
+    });
+
+  program
+    .command("filter-breakdown")
+    .description("Industry-grouped filter statistics from funnel output")
+    .option(
+      "--from-output <dir>",
+      "Funnel market dir (e.g. funnel-output/2026-Q1/CN); alternative to --output + --quarter + --markets"
+    )
+    .option("--output <dir>", "Same root as screener run --output")
+    .option("--quarter <quarter>", "Reporting quarter, e.g. 2026-Q1")
+    .option("--markets <markets>", "CN or US (one market per invocation)")
+    .option("--cache-dir <dir>", "Enrichment cache root", DEFAULT_CACHE_DIR)
+    .option("--report <path>", "Override report file path")
+    .option("--top-l2 <n>", "Max L2 industry rows", "25")
+    .option("--top-l3 <n>", "Max L3 industry rows", "25")
+    .option("--stdout", "Print report to stdout instead of writing a file", false)
+    .action(async (opts: {
+      fromOutput?: string;
+      output?: string;
+      quarter?: string;
+      markets?: string;
+      cacheDir: string;
+      report?: string;
+      topL2: string;
+      topL3: string;
+      stdout: boolean;
+    }) => {
+      const { filterBreakdownCommand } = await import("./commands/filter-breakdown.js");
+      await filterBreakdownCommand({
+        fromOutput: opts.fromOutput,
+        output: opts.output,
+        quarter: opts.quarter,
+        markets: opts.markets,
+        cacheDir: opts.cacheDir,
+        report: opts.report,
+        topL2: Number.parseInt(opts.topL2, 10),
+        topL3: Number.parseInt(opts.topL3, 10),
+        stdout: Boolean(opts.stdout),
       });
     });
 

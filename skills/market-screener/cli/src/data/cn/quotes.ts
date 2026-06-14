@@ -21,6 +21,7 @@ export function withAdapterDefaults(
 
 import { EASTMONEY_UT } from "./eastmoney.js";
 import { httpFetch } from "../../lib/http-fetch.js";
+import type { ProgressLogger } from "../../lib/progress.js";
 import type { Market } from "../../funnel/types.js";
 import type { MarketDataAdapter } from "../types.js";
 
@@ -103,8 +104,14 @@ async function fetchPage(page: number): Promise<{ rows: EastMoneyRow[]; total: n
 
 export function createCnEastMoneyAdapter(_opts: { cacheDir: string }): MarketDataAdapter {
   return {
-    async loadUniverse(markets: Market[]): Promise<SecurityRecord[]> {
+    async loadUniverse(
+      markets: Market[],
+      opts?: { progress?: ProgressLogger }
+    ): Promise<SecurityRecord[]> {
       if (!markets.includes("CN")) return [];
+
+      const progress = opts?.progress;
+      progress?.phase("Fetching CN quote list from East Money…");
 
       const records: SecurityRecord[] = [];
       let page = 1;
@@ -118,6 +125,10 @@ export function createCnEastMoneyAdapter(_opts: { cacheDir: string }): MarketDat
 
         for (const row of rows) {
           records.push(mapRowToSecurityRecord(row));
+        }
+
+        if (page === 1 || page % 10 === 0 || records.length >= total) {
+          progress?.tick(records.length, total, "CN quotes");
         }
 
         page += 1;

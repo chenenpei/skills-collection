@@ -2,6 +2,7 @@ import path from "node:path";
 import { funnelSoftCapFromBundle } from "../spec/conventions.js";
 import type { SpecBundle, SectorTemplateSpec } from "../spec/types.js";
 import { writeYamlArtifact } from "../io/artifacts.js";
+import type { ProgressLogger } from "../lib/progress.js";
 import {
   FunnelDiagnosticsCollector,
   routingDiagnosticsFromFunnel,
@@ -128,6 +129,7 @@ export interface FunnelRunOptions {
   quarter: string;
   marketScope: Market | "CN,US";
   outputDir: string;
+  progress?: ProgressLogger;
 }
 
 export interface FunnelRunResult {
@@ -146,6 +148,7 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
   let totalExcluded = 0;
 
   for (const market of markets) {
+    opts.progress?.phase(`Funnel stage: ${market} (kill gates → sector templates → rank)…`);
     const marketUniverse = opts.universe.filter((u) => u.market === market);
     const marketPrefilterExcluded = (opts.prefilterExcluded ?? []).filter(
       (r) => r.market === market
@@ -235,6 +238,19 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
       );
     }
     await Promise.all(writes);
+
+    const fallbackRate = funnelDiagnostics.routing?.fallback_rate;
+    if (fallbackRate !== undefined && fallbackRate >= 0.5) {
+      opts.progress?.warn(
+        `${market} routing fallback_rate=${(fallbackRate * 100).toFixed(1)}% — ` +
+          "check industry enrichment and cn-industry-map coverage"
+      );
+    }
+
+    opts.progress?.phase(
+      `${market} done: ${primary.length} candidates, ${deferred.length} deferred, ` +
+        `${excluded.length} excluded`
+    );
 
     totalCandidates += primary.length;
     totalDeferred += deferred.length;

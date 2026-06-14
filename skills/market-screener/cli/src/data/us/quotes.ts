@@ -21,6 +21,7 @@ export function withAdapterDefaults(
 
 import { httpFetch } from "../../lib/http-fetch.js";
 import { withHostLimit } from "../../lib/host-limit.js";
+import type { ProgressLogger } from "../../lib/progress.js";
 import type { Market } from "../../funnel/types.js";
 import type { MarketDataAdapter } from "../types.js";
 
@@ -79,8 +80,14 @@ function mapQuoteToSecurityRecord(quote: YahooQuote): SecurityRecord | null {
 
 export function createUsYahooAdapter(_opts: { cacheDir: string }): MarketDataAdapter {
   return {
-    async loadUniverse(markets: Market[]): Promise<SecurityRecord[]> {
+    async loadUniverse(
+      markets: Market[],
+      opts?: { progress?: ProgressLogger }
+    ): Promise<SecurityRecord[]> {
       if (!markets.includes("US")) return [];
+
+      const progress = opts?.progress;
+      progress?.phase("Fetching US quote list from Yahoo screener…");
 
       const records: SecurityRecord[] = [];
       let offset = 0;
@@ -105,6 +112,8 @@ export function createUsYahooAdapter(_opts: { cacheDir: string }): MarketDataAda
           const record = mapQuoteToSecurityRecord(quote);
           if (record) records.push(record);
         }
+
+        progress?.tick(records.length, total, "US quotes");
 
         if (quotes.length === 0) break;
         offset += quotes.length;

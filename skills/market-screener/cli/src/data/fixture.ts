@@ -23,7 +23,10 @@ async function loadFixtureFile(
 
 export function createFixtureAdapter(fixturesDir = DEFAULT_FIXTURES_DIR): MarketDataAdapter {
   return {
-    async loadUniverse(markets: Market[]): Promise<SecurityRecord[]> {
+    async loadUniverse(
+      markets: Market[],
+      _opts?: { progress?: import("../lib/progress.js").ProgressLogger }
+    ): Promise<SecurityRecord[]> {
       const records: SecurityRecord[] = [];
       for (const market of markets) {
         records.push(...(await loadFixtureFile(fixturesDir, market)));

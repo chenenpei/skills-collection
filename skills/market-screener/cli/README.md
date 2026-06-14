@@ -115,6 +115,22 @@ npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN --writ
 
 Works from `funnel-diagnostics.yaml` when present; otherwise reconstructs from `prefilter-excluded.yaml`, `excluded.yaml`, and `routing-diagnostics.yaml`.
 
+### Filter breakdown (industry hierarchy)
+
+Industry-grouped exit stats: prefilter / kill / sector filter / deferred / candidate, with L1–L3 Shenwan tables and per-L1 reason ranking. **Default writes** `{output}/{quarter}/{market}/filter-breakdown.md` next to `candidates.yaml`.
+
+```bash
+# Same --output root as screener run (recommended)
+npm run dev -- filter-breakdown --output ./funnel-output/ --quarter 2026-Q1 --markets CN
+
+# Or explicit market dir
+npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN
+
+# Custom report path / stdout
+npm run dev -- filter-breakdown --output ./funnel-output/ --quarter 2026-Q1 --markets CN --report ./reports/cn-filters.md
+npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN --stdout
+```
+
 ### Routing report (cache)
 
 Offline routing distribution from enrichment cache (`industryProxy` per ticker):

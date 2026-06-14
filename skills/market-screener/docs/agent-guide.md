@@ -59,6 +59,7 @@ npm run dev -- run \
 - `CN/prefilter-excluded.yaml` — **仅 live**：quote prefilter 跳过、未 enrichment 的标的（status/市值/年限）
 - `CN/routing-diagnostics.yaml` — Kill Gate 存活标的的路由分布（`by_method`、`fallback_rate`）
 - `CN/funnel-diagnostics.yaml` — 全漏斗回放统计（prefilter/kill 原因占比、sector 通过率）；可用 `scripts/funnel-replay.ts` 打印可读报告
+- **按行业层级统计剔除原因**：`npm run dev -- filter-breakdown --output ./funnel-output/ --quarter {quarter} --markets CN`（默认写入同目录 `filter-breakdown.md`；需 enrichment cache）
 - `US/` 同上
 
 **禁止** Agent 自行调用东方财富/Yahoo API 重实现漏斗逻辑；数据拉取由 CLI adapter 负责。

@@ -63,16 +63,20 @@ function buildDatacenterParams(opts: {
   columns: string;
   filter: string;
   pageSize?: string;
+  sortByReportDate?: boolean;
 }): URLSearchParams {
-  return new URLSearchParams({
+  const params = new URLSearchParams({
     reportName: opts.reportName,
     columns: opts.columns,
     filter: opts.filter,
     pageNumber: "1",
     pageSize: opts.pageSize ?? "8",
-    sortTypes: "-1",
-    sortColumns: "REPORT_DATE",
   });
+  if (opts.sortByReportDate !== false) {
+    params.set("sortTypes", "-1");
+    params.set("sortColumns", "REPORT_DATE");
+  }
+  return params;
 }
 
 export function parseEastMoneyAnnualRows(data: RawRow[]): AnnualFinancialRow[] {
@@ -241,6 +245,7 @@ export async function fetchCnIndustryProxy(ticker: string): Promise<string | und
       columns: "SECUCODE,EM2016,BOARD_NAME_LEVEL",
       filter: `(SECUCODE="${secucode}")`,
       pageSize: "1",
+      sortByReportDate: false,
     })
   );
   if (!res.ok) throw new Error(`EastMoney industry failed for ${ticker}: ${res.status}`);
