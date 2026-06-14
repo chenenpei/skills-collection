@@ -60,6 +60,7 @@ Veto conditions:
 Sector exceptions:
 
 - For SaaS, high-growth technology, biotech, and early platforms, do not mechanically require current FCF or ROE. Use retention, unit economics, gross margin, revenue quality, SBC, dilution, and path to cash generation instead.
+- For companies routed by market-screener to the healthcare funnel, use `data.md` Healthcare and pharma metrics in Deep sector-specific analysis; apply the biotech exception above when pre-profit high-R&D names passed the funnel biotech quality path.
 - For AI applications and platform-dependent software, do not treat high revenue growth as high-quality SaaS unless inference cost, channel take rate, model/API dependency, CAC, and retention show durable unit economics.
 - For financials, use ROE, P/B, asset quality, capital adequacy, and provisioning quality instead of ordinary-company FCF.
 

@@ -101,6 +101,18 @@ Manufacturing and hardware:
 - Technology iteration risk
 - Capacity utilization
 
+Healthcare and pharma:
+
+- Gross margin and pricing power (patent protection, formulary, reimbursement, VBP/集采 exposure)
+- R&D intensity and pipeline quality (stage, diversity, patent cliff timeline)
+- FCF conversion and owner earnings for mature compounders; cash runway and dilution for pre-profit biotech
+- Revenue growth and product mix (innovation vs legacy; geographic mix)
+- Regulatory and approval risk (NMPA, FDA, pharmacovigilance)
+- Reimbursement and volume-based procurement (集采) impact on sustainable margins
+- CXO / services: customer concentration, contract backlog, capacity utilization
+- Balance sheet resilience and net debt through R&D or patent-cliff cycles
+- Margin stability versus one-off approvals, inventory write-downs, or licensing gains
+
 ## Fund and ETF Metrics
 
 Use this section when the security is an ETF, index fund, active fund, or other pooled investment vehicle.

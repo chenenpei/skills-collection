@@ -191,6 +191,8 @@ Data quality: [High / Medium / Low]
 
 ## 6. Sector-Specific Metrics
 
+- For healthcare/pharma routed candidates (`routed_templates` includes `healthcare`), use `data.md` **Healthcare and pharma** metrics.
+
 - Most important sector metrics:
 - Company performance:
 - Red flags:

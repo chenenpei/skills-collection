@@ -96,6 +96,8 @@ Analyze:
 
 Use `data.md` section `Sector Adjustments`. Do not apply one generic metric set mechanically across industries.
 
+- For healthcare/pharma routed candidates (`routed_templates` includes `healthcare`), use `data.md` **Healthcare and pharma** metrics.
+
 ## Moat and Management
 
 Score each moat dimension High, Medium, or Low:
