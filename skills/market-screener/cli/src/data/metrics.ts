@@ -81,6 +81,22 @@ export interface DeriveContext {
   priceToBook?: number;
   trailingPe?: number;
   fcf?: number;
+  price?: number;
+  high52Week?: number;
+}
+
+const MID_CYCLE_WINDOW_YEARS = 7;
+
+function fcfForRow(row: AnnualFinancialRow): number {
+  const capex = row.capex !== undefined ? Math.abs(row.capex) : 0;
+  return row.operatingCashFlow - capex;
+}
+
+function midCycleAverage(values: number[], excludeNegative = false): number | undefined {
+  if (values.length === 0) return undefined;
+  const filtered = excludeNegative ? values.filter((v) => v > 0) : values;
+  if (filtered.length === 0) return undefined;
+  return avg(filtered);
 }
 
 export function deriveFromAnnualRows(
@@ -153,9 +169,66 @@ export function deriveFromAnnualRows(
   }
 
   if (fcfYield !== undefined) metrics.fcf_yield = mv(fcfYield);
+  if (ctx.trailingPe !== undefined) metrics.pe_ttm = mv(ctx.trailingPe);
+  if (ctx.priceToBook !== undefined) metrics.pb = mv(ctx.priceToBook);
   if (ctx.trailingPe !== undefined && ctx.priceToBook !== undefined) {
     metrics.graham_composite = mv(ctx.trailingPe * ctx.priceToBook);
   }
+  if (ctx.price !== undefined && ctx.high52Week !== undefined && ctx.high52Week > 0) {
+    metrics.price_vs_52w_high = mv(ctx.price / ctx.high52Week);
+  }
+  if (ctx.marketCap > 0 && latest.revenue > 0) {
+    metrics.ps = mv(ctx.marketCap / latest.revenue);
+  }
+
+  const last7 = sorted.slice(-MID_CYCLE_WINDOW_YEARS);
+  const midCycleEps = midCycleAverage(
+    last7.map((r) => r.netIncome),
+    true
+  );
+  if (midCycleEps !== undefined && midCycleEps > 0 && ctx.marketCap > 0) {
+    metrics.mid_cycle_eps = mv(midCycleEps);
+    metrics.mid_cycle_pe = mv(ctx.marketCap / midCycleEps);
+  }
+  const midCycleFcf = midCycleAverage(last7.map((r) => fcfForRow(r)));
+  if (midCycleFcf !== undefined && ctx.marketCap > 0) {
+    metrics.mid_cycle_fcf = mv(midCycleFcf);
+    metrics.mid_cycle_fcf_yield = mv(midCycleFcf / ctx.marketCap);
+  }
+  const midCycleOpMargin = midCycleAverage(last7.map((r) => operatingMargin(r)));
+  if (midCycleOpMargin !== undefined) {
+    metrics.mid_cycle_operating_margin = mv(midCycleOpMargin);
+  }
+
+  const marginHistory = sorted.slice(-MID_CYCLE_WINDOW_YEARS).map((r) => operatingMargin(r));
+  if (marginHistory.length >= 2) {
+    const marginMedian = median(marginHistory);
+    metrics.operating_margin_vs_10y_median = mv(opMargin - marginMedian);
+  }
+
+  if (sorted.length >= 11) {
+    metrics.revenue_10y_cagr = mv(
+      cagr(sorted[sorted.length - 11].revenue, latest.revenue, 10)
+    );
+  } else if (sorted.length >= 2) {
+    metrics.revenue_10y_cagr = mv(
+      cagr(sorted[0].revenue, latest.revenue, Math.max(1, sorted.length - 1))
+    );
+  }
+
+  const roe3y = sorted.slice(-3).map((r) => r.roe);
+  if (roe3y.length > 0) metrics.roe_3y_avg = mv(avg(roe3y));
+
+  const latestRevenueYoy = revenueYoyHistory[revenueYoyHistory.length - 1];
+  if (latestRevenueYoy !== undefined) {
+    metrics.revenue_yoy = mv(latestRevenueYoy);
+    metrics.revenue_growth_yoy = mv(latestRevenueYoy);
+  }
+
+  const latestFcf = ctx.fcf ?? fcfForRow(latest);
+  const fcfMargin = latest.revenue > 0 ? latestFcf / latest.revenue : 0;
+  if (latest.revenue > 0) metrics.fcf_margin = mv(fcfMargin);
+  metrics.rule_of_40 = mv(((latestRevenueYoy ?? 0) + fcfMargin) * 100);
 
   return {
     metrics,
@@ -186,13 +259,17 @@ function metricValues(group: SecurityRecord[], key: string): number[] {
 }
 
 const VS_INDUSTRY_SPECS = [
-  { base: "gross_margin", vs: "gross_margin_vs_industry" },
-  { base: "operating_margin", vs: "operating_margin_vs_industry" },
+  { base: "gross_margin", vs: "gross_margin_vs_industry", mode: "diff" as const },
+  { base: "operating_margin", vs: "operating_margin_vs_industry", mode: "diff" as const },
   {
     base: "inventory_turnover",
     vs: "inventory_turnover_vs_industry",
+    mode: "diff" as const,
     requirePositiveMedian: true,
   },
+  { base: "pe_ttm", vsPeer: "pe_ttm_vs_peer_median", vsIndustry: "pe_ttm_vs_industry_median", mode: "ratio" as const },
+  { base: "pb", vsPeer: "pb_vs_peer_median", vsIndustry: "pb_vs_industry_median", mode: "ratio" as const },
+  { base: "ps", vsPeer: "ps_vs_peer_median", vsIndustry: "ps_vs_industry_median", mode: "ratio" as const },
 ] as const;
 
 export function applyIndustryBenchmarks(records: SecurityRecord[]): SecurityRecord[] {
@@ -222,12 +299,23 @@ export function applyIndustryBenchmarks(records: SecurityRecord[]): SecurityReco
       const value = record.metrics[spec.base]?.value;
       const med = medians.get(key);
       if (value === undefined || med === undefined) continue;
-      if (spec.requirePositiveMedian && med <= 0) continue;
-      metrics[spec.vs] = {
-        value: value - med,
-        dataConfidence: "medium" as const,
-      };
-      changed = true;
+      if ("requirePositiveMedian" in spec && spec.requirePositiveMedian && med <= 0) continue;
+
+      if (spec.mode === "diff" && "vs" in spec) {
+        metrics[spec.vs] = {
+          value: value - med,
+          dataConfidence: "medium" as const,
+        };
+        changed = true;
+        continue;
+      }
+
+      if (spec.mode === "ratio" && med > 0) {
+        const ratio = value / med;
+        metrics[spec.vsPeer] = { value: ratio, dataConfidence: "medium" as const };
+        metrics[spec.vsIndustry] = { value: ratio, dataConfidence: "medium" as const };
+        changed = true;
+      }
     }
 
     return changed ? { ...record, metrics } : record;

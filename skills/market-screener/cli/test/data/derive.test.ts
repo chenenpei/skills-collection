@@ -69,4 +69,63 @@ describe("deriveFromAnnualRows", () => {
     const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
     expect(derived.metrics.capex_to_revenue).toBeUndefined();
   });
+
+  it("derives mid_cycle_pe from 7y average EPS", () => {
+    const rows = Array.from({ length: 7 }, (_, i) => ({
+      year: 2019 + i,
+      revenue: 100 + i * 10,
+      grossProfit: 40,
+      netIncome: 10 + i,
+      operatingCashFlow: 12 + i,
+      roe: 0.1,
+      assetLiabilityRatio: 0.4,
+    }));
+    const marketCap = 140;
+    const derived = deriveFromAnnualRows(rows, { marketCap, currency: "CNY" });
+    const avgEps = (10 + 11 + 12 + 13 + 14 + 15 + 16) / 7;
+    expect(derived.metrics.mid_cycle_pe?.value).toBeCloseTo(marketCap / avgEps, 4);
+  });
+
+  it("derives revenue_10y_cagr over ten fiscal years", () => {
+    const rows = Array.from({ length: 11 }, (_, i) => ({
+      year: 2015 + i,
+      revenue: 100 * Math.pow(1.08, i),
+      grossProfit: 40,
+      netIncome: 10,
+      operatingCashFlow: 12,
+      roe: 0.1,
+      assetLiabilityRatio: 0.4,
+    }));
+    const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "CNY" });
+    expect(derived.metrics.revenue_10y_cagr?.value).toBeCloseTo(0.08, 3);
+  });
+
+  it("derives rule_of_40 as (revenue growth + fcf margin) * 100", () => {
+    const rows = [
+      {
+        year: 2024,
+        revenue: 100,
+        grossProfit: 40,
+        netIncome: 10,
+        operatingCashFlow: 30,
+        roe: 0.1,
+        assetLiabilityRatio: 0.4,
+        capex: 3,
+      },
+      {
+        year: 2025,
+        revenue: 115,
+        grossProfit: 46,
+        netIncome: 12,
+        operatingCashFlow: 35,
+        roe: 0.11,
+        assetLiabilityRatio: 0.4,
+        capex: 3,
+      },
+    ];
+    const derived = deriveFromAnnualRows(rows, { marketCap: 1e9, currency: "USD" });
+    const revenueGrowth = (115 - 100) / 100;
+    const fcfMargin = (35 - 3) / 115;
+    expect(derived.metrics.rule_of_40?.value).toBeCloseTo((revenueGrowth + fcfMargin) * 100, 4);
+  });
 });

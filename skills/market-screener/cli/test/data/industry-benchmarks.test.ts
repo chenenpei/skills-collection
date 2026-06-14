@@ -82,4 +82,37 @@ describe("applyIndustryBenchmarks", () => {
     const leader = out.find((r) => r.ticker === "C")!;
     expect(leader.metrics.inventory_turnover_vs_industry?.value).toBeCloseTo(2, 2);
   });
+
+  it("sets pe_ttm and pb peer/industry overlays as value/median ratios", () => {
+    const mk = (ticker: string, pe: number, pb: number, ps: number): SecurityRecord => ({
+      ticker,
+      market: "CN",
+      companyName: ticker,
+      currency: "CNY",
+      status: "active",
+      marketCap: 5e9,
+      listingAgeYears: 10,
+      industryProxy: "软件",
+      metrics: {
+        pe_ttm: { value: pe, dataConfidence: "medium" },
+        pb: { value: pb, dataConfidence: "medium" },
+        ps: { value: ps, dataConfidence: "medium" },
+      },
+      revenueYoyHistory: [],
+      ocfNegativeYears: 0,
+      netLossWidening: false,
+      nonStandardAudit: false,
+      latestFinancialMonthsOld: 6,
+    });
+
+    const out = applyIndustryBenchmarks([
+      mk("A", 10, 1.0, 2),
+      mk("B", 20, 2.0, 4),
+      mk("C", 30, 3.0, 6),
+    ]);
+    const leader = out.find((r) => r.ticker === "C")!;
+    expect(leader.metrics.pe_ttm_vs_peer_median?.value).toBeCloseTo(1.5, 2);
+    expect(leader.metrics.pb_vs_peer_median?.value).toBeCloseTo(1.5, 2);
+    expect(leader.metrics.ps_vs_industry_median?.value).toBeCloseTo(1.5, 2);
+  });
 });

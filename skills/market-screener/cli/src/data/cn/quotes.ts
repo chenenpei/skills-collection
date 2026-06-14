@@ -28,7 +28,7 @@ import type { MarketDataAdapter } from "../types.js";
 const CLIST_BASE = "https://push2delay.eastmoney.com/api/qt/clist/get";
 const A_SHARE_FS =
   "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048";
-const CLIST_FIELDS = "f12,f14,f20,f116,f127";
+const CLIST_FIELDS = "f12,f14,f20,f116,f127,f2,f9,f15,f23";
 /** East Money caps each page well below requested pz; paginate explicitly. */
 const PAGE_SIZE = 100;
 const REQUEST_HEADERS = {
@@ -72,7 +72,37 @@ function parseStatusFromF127(row: EastMoneyRow): string {
   return text;
 }
 
+function quoteMetric(value: number | undefined): SecurityRecord["metrics"][string] | undefined {
+  if (value === undefined || !Number.isFinite(value) || value <= 0) return undefined;
+  return { value, dataConfidence: "medium" };
+}
+
+function priceVs52wHigh(row: EastMoneyRow): number | undefined {
+  const a = Number(row.f15);
+  const b = Number(row.f23);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) return undefined;
+  const high = Math.max(a, b);
+  const price = Math.min(a, b);
+  return price / high;
+}
+
 function mapRowToSecurityRecord(row: EastMoneyRow): SecurityRecord {
+  const metrics: SecurityRecord["metrics"] = {};
+  const peTtm = quoteMetric(Number(row.f2));
+  const pb = quoteMetric(Number(row.f9));
+  const priceVsHigh = priceVs52wHigh(row);
+  if (peTtm) metrics.pe_ttm = peTtm;
+  if (pb) metrics.pb = pb;
+  if (priceVsHigh !== undefined) {
+    metrics.price_vs_52w_high = { value: priceVsHigh, dataConfidence: "medium" };
+    const a = Number(row.f15);
+    const b = Number(row.f23);
+    if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) {
+      metrics.price = { value: Math.min(a, b), dataConfidence: "medium" };
+      metrics.high_52w = { value: Math.max(a, b), dataConfidence: "medium" };
+    }
+  }
+
   return withAdapterDefaults({
     ticker: String(row.f12 ?? ""),
     market: "CN",
@@ -81,6 +111,7 @@ function mapRowToSecurityRecord(row: EastMoneyRow): SecurityRecord {
     status: parseStatusFromF127(row),
     marketCap: Number(row.f20 ?? 0),
     listingAgeYears: Number(row.f116 ?? 0) / 365,
+    metrics,
   });
 }
 

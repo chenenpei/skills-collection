@@ -39,7 +39,35 @@ type YahooQuote = {
   marketCap?: number;
   quoteType?: string;
   firstTradeDateMilliseconds?: number;
+  trailingPE?: number;
+  priceToBook?: number;
+  regularMarketPrice?: number;
+  fiftyTwoWeekHigh?: number;
 };
+
+function quoteMetric(value: number | undefined): SecurityRecord["metrics"][string] | undefined {
+  if (value === undefined || !Number.isFinite(value) || value <= 0) return undefined;
+  return { value, dataConfidence: "medium" };
+}
+
+function quoteMetricsFromYahoo(quote: YahooQuote): SecurityRecord["metrics"] {
+  const metrics: SecurityRecord["metrics"] = {};
+  const peTtm = quoteMetric(quote.trailingPE);
+  const pb = quoteMetric(quote.priceToBook);
+  const price = quoteMetric(quote.regularMarketPrice);
+  const high52 = quoteMetric(quote.fiftyTwoWeekHigh);
+  if (peTtm) metrics.pe_ttm = peTtm;
+  if (pb) metrics.pb = pb;
+  if (price) metrics.price = price;
+  if (high52) metrics.high_52w = high52;
+  if (price && high52 && high52.value > 0) {
+    metrics.price_vs_52w_high = {
+      value: price.value / high52.value,
+      dataConfidence: "medium",
+    };
+  }
+  return metrics;
+}
 
 function buildScreenerBody(offset: number): string {
   return JSON.stringify({
@@ -75,6 +103,7 @@ function mapQuoteToSecurityRecord(quote: YahooQuote): SecurityRecord | null {
     status: "active",
     marketCap: Number(quote.marketCap ?? 0),
     listingAgeYears: listingAgeYears(quote.firstTradeDateMilliseconds),
+    metrics: quoteMetricsFromYahoo(quote),
   });
 }
 
@@ -122,6 +151,45 @@ export function createUsYahooAdapter(_opts: { cacheDir: string }): MarketDataAda
       return records;
     },
   };
+}
+
+export async function fetchUsQuoteBulk(ticker: string): Promise<SecurityRecord["metrics"] | undefined> {
+  const path =
+    `/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=summaryDetail,defaultKeyStatistics`;
+  const res = await withHostLimit(YAHOO_QUOTE_HOST, YAHOO_MAX_CONCURRENT, () =>
+    httpFetch(`https://${YAHOO_QUOTE_HOST}${path}`, {
+      headers: { "User-Agent": "market-screener-cli/0.1" },
+    })
+  );
+  if (!res.ok) return undefined;
+
+  const body = (await res.json()) as {
+    quoteSummary?: {
+      result?: Array<{
+        summaryDetail?: {
+          trailingPE?: { raw?: number };
+          priceToBook?: { raw?: number };
+          regularMarketPrice?: { raw?: number };
+          fiftyTwoWeekHigh?: { raw?: number };
+        };
+        defaultKeyStatistics?: {
+          trailingPE?: { raw?: number };
+          priceToBook?: { raw?: number };
+        };
+      }>;
+    };
+  };
+  const row = body.quoteSummary?.result?.[0];
+  if (!row) return undefined;
+
+  const detail = row.summaryDetail;
+  const stats = row.defaultKeyStatistics;
+  return quoteMetricsFromYahoo({
+    trailingPE: detail?.trailingPE?.raw ?? stats?.trailingPE?.raw,
+    priceToBook: detail?.priceToBook?.raw ?? stats?.priceToBook?.raw,
+    regularMarketPrice: detail?.regularMarketPrice?.raw,
+    fiftyTwoWeekHigh: detail?.fiftyTwoWeekHigh?.raw,
+  });
 }
 
 export async function fetchUsDividendYield(ticker: string): Promise<number | undefined> {

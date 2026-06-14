@@ -3,6 +3,7 @@ import type { EnrichOptions } from "../types.js";
 import type { SecurityRecord } from "../../funnel/kill-gates.js";
 import {
   mergeEnrichment,
+  updatedQuoteHistory,
   type DividendWithConfidence,
   type EnrichCachePayload,
 } from "../merge-enrichment.js";
@@ -33,6 +34,24 @@ async function resolveDividendYield(
   }
 }
 
+async function persistEnrichCache(
+  opts: EnrichOptions,
+  ticker: string,
+  payload: EnrichCachePayload,
+  enriched: SecurityRecord
+): Promise<void> {
+  if (opts.skipCache) return;
+  await writeCache(opts.cacheDir, opts.quarter, "CN", ticker, {
+    ...payload,
+    quoteHistory: updatedQuoteHistory(
+      payload.quoteHistory,
+      opts.quarter,
+      enriched.metrics.pe_ttm?.value,
+      enriched.metrics.pb?.value
+    ),
+  });
+}
+
 export async function enrichCnRecord(
   record: SecurityRecord,
   opts: EnrichOptions
@@ -48,19 +67,20 @@ export async function enrichCnRecord(
     );
     if (cached?.annualRows.length) {
       const dividend = await resolveDividendYield(record.ticker, cached);
-      if (dividend && cached.dividendYield === undefined) {
-        await writeCache(opts.cacheDir, opts.quarter, "CN", record.ticker, {
-          ...cached,
-          dividendYield: dividend.yield,
-          dividendYieldConfidence: dividend.dataConfidence,
-        });
-      }
-      return mergeEnrichment(
+      const enriched = mergeEnrichment(
         record,
         cached.annualRows,
         cached.industryProxy,
-        dividend
+        dividend,
+        { quarter: opts.quarter, quoteHistory: cached.quoteHistory }
       );
+      const payload: EnrichCachePayload = {
+        ...cached,
+        dividendYield: cached.dividendYield ?? dividend?.yield,
+        dividendYieldConfidence: cached.dividendYieldConfidence ?? dividend?.dataConfidence,
+      };
+      await persistEnrichCache(opts, record.ticker, payload, enriched);
+      return enriched;
     }
   }
 
@@ -85,14 +105,23 @@ export async function enrichCnRecord(
     ]);
   }
 
-  if (!opts.skipCache && mergedRows.length > 0) {
-    await writeCache(opts.cacheDir, opts.quarter, "CN", record.ticker, {
-      annualRows: mergedRows,
-      industryProxy,
-      dividendYield: dividend?.yield,
-      dividendYieldConfidence: dividend?.dataConfidence,
-    } satisfies EnrichCachePayload);
+  const enriched = mergeEnrichment(record, mergedRows, industryProxy, dividend, {
+    quarter: opts.quarter,
+  });
+
+  if (mergedRows.length > 0) {
+    await persistEnrichCache(
+      opts,
+      record.ticker,
+      {
+        annualRows: mergedRows,
+        industryProxy,
+        dividendYield: dividend?.yield,
+        dividendYieldConfidence: dividend?.dataConfidence,
+      },
+      enriched
+    );
   }
 
-  return mergeEnrichment(record, mergedRows, industryProxy, dividend);
+  return enriched;
 }
