@@ -237,6 +237,21 @@ slug: tech_saas_template
 Sector funnel for consumer discretionary and consumer staples companies, aligned with brand, repeat purchase, margin stability, and channel inventory checks in stock-analysis-audit data rules.
 slug: consumer_template
 
+**Consumer Dividend Supporting**:
+Optional consumer quality-track supporting metric for mature cash-return signal. Uses missing skip when quote enrichment lacks dividend data; not a compounder requirement.
+slug: consumer_dividend_supporting
+_Avoid_: requiring dividend yield for growth consumer names
+
+**Healthcare Template**:
+Sector funnel for pharmaceutical, biotech, vaccine, CXO, and healthcare-services companies. Medical devices route to manufacturing; traditional Chinese medicine and pharmacy retail/distribution route to consumer.
+slug: healthcare_template
+_Avoid_: pharma_template, screening pharma via consumer union
+
+**Healthcare Quality Dual Path**:
+Healthcare quality track admits two archetypes: (1) profitable compounders via ROE/FCF/margin stability (Buffett/Li Lu), and (2) a small biotech exception for unprofitable but high-gross-margin growers that must pass stricter unit-economics and anti-deterioration gates before Deep audit applies classification.md sector exceptions.
+slug: healthcare_quality_dual_path
+_Avoid_: treating all biotech like SaaS growth names, mechanical ROE/FCF on pre-profit R&D names in Deep
+
 **Cyclicals Template**:
 Sector funnel for materials, energy, industrials, and other cycle-driven companies. Uses mid-cycle normalized earnings for valuation metrics, not peak or trough snapshots.
 slug: cyclicals_template
@@ -253,6 +268,15 @@ slug: peak_cycle_trap
 Sector funnel for manufacturing, hardware, semiconductors, and industrial producers, aligned with capex intensity, inventory turnover, capacity utilization, and customer concentration checks.
 slug: manufacturing_template
 
+**Capex to Revenue Ratio**:
+Capital expenditure divided by revenue, using a multi-year average in funnel enrichment to smooth one-off capacity builds. Aligns with Buffett/Munger capex-discipline screens for manufacturers.
+slug: capex_to_revenue_ratio
+_Avoid_: single-year capex spikes as the only funnel signal
+
+**Inventory Turnover vs Industry**:
+A company's inventory turnover minus the median turnover of its industry-peer group in the same market. Proxy for supply-chain efficiency and channel health in manufacturing screens.
+slug: inventory_turnover_vs_industry
+
 **Semiconductor Capex Override**:
 Manufacturing quality-track capex-to-revenue supporting threshold uses 25% for semiconductor GICS codes instead of the default 15%.
 slug: semiconductor_capex_override
@@ -260,6 +284,11 @@ slug: semiconductor_capex_override
 **Funnel Soft Cap**:
 Maximum number of ranked candidates written to primary funnel output per market per run. Overflow passes are written to deferred output, not deleted.
 slug: funnel_soft_cap
+
+**Funnel Ranking Role**:
+Coarse within-market ordering after sector templates pass; composite score is a same-run heuristic, not a cross-sector attractiveness verdict. Deep audit on the top limited set provides qualitative re-ranking.
+slug: funnel_ranking_role
+_Avoid_: per-sector seat quotas in candidates.yaml, treating funnel rank as final conviction order
 
 **Deferred Candidate**:
 A security that passed sector funnel tracks but ranked below the funnel soft cap for its market in that run.

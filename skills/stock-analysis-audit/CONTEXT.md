@@ -289,6 +289,13 @@ For funds, the check that bearish narratives do not miss portfolio earnings catc
 slug: audit_bear_side_hidden_repricing
 _Avoid_: calling an exposure too expensive without portfolio evidence
 
+## Sector Adjustments
+
+**Healthcare sector adjustment**:
+Deep audit metrics for pharmaceutical, biotech, vaccine, CXO, and healthcare-services companies: gross margin and pricing power, R&D and pipeline quality, patent cliff, FCF conversion or pre-profit cash runway, reimbursement and procurement risk, and CXO customer concentration.
+slug: sector_adjustment_healthcare
+_Avoid_: screening healthcare via consumer or tech_saas sector blocks
+
 ## Fund Concepts
 
 **Fund wrapper**:
