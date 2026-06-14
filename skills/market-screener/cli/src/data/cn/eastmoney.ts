@@ -1,5 +1,7 @@
 import { withHostLimit } from "../../lib/host-limit.js";
 import { httpFetch } from "../../lib/http-fetch.js";
+import type { DataConfidence } from "../../funnel/types.js";
+import type { AnnualFinancialRow } from "../metrics.js";
 
 export const EASTMONEY_DATACENTER_BASE =
   "https://datacenter-web.eastmoney.com/api/data/v1/get";
@@ -10,11 +12,9 @@ export const EASTMONEY_UT = "bd1d9ddb04089700cf9c27f6f7426281";
 
 const CASHFLOW_REPORT = "RPT_DMSK_FN_CASHFLOW";
 const BALANCE_REPORT = "RPT_DMSK_FN_BALANCE";
-const QUOTE_BASE = `https://${EASTMONEY_QUOTE_HOST}/api/qt/stock/get`;
 
 /** Each enriched ticker fires up to 4 datacenter calls; cap host-wide in-flight requests. */
 const EASTMONEY_MAX_CONCURRENT = 12;
-const EASTMONEY_QUOTE_MAX_CONCURRENT = 8;
 
 export const EASTMONEY_F10_HEADERS = {
   "User-Agent":
@@ -38,7 +38,36 @@ export async function fetchEastMoneyDatacenter(params: URLSearchParams): Promise
   );
 }
 
-import type { AnnualFinancialRow } from "../metrics.js";
+export type CnDividendBonusRow = {
+  REPORT_DATE?: string;
+  DIVIDENT_RATIO?: number | string | null;
+  ASSIGN_PROGRESS?: string;
+};
+
+export function pickCnDividendYieldFromBonusRows(
+  rows: CnDividendBonusRow[]
+): { yield: number; dataConfidence: DataConfidence } | undefined {
+  const valid = rows
+    .filter((r) => r.DIVIDENT_RATIO !== null && r.DIVIDENT_RATIO !== undefined && r.DIVIDENT_RATIO !== "")
+    .map((r) => ({
+      progress: String(r.ASSIGN_PROGRESS ?? ""),
+      date: String(r.REPORT_DATE ?? ""),
+      ratio: Number(r.DIVIDENT_RATIO),
+    }))
+    .filter((r) => Number.isFinite(r.ratio) && r.ratio >= 0)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  if (valid.length === 0) return undefined;
+
+  const implemented = valid.filter((r) => r.progress.includes("实施分配"));
+  const pick = implemented[0] ?? valid[0]!;
+  let yieldVal = pick.ratio;
+  if (yieldVal > 1) yieldVal /= 100;
+  return {
+    yield: yieldVal,
+    dataConfidence: implemented.length > 0 ? "high" : "low",
+  };
+}
 
 type RawRow = Record<string, string | number | null | undefined>;
 
@@ -205,27 +234,21 @@ export async function fetchCnSupplementalAnnualRows(
   return parseSupplementalRows(cashflowData, balanceData);
 }
 
-export async function fetchCnDividendYield(ticker: string): Promise<number | undefined> {
-  const params = new URLSearchParams({
-    secid: cnTickerToSecid(ticker),
-    fields: "f37",
-    ut: EASTMONEY_UT,
-  });
-  const res = await withHostLimit(EASTMONEY_QUOTE_HOST, EASTMONEY_QUOTE_MAX_CONCURRENT, () =>
-    httpFetch(`${QUOTE_BASE}?${params.toString()}`, {
-      headers: EASTMONEY_QUOTE_HEADERS,
+export async function fetchCnDividendYield(
+  ticker: string
+): Promise<{ yield: number; dataConfidence: DataConfidence } | undefined> {
+  const res = await fetchEastMoneyDatacenter(
+    buildDatacenterParams({
+      reportName: "RPT_SHAREBONUS_DET",
+      columns: "SECURITY_CODE,REPORT_DATE,ASSIGN_PROGRESS,DIVIDENT_RATIO",
+      filter: `(SECURITY_CODE="${ticker}")`,
+      pageSize: "20",
     })
   );
   if (!res.ok) return undefined;
 
-  const body = (await res.json()) as { data?: { f37?: number | string } };
-  const raw = body.data?.f37;
-  if (raw === undefined || raw === null || raw === "" || raw === "-") return undefined;
-
-  let yieldVal = Number(raw);
-  if (!Number.isFinite(yieldVal) || yieldVal < 0) return undefined;
-  if (yieldVal > 1) yieldVal /= 100;
-  return yieldVal;
+  const body = (await res.json()) as { result?: { data?: CnDividendBonusRow[] } };
+  return pickCnDividendYieldFromBonusRows(body.result?.data ?? []);
 }
 
 type OrgRow = { BOARD_NAME_LEVEL?: string; EM2016?: string };

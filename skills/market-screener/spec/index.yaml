@@ -44,7 +44,7 @@ data_sources:
     uses: [financials_bulk, quotes, industry_proxy]
   industry_routing: yahoo_industry_to_gics_proxy
   enrichment:
-    cn: eastmoney_datacenter_annual + cashflow + balance + orginfo + quote_dividend
+    cn: eastmoney_datacenter_annual + cashflow + balance + orginfo + datacenter_dividend
     us: sec_companyfacts + sec_submissions + yahoo_dividend_yield
     cache: data/cache/{quarter}/
     prefilter: quote-only universe gates before HTTP (status, cap, age)

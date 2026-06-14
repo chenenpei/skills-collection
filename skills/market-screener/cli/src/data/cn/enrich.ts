@@ -3,6 +3,7 @@ import type { EnrichOptions } from "../types.js";
 import type { SecurityRecord } from "../../funnel/kill-gates.js";
 import {
   mergeEnrichment,
+  type DividendWithConfidence,
   type EnrichCachePayload,
 } from "../merge-enrichment.js";
 import {
@@ -17,9 +18,14 @@ export { mergeEnrichment as mergeCnEnrichment } from "../merge-enrichment.js";
 
 async function resolveDividendYield(
   ticker: string,
-  cached?: number
-): Promise<number | undefined> {
-  if (cached !== undefined) return cached;
+  cached?: EnrichCachePayload
+): Promise<DividendWithConfidence | undefined> {
+  if (cached?.dividendYield !== undefined) {
+    return {
+      yield: cached.dividendYield,
+      dataConfidence: cached.dividendYieldConfidence ?? "medium",
+    };
+  }
   try {
     return await fetchCnDividendYield(ticker);
   } catch {
@@ -41,18 +47,19 @@ export async function enrichCnRecord(
       record.ticker
     );
     if (cached?.annualRows.length) {
-      const dividendYield = await resolveDividendYield(record.ticker, cached.dividendYield);
-      if (dividendYield !== undefined && cached.dividendYield === undefined) {
+      const dividend = await resolveDividendYield(record.ticker, cached);
+      if (dividend && cached.dividendYield === undefined) {
         await writeCache(opts.cacheDir, opts.quarter, "CN", record.ticker, {
           ...cached,
-          dividendYield,
+          dividendYield: dividend.yield,
+          dividendYieldConfidence: dividend.dataConfidence,
         });
       }
       return mergeEnrichment(
         record,
         cached.annualRows,
         cached.industryProxy,
-        dividendYield
+        dividend
       );
     }
   }
@@ -60,7 +67,7 @@ export async function enrichCnRecord(
   const annualRows = await fetchCnAnnualRows(record.ticker);
   let industryProxy: string | undefined;
   let mergedRows = annualRows;
-  let dividendYield: number | undefined;
+  let dividend: DividendWithConfidence | undefined;
 
   if (annualRows.length > 0) {
     const [proxy, supplemental, yieldVal] = await Promise.all([
@@ -70,9 +77,9 @@ export async function enrichCnRecord(
     ]);
     industryProxy = proxy;
     mergedRows = mergeSupplementalIntoAnnualRows(annualRows, supplemental);
-    dividendYield = yieldVal;
+    dividend = yieldVal;
   } else {
-    [industryProxy, dividendYield] = await Promise.all([
+    [industryProxy, dividend] = await Promise.all([
       fetchCnIndustryProxy(record.ticker).catch(() => undefined),
       resolveDividendYield(record.ticker),
     ]);
@@ -82,9 +89,10 @@ export async function enrichCnRecord(
     await writeCache(opts.cacheDir, opts.quarter, "CN", record.ticker, {
       annualRows: mergedRows,
       industryProxy,
-      dividendYield,
+      dividendYield: dividend?.yield,
+      dividendYieldConfidence: dividend?.dataConfidence,
     } satisfies EnrichCachePayload);
   }
 
-  return mergeEnrichment(record, mergedRows, industryProxy, dividendYield);
+  return mergeEnrichment(record, mergedRows, industryProxy, dividend);
 }

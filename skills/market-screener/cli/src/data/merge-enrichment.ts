@@ -1,19 +1,34 @@
 import type { SecurityRecord } from "../funnel/kill-gates.js";
+import type { DataConfidence } from "../funnel/types.js";
 import { deriveFromAnnualRows, type AnnualFinancialRow } from "./metrics.js";
 
 export interface EnrichCachePayload {
   annualRows: AnnualFinancialRow[];
   industryProxy?: string;
   dividendYield?: number;
+  dividendYieldConfidence?: DataConfidence;
+}
+
+export type DividendWithConfidence = { yield: number; dataConfidence: DataConfidence };
+
+export type DividendEnrichment = number | DividendWithConfidence;
+
+function normalizeDividend(
+  dividend: DividendEnrichment
+): { value: number; dataConfidence: DataConfidence } {
+  if (typeof dividend === "number") {
+    return { value: dividend, dataConfidence: "medium" };
+  }
+  return { value: dividend.yield, dataConfidence: dividend.dataConfidence };
 }
 
 export function mergeEnrichment(
   record: SecurityRecord,
   annualRows: AnnualFinancialRow[],
   industryProxy?: string,
-  dividendYield?: number
+  dividend?: DividendEnrichment
 ): SecurityRecord {
-  if (annualRows.length === 0 && dividendYield === undefined) return record;
+  if (annualRows.length === 0 && dividend === undefined) return record;
 
   const derived =
     annualRows.length > 0
@@ -32,8 +47,8 @@ export function mergeEnrichment(
   };
 
   const metrics = { ...record.metrics, ...derivedMetrics };
-  if (dividendYield !== undefined) {
-    metrics.dividend_yield = { value: dividendYield, dataConfidence: "medium" };
+  if (dividend !== undefined) {
+    metrics.dividend_yield = normalizeDividend(dividend);
   }
 
   return {
