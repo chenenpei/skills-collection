@@ -25,13 +25,35 @@ async function main(): Promise<void> {
 
   const cnCandidates = parseYaml(
     fs.readFileSync(path.join(outRoot, "2026-Q2/CN/candidates.yaml"), "utf8")
-  ) as { candidates: Array<{ ticker: string }> };
+  ) as {
+    candidates: Array<{
+      ticker: string;
+      routed_templates: string[];
+      audit_hints: string[];
+    }>;
+  };
   const cnExcluded = parseYaml(
     fs.readFileSync(path.join(outRoot, "2026-Q2/CN/excluded.yaml"), "utf8")
   ) as { excluded: Array<{ kill_reason: string }> };
 
-  if (cnCandidates.candidates.length !== 1 || cnCandidates.candidates[0]?.ticker !== "600519") {
-    throw new Error(`Unexpected CN candidates: ${JSON.stringify(cnCandidates.candidates)}`);
+  if (cnCandidates.candidates.length !== 2) {
+    throw new Error(`Unexpected CN candidates count: ${cnCandidates.candidates.length}`);
+  }
+  const tickers = cnCandidates.candidates.map((c) => c.ticker).sort();
+  if (tickers.join(",") !== "600276,600519") {
+    throw new Error(`Unexpected CN candidate tickers: ${tickers.join(",")}`);
+  }
+  const pharma = cnCandidates.candidates.find((c) => c.ticker === "600276");
+  if (!pharma || pharma.routed_templates.join(",") !== "healthcare") {
+    throw new Error(
+      `600276 expected routed_templates healthcare, got ${JSON.stringify(pharma?.routed_templates)}`
+    );
+  }
+  if (
+    !pharma.audit_hints.includes("verify_patent_cliff_if_margin_declining") ||
+    !pharma.audit_hints.includes("apply_classification_biotech_sector_exception")
+  ) {
+    throw new Error(`600276 missing expected audit_hints: ${JSON.stringify(pharma.audit_hints)}`);
   }
   if (cnExcluded.excluded.length !== 1) {
     throw new Error(`Unexpected CN excluded count: ${cnExcluded.excluded.length}`);

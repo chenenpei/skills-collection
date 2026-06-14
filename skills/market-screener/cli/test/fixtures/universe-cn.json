@@ -33,6 +33,36 @@
     "latestFinancialMonthsOld": 4
   },
   {
+    "ticker": "600276",
+    "market": "CN",
+    "companyName": "Pharma Fixture Co",
+    "currency": "CNY",
+    "status": "active",
+    "marketCap": 80000000000,
+    "listingAgeYears": 15,
+    "industryProxy": "医药生物-化学制药-化学制剂",
+    "metrics": {
+      "gross_margin_3y_max_decline_pp": { "value": 3, "dataConfidence": "high" },
+      "net_debt_to_ebitda": { "value": 1.2, "dataConfidence": "high" },
+      "gross_margin": { "value": 0.62, "dataConfidence": "high" },
+      "gross_margin_vs_industry": { "value": 0.05, "dataConfidence": "high" },
+      "revenue_3y_cagr": { "value": 0.08, "dataConfidence": "high" },
+      "debt_to_equity": { "value": 0.35, "dataConfidence": "high" },
+      "operating_margin_vs_industry": { "value": 0.02, "dataConfidence": "high" },
+      "roe_5y_avg": { "value": 0.16, "dataConfidence": "high" },
+      "fcf_conversion_5y": { "value": 0.88, "dataConfidence": "high" },
+      "roic_5y_avg": { "value": 0.14, "dataConfidence": "high" },
+      "revenue": { "value": 5000000000, "dataConfidence": "high" },
+      "net_income": { "value": 800000000, "dataConfidence": "high" },
+      "operating_cash_flow": { "value": 900000000, "dataConfidence": "high" }
+    },
+    "revenueYoyHistory": [0.06, 0.07, 0.08],
+    "ocfNegativeYears": 0,
+    "netLossWidening": false,
+    "nonStandardAudit": false,
+    "latestFinancialMonthsOld": 6
+  },
+  {
     "ticker": "000001",
     "market": "CN",
     "companyName": "Tiny ST Co",

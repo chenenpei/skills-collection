@@ -91,5 +91,41 @@ describe("routeSecurity", () => {
       expect(result.routingMethod).toBe("fallback");
       expect(result.routingConfidence).toBe("low");
     });
+
+    it("routes 医药生物 L1 to healthcare without also_run union", () => {
+      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+        market: "CN",
+        industryProxy: "医药生物-化学制药-化学制剂",
+      });
+      expect(result.routingMethod).toBe("cn_industry_map");
+      expect(result.templates).toEqual([{ id: "healthcare" }]);
+      expect(result.routingConfidence).toBe("high");
+      expect(result.templates.map((t) => t.id)).not.toContain("consumer");
+      expect(result.templates.map((t) => t.id)).not.toContain("tech_saas");
+    });
+
+    it("routes 医药生物-中药Ⅱ to consumer", () => {
+      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+        market: "CN",
+        industryProxy: "医药生物-中药Ⅱ-中药Ⅲ",
+      });
+      expect(result.templates).toEqual([{ id: "consumer" }]);
+    });
+
+    it("routes 医药生物-医疗器械 to manufacturing", () => {
+      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+        market: "CN",
+        industryProxy: "医药生物-医疗器械-医疗耗材",
+      });
+      expect(result.templates).toEqual([{ id: "manufacturing" }]);
+    });
+  });
+
+  it("routes GICS 3520 to healthcare", () => {
+    const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      gicsCode: "352010",
+    });
+    expect(result.templates).toEqual([{ id: "healthcare" }]);
+    expect(result.routingConfidence).toBe("high");
   });
 });

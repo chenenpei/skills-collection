@@ -4,6 +4,7 @@ import { loadSpecBundle } from "../../src/spec/loader.js";
 import type { SectorTemplateSpec } from "../../src/spec/types.js";
 import { evaluateTemplateTrack } from "../../src/funnel/template-evaluator.js";
 import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import { loadCnFixtureRecord } from "../helpers/universe-fixture.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
 
@@ -39,6 +40,8 @@ describe("evaluateTemplateTrack", () => {
   let techSaas: SectorTemplateSpec & Record<string, unknown>;
   let consumer: SectorTemplateSpec & Record<string, unknown>;
   let manufacturing: SectorTemplateSpec & Record<string, unknown>;
+  let healthcare: SectorTemplateSpec & Record<string, unknown>;
+  let pharmaFixture: SecurityRecord;
 
   beforeAll(async () => {
     const bundle = await loadSpecBundle(SPEC_DIR);
@@ -46,6 +49,8 @@ describe("evaluateTemplateTrack", () => {
     consumer = bundle.templates.consumer as SectorTemplateSpec & Record<string, unknown>;
     manufacturing = bundle.templates.manufacturing as SectorTemplateSpec &
       Record<string, unknown>;
+    healthcare = bundle.templates.healthcare as SectorTemplateSpec & Record<string, unknown>;
+    pharmaFixture = await loadCnFixtureRecord("600276");
   });
 
   const strongConsumerRecord = (): SecurityRecord => ({
@@ -150,5 +155,47 @@ describe("evaluateTemplateTrack", () => {
       revenue_3y_cagr: { value: 0.01, dataConfidence: "high" },
     };
     expect(evaluateTemplateTrack(manufacturing, "quality", record).passed).toBe(false);
+  });
+
+  const healthcareCompounderRecord = (): SecurityRecord => structuredClone(pharmaFixture);
+
+  const healthcareBiotechRecord = (): SecurityRecord => {
+    const base = healthcareCompounderRecord();
+    return {
+      ...base,
+      ticker: "BIOTECH",
+      metrics: {
+        ...base.metrics,
+        net_income: { value: -2e8, dataConfidence: "high" },
+        roe_5y_avg: { value: -0.05, dataConfidence: "high" },
+        roic_5y_avg: { value: -0.04, dataConfidence: "high" },
+        fcf_conversion_5y: { value: 0.2, dataConfidence: "high" },
+        free_cash_flow: { value: -5e7, dataConfidence: "high" },
+        gross_margin: { value: 0.58, dataConfidence: "high" },
+        revenue_3y_cagr: { value: 0.12, dataConfidence: "high" },
+        operating_margin_vs_industry: { value: -0.05, dataConfidence: "high" },
+      },
+    };
+  };
+
+  it("passes healthcare quality for profitable compounder", () => {
+    expect(
+      evaluateTemplateTrack(healthcare, "quality", healthcareCompounderRecord()).passed
+    ).toBe(true);
+  });
+
+  it("passes healthcare quality for unprofitable high-margin biotech exception", () => {
+    const result = evaluateTemplateTrack(healthcare, "quality", healthcareBiotechRecord());
+    expect(result).toMatchObject({ passed: true, passedTrack: "quality" });
+  });
+
+  it("fails healthcare mispricing when unprofitable (Graham floor)", () => {
+    expect(
+      evaluateTemplateTrack(healthcare, "mispricing", healthcareBiotechRecord()).passed
+    ).toBe(false);
+  });
+
+  it("consumer quality still passes when dividend_yield is missing (skip)", () => {
+    expect(evaluateTemplateTrack(consumer, "quality", strongConsumerRecord()).passed).toBe(true);
   });
 });
