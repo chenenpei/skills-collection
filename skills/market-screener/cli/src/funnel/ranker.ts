@@ -16,7 +16,8 @@ export type SeatSource =
   | "cap"
   | "flex"
   | "backfill_same_template"
-  | "backfill_global";
+  | "backfill_global"
+  | "deferred";
 
 export interface AllocatedCandidate extends PassingCandidate {
   rank: number;
@@ -205,6 +206,7 @@ export function allocateTemplateSeats(
   const deferred = unselected.slice(0, deferredCap).map((candidate, index) => ({
     ...candidate,
     rank: softCap + index + 1,
+    seat_source: "deferred" as const,
   }));
 
   return {

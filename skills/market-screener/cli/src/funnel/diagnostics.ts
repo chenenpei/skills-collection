@@ -416,6 +416,9 @@ export function buildFunnelDiagnosticsFromArtifacts(
   const sectorPassOverflow =
     (meta as { sector_pass_overflow?: number }).sector_pass_overflow ??
     Math.max(0, sectorPassed - candidates - deferred);
+  const routingWithFallbackCount = routing as
+    | (typeof routing & { fallback_count?: number })
+    | undefined;
 
   return {
     run_metadata: meta,
@@ -439,7 +442,7 @@ export function buildFunnelDiagnosticsFromArtifacts(
       by_method: routing?.by_method ?? {},
       by_template: routing?.by_template ?? {},
       fallback_count:
-        routing?.fallback_count ??
+        routingWithFallbackCount?.fallback_count ??
         Math.round((routing?.fallback_rate ?? 0) * totalRouted),
       fallback_rate: routing?.fallback_rate ?? 0,
     },

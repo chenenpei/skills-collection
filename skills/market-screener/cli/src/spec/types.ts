@@ -16,6 +16,7 @@ export const IndexSchema = z.object({
       funnel_soft_cap_per_market: z.number().optional(),
     })
     .optional(),
+  output: z.record(z.unknown()).optional(),
 });
 
 export const KillGatesSchema = z.object({

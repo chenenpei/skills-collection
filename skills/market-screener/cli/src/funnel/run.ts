@@ -33,7 +33,8 @@ export type SeatSource =
   | "cap"
   | "flex"
   | "backfill_same_template"
-  | "backfill_global";
+  | "backfill_global"
+  | "deferred";
 
 export interface PassingCandidate {
   ticker: string;

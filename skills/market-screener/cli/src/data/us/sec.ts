@@ -38,7 +38,6 @@ export async function resolveCik(ticker: string): Promise<string | undefined> {
 }
 
 import { withHostLimit } from "../../lib/host-limit.js";
-import { httpFetch } from "../../lib/http-fetch.js";
 
 const SEC_HOST = "data.sec.gov";
 /** SEC fair-access guidance: stay near ~10 req/s; 4 concurrent is conservative. */

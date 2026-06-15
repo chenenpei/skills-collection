@@ -15,7 +15,7 @@ export function deferredWatchlistCapFromBundle(bundle: SpecBundle): number {
   const conventions = bundle.conventions as {
     deferred_watchlist_cap?: { max_deferred_per_market?: number };
   };
-  const indexOutput = bundle.index.output as {
+  const indexOutput = (bundle.index.output ?? {}) as {
     deferred_watchlist_cap?: { max_deferred_per_market?: number };
   };
   return (

@@ -3,7 +3,7 @@ import { createCnEastMoneyAdapter } from "./cn/quotes.js";
 import { createFixtureAdapter } from "./fixture.js";
 import { enrichLiveUniverse } from "./live.js";
 import { createUsYahooAdapter } from "./us/quotes.js";
-import type { EnrichOptions, MarketDataAdapter } from "./types.js";
+import type { EnrichOptions, EnrichResult, MarketDataAdapter } from "./types.js";
 import type { Market } from "../funnel/types.js";
 import type { SecurityRecord } from "../funnel/kill-gates.js";
 import type { ProgressLogger } from "../lib/progress.js";
@@ -29,7 +29,7 @@ export function createLiveAdapter(cacheDir = DEFAULT_CACHE_DIR): MarketDataAdapt
       return records;
     },
 
-    async enrichRecords(records: SecurityRecord[], opts: EnrichOptions): Promise<SecurityRecord[]> {
+    async enrichRecords(records: SecurityRecord[], opts: EnrichOptions): Promise<EnrichResult> {
       return enrichLiveUniverse(records, { ...opts, cacheDir });
     },
   };

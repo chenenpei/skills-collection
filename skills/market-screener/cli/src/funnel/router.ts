@@ -99,7 +99,7 @@ function routeViaCnIndustryMap(
     const ruleLabel = match.l3
       ? `l3:${l1}/${parts.l2 ?? ""}/${parts.l3 ?? ""}`
       : `l2:${l1}/${parts.l2 ?? ""}`;
-    return buildRouteFromRule(override as TemplateRule, ruleLabel, "cn_industry_map");
+    return buildRouteFromRule(override as unknown as TemplateRule, ruleLabel, "cn_industry_map");
   }
 
   const l1Rule = cnIndustryMap.l1_defaults?.[l1] as TemplateRule | undefined;

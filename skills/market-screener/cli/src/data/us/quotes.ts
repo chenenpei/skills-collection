@@ -45,7 +45,9 @@ type YahooQuote = {
   fiftyTwoWeekHigh?: number;
 };
 
-function quoteMetric(value: number | undefined): SecurityRecord["metrics"][string] | undefined {
+type PresentMetricValue = SecurityRecord["metrics"][string] & { value: number };
+
+function quoteMetric(value: number | undefined): PresentMetricValue | undefined {
   if (value === undefined || !Number.isFinite(value) || value <= 0) return undefined;
   return { value, dataConfidence: "medium" };
 }
