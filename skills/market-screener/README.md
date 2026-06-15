@@ -8,7 +8,8 @@ Quarterly quantitative funnel for A-share and US single-company equities. Feeds 
 
 | Path | Purpose |
 |------|---------|
-| [cli/](./cli/) | TypeScript `screener` CLI (validate, run, explain, landmine) |
+| [SKILL.md](./SKILL.md) | Agent orchestration entry (manual invocation only) |
+| [cli/](./cli/) | TypeScript `screener` CLI (validate, run, explain, landmine, filter-breakdown) |
 | [docs/agent-guide.md](./docs/agent-guide.md) | Quarterly runbook for agents (schedule, Deep, landmine, triggers) |
 | [CONTEXT.md](./CONTEXT.md) | Domain vocabulary (glossary only) |
 | [spec/index.yaml](./spec/index.yaml) | Manifest, data sources, template list |
@@ -21,8 +22,6 @@ Quarterly quantitative funnel for A-share and US single-company equities. Feeds 
 | [spec/trigger-discipline.yaml](./spec/trigger-discipline.yaml) | Scenario A/B trigger rules (alert CLI Phase 2) |
 | [spec/schedule.yaml](./spec/schedule.yaml) | Scheduled quarterly run dates — CN+US same day after later disclosure |
 | [spec/templates/](./spec/templates/) | Sector funnel rules (6 templates) |
-
-| [SKILL.md](./SKILL.md) | Agent orchestration entry (manual invocation only) |
 
 ## CLI
 
@@ -95,6 +94,17 @@ npx tsx bin/screener.ts landmine \
   --output /tmp/landmines.yaml \
   --quarter 2026-Q2
 ```
+
+**Filter breakdown** from funnel output
+
+```bash
+npm run dev -- filter-breakdown \
+  --output /tmp/screener-out \
+  --quarter 2026-Q2 \
+  --markets CN
+```
+
+Writes `/tmp/screener-out/2026-Q2/CN/filter-breakdown.md` by default.
 
 `--spec` defaults to `../spec` when omitted. Phase 2 placeholder: `screener alert` (not implemented).
 

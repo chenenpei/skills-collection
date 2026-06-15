@@ -15,7 +15,7 @@ npm install
 ```
 src/
   cli.ts
-  commands/     run | explain | validate | landmine
+  commands/     run | explain | validate | landmine | filter-breakdown
   funnel/       run, router, kill-gates, template-evaluator, ranker, threshold, universe, diagnostics, types
   data/         registry, fixture, live, quote-prefilter, metrics, types; cn/ and us/ market adapters
   io/           artifacts (YAML output helpers)
@@ -33,6 +33,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 | `run` | Quantitative funnel |
 | `explain <ticker>` | Single-ticker routing trace (fixture only) |
 | `landmine` | Landmine YAML from audit-summary |
+| `filter-breakdown` | Industry-grouped filter statistics from funnel output |
 
 ### `run` options
 
@@ -174,7 +175,7 @@ Re-runs `enrichCnRecord` for quote-prefilter survivors missing cache files or em
 npm test
 ```
 
-Unit and integration tests cover data adapters, cache, enrichment merge, and funnel. Live network tests are gated behind `e2e:live` / `e2e:live:full`.
+Unit and integration tests cover data adapters, cache, enrichment merge, and funnel. Tests that exercise provider adapters mock `httpFetch`; real-network checks are gated behind `e2e:live` / `e2e:live:full`.
 
 ## Related
 

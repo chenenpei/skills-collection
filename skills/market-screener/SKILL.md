@@ -91,7 +91,7 @@ npm run dev -- explain 600519 --market CN --spec ../spec --fixture test/fixtures
 npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --output ../funnel-output/YYYY-QN/landmines.yaml --quarter YYYY-QN
 ```
 
-**Always prefer the CLI** for funnel, explain, validate, and landmine steps. Do **not** re-implement funnel logic by calling East Money/Yahoo APIs directly unless the CLI command fails after a genuine install/`npm install` attempt — then report the error and fall back to `spec/` rules with explicit `N/A` fields.
+**Always prefer the CLI** for funnel, explain, validate, filter-breakdown, and landmine steps. Do **not** re-implement funnel logic by calling East Money/Yahoo APIs directly unless the CLI command fails after a genuine install/`npm install` attempt — then report the error and fall back to `spec/` rules with explicit `N/A` fields.
 
 | Command | Purpose |
 |---------|---------|
@@ -99,6 +99,7 @@ npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --out
 | `validate` | Lint `spec/` YAML |
 | `explain` | Single-ticker routing trace |
 | `landmine` | Landmine YAML from audit-summary |
+| `filter-breakdown` | Industry-grouped filter statistics from funnel output |
 | `alert` | Not implemented — use broker price alerts and `trigger-discipline.yaml` |
 
 ### Adapters
