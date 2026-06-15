@@ -177,6 +177,8 @@ npm test
 
 Unit and integration tests cover data adapters, cache, enrichment merge, and funnel. Tests that exercise provider adapters mock `httpFetch`; real-network checks are gated behind `e2e:live` / `e2e:live:full`.
 
+`npm audit --omit=dev --audit-level=high` should stay clean for runtime dependencies. A full `npm audit --audit-level=high` may report dev-only `vitest` / `vite` / `esbuild` advisories; do not apply `npm audit fix --force` during normal screener runs because it can introduce a breaking Vitest upgrade.
+
 ## Related
 
 - Skill orchestration: [`../SKILL.md`](../SKILL.md)
