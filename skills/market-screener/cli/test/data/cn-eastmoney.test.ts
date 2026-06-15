@@ -1,29 +1,40 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("../../src/lib/http-fetch.js", () => ({
+  httpFetch: vi.fn(),
+}));
+
+import { httpFetch } from "../../src/lib/http-fetch.js";
 import { createCnEastMoneyAdapter } from "../../src/data/cn/quotes.js";
+
+const mockedHttpFetch = vi.mocked(httpFetch);
+
+function jsonResponse(body: unknown): Response {
+  return {
+    ok: true,
+    json: async () => body,
+  } as Response;
+}
 
 describe("createCnEastMoneyAdapter", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    mockedHttpFetch.mockReset();
   });
 
   it("maps quote response to SecurityRecord shape", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          data: {
-            diff: [
-              {
-                f12: "600519",
-                f14: "贵州茅台",
-                f20: 2000000000000,
-                f116: 7300,
-                f127: "active",
-              },
-            ],
-          },
-        }),
+    mockedHttpFetch.mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          diff: [
+            {
+              f12: "600519",
+              f14: "贵州茅台",
+              f20: 2000000000000,
+              f116: 7300,
+              f127: "active",
+            },
+          ],
+        },
       })
     );
 
@@ -41,22 +52,18 @@ describe("createCnEastMoneyAdapter", () => {
   });
 
   it("parses ST status from f127", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          data: {
-            diff: [
-              {
-                f12: "000001",
-                f14: "*ST 示例",
-                f20: 500000000,
-                f127: "ST",
-              },
-            ],
-          },
-        }),
+    mockedHttpFetch.mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          diff: [
+            {
+              f12: "000001",
+              f14: "*ST 示例",
+              f20: 500000000,
+              f127: "ST",
+            },
+          ],
+        },
       })
     );
 
@@ -78,31 +85,18 @@ describe("createCnEastMoneyAdapter", () => {
       { f12: "600519", f14: "贵州茅台", f20: 2_000_000_000_000, f116: 7300, f127: "active" },
     ];
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation(async (url: string) => {
-        const pn = new URL(url).searchParams.get("pn");
-        if (pn === "1") {
-          return {
-            ok: true,
-            json: async () => ({ data: { total: 101, diff: page1 } }),
-          };
-        }
-        if (pn === "2") {
-          return {
-            ok: true,
-            json: async () => ({ data: { total: 101, diff: page2 } }),
-          };
-        }
-        return { ok: true, json: async () => ({ data: { total: 101, diff: [] } }) };
-      })
-    );
+    mockedHttpFetch.mockImplementation(async (url: string) => {
+      const pn = new URL(url).searchParams.get("pn");
+      if (pn === "1") return jsonResponse({ data: { total: 101, diff: page1 } });
+      if (pn === "2") return jsonResponse({ data: { total: 101, diff: page2 } });
+      return jsonResponse({ data: { total: 101, diff: [] } });
+    });
 
     const adapter = createCnEastMoneyAdapter({ cacheDir: "/tmp/screener-cache" });
     const records = await adapter.loadUniverse(["CN"]);
 
     expect(records).toHaveLength(101);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(mockedHttpFetch).toHaveBeenCalledTimes(2);
     expect(records.at(-1)?.ticker).toBe("600519");
   });
 });

@@ -1,9 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("../../src/lib/http-fetch.js", () => ({
+  httpFetch: vi.fn(),
+}));
+
+import { httpFetch } from "../../src/lib/http-fetch.js";
 import {
   pickCnDividendYieldFromBonusRows,
   fetchCnDividendYield,
   type CnDividendBonusRow,
 } from "../../src/data/cn/eastmoney.js";
+
+const mockedHttpFetch = vi.mocked(httpFetch);
+
+function jsonResponse(body: unknown): Response {
+  return {
+    ok: true,
+    json: async () => body,
+  } as Response;
+}
 
 describe("pickCnDividendYieldFromBonusRows", () => {
   it("prefers 实施分配 over earlier 决议通过 row", () => {
@@ -36,31 +51,29 @@ describe("pickCnDividendYieldFromBonusRows", () => {
 });
 
 describe("fetchCnDividendYield", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    mockedHttpFetch.mockReset();
+  });
 
   it("calls datacenter RPT_SHAREBONUS_DET and parses response", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          result: {
-            data: [
-              {
-                REPORT_DATE: "2024-08-01",
-                ASSIGN_PROGRESS: "实施分配",
-                DIVIDENT_RATIO: 1.8,
-              },
-            ],
-          },
-        }),
+    mockedHttpFetch.mockResolvedValueOnce(
+      jsonResponse({
+        result: {
+          data: [
+            {
+              REPORT_DATE: "2024-08-01",
+              ASSIGN_PROGRESS: "实施分配",
+              DIVIDENT_RATIO: 1.8,
+            },
+          ],
+        },
       })
     );
 
     const result = await fetchCnDividendYield("600519");
     expect(result?.yield).toBeCloseTo(0.018, 6);
     expect(result?.dataConfidence).toBe("high");
-    const url = String((fetch as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]);
+    const url = String(mockedHttpFetch.mock.calls[0]?.[0]);
     expect(url).toContain("RPT_SHAREBONUS_DET");
     expect(decodeURIComponent(url)).toContain('SECURITY_CODE="600519"');
   });
