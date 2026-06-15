@@ -15,34 +15,34 @@
 
 ## 安装
 
-使用 [skills CLI](https://github.com/vercel-labs/skills)。仓库：**[https://github.com/chenenpei/skiils-collection](https://github.com/chenenpei/skiils-collection)**
+使用 [skills CLI](https://github.com/vercel-labs/skills)。仓库：**[https://github.com/chenenpei/skills-collection](https://github.com/chenenpei/skills-collection)**
 
 在目标项目目录下，**一次性安装全部技能**：
 
 ```bash
-npx skills add https://github.com/chenenpei/skiils-collection -y
+npx skills add https://github.com/chenenpei/skills-collection -y
 ```
 
 **单独安装**（每条可独立复制执行）：
 
 ```bash
-npx skills add https://github.com/chenenpei/skiils-collection --skill code-simplify -y
+npx skills add https://github.com/chenenpei/skills-collection --skill code-simplify -y
 ```
 
 ```bash
-npx skills add https://github.com/chenenpei/skiils-collection --skill code-research -y
+npx skills add https://github.com/chenenpei/skills-collection --skill code-research -y
 ```
 
 ```bash
-npx skills add https://github.com/chenenpei/skiils-collection --skill figma-design-review -y
+npx skills add https://github.com/chenenpei/skills-collection --skill figma-design-review -y
 ```
 
 ```bash
-npx skills add https://github.com/chenenpei/skiils-collection --skill stock-analysis-audit -y
+npx skills add https://github.com/chenenpei/skills-collection --skill stock-analysis-audit -y
 ```
 
 ```bash
-npx skills add https://github.com/chenenpei/skiils-collection --skill market-screener -y
+npx skills add https://github.com/chenenpei/skills-collection --skill market-screener -y
 ```
 
 已克隆本仓库时，在仓库根目录：**全部安装**：

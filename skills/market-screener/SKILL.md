@@ -86,7 +86,7 @@ The CLI ships at `cli/` (TypeScript, Commander + tsx). **`screener` is not on `$
 cd cli
 npm install   # first time only
 npm run validate
-npm run dev -- run --markets CN,US --quarter YYYY-QN --output ./funnel-output/YYYY-QN/ --spec ../spec --adapter fixture
+npm run dev -- run --markets CN,US --quarter YYYY-QN --output ./funnel-output/ --spec ../spec --adapter fixture
 npm run dev -- explain 600519 --market CN --spec ../spec --fixture test/fixtures/universe-cn.json
 npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --output ../funnel-output/YYYY-QN/landmines.yaml --quarter YYYY-QN
 ```

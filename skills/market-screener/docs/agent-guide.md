@@ -36,7 +36,7 @@ cd cli
 npm run dev -- run \
   --markets CN,US \
   --quarter 2026-Q2 \
-  --output ./funnel-output/2026-Q2/ \
+  --output ./funnel-output/ \
   --spec ../spec \
   --adapter fixture
 ```

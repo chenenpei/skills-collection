@@ -3,7 +3,7 @@
 # Ref: user choice — same day run; gate on later market disclosure completion
 
 version: "0.1.0"
-status: confirmed  # grill: unified CN+US same day; later-market gate; US +45d; 3 runs/year
+status: confirmed  # unified CN+US same day; later-market gate; US +45d; 3 scheduled runs/year
 
 principle:
   slug: quarterly_unified_after_later_disclosure
@@ -12,7 +12,8 @@ principle:
   gate: first_weekend_on_or_after_max_anchors
   never: run_before_later_market_anchor
 
-cycles_per_year: 4
+reporting_cycle_count_per_year: 4
+scheduled_run_count_per_year: 3
 
 # Anchors are inclusive "disclosure substantially complete" dates per reporting cycle.
 # US uses large-accelerated-filer 10-Q/10-K practical deadlines (~45 days post quarter-end).
