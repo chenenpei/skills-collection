@@ -29,9 +29,10 @@ Grill decision: **option A** — apply **`missing: skip` on CN market only** for
 - False-positive risk: profitable, high-multiple CN software with heavy equity incentives passes quality until Deep catches it — mitigated by flag, not by pretending data exists.
 - `ndr` already `missing: skip` on supporting; this decision extends the same pattern to the remaining CN high-tier SaaS fields.
 
-## Consequences (implementation phase — not started in grill)
+## Consequences
 
-- `spec/templates/tech-saas.yaml`: CN market override adding `missing: skip` on `sbc_to_revenue` and `share_dilution_3y` supporting rules.
-- Funnel evaluator / candidate writer: emit `verify_sbc_dilution_in_deep_cn` when skip applies.
-- `spec/conventions.yaml` or agent-guide: document CN SaaS quality proxy scope.
-- Mispricing track unchanged; `forward_peg` remains high-tier deferred on mispricing supporting.
+- [x] `spec/templates/tech-saas.yaml`: `market_missing_overrides: { CN: skip }` on `sbc_to_revenue` and `share_dilution_3y` supporting rules
+- [x] Funnel evaluator emits `verify_sbc_dilution_in_deep_cn` when CN skip applies (`template-evaluator.ts`)
+- [x] `cli/test/funnel/template-evaluator.test.ts`: CN tech_saas quality skip coverage
+- [ ] `spec/conventions.yaml` or agent-guide: document CN SaaS quality proxy scope (optional doc pass)
+- Mispricing track unchanged; `forward_peg` remains high-tier deferred on mispricing supporting

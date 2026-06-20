@@ -60,8 +60,29 @@ Which classifier assigned sector templates: `gics`, `cn_industry_map`, `industry
 slug: routing_method
 
 **Routing Fallback**:
-When no GICS, CN map, or keyword proxy matches, route to `fallback_template` (default manufacturing) with `routing_confidence: low`. Deep audit must treat sector classification as uncertain; pass through `audit_hints` (e.g. `routing_fallback_unmapped_industry`).
+When no GICS, CN map, or keyword proxy matches, the security has no reliable sector classifier. Live funnel treats it as routing too hard: skip sector template scoring, record an explicit exit reason, and keep the security in the investable universe for optional Deep audit.
 slug: routing_fallback
+_Avoid_: defaulting fallback to manufacturing sector scoring, silent sector_filtered without reason
+
+**Routing Too Hard**:
+A funnel exit for securities that cannot be mapped to a sector template with acceptable confidence. Not a kill gate and not a universe removal; means no live quantitative sector mechanism applies until routing map or data coverage improves.
+slug: routing_too_hard
+_Avoid_: generic template, treating too hard as data enrich failure
+
+**Sector Quant Too Hard**:
+A funnel exit for securities routed to a sector template whose live required metrics are largely unavailable, so sector threshold screening would be misleading. Distinct from routing too hard (fix by map) and from proxy sub-templates (fix by degraded but explicit rules). Kept in the investable universe for Deep audit.
+slug: sector_quant_too_hard
+_Avoid_: merging with routing_too_hard, treating proxy pass as full sector screening
+
+**Template Live Viability**:
+Declared readiness of a sector template or sub-template for live quantitative screening: `full` (run required/supporting rules), `proxy` (run explicit degraded rules plus flags), or `quant_too_hard` (skip sector scoring until data or routing improves). Chosen by template policy, not per-ticket missing-rate heuristics alone.
+slug: template_live_viability
+_Avoid_: inferring viability only from pass rate, runtime missing-percent thresholds without template policy
+
+**Routing Operational Target**:
+Quarterly routing quality is judged operationally: keep `fallback_rate` below 5%, extend `cn-industry-map.yaml` when diagnostics show new unmapped blocks, and regression-test known L2/L3 rules. Does not require per-security economic-paradigm perfection.
+slug: routing_operational_target
+_Avoid_: 100% routing accuracy, routing-only Deep false-positive reviews
 
 **Routing Confidence**:
 Whether a security's GICS class maps cleanly to a single sector funnel template, or falls into an ambiguous class that requires parallel evaluation.
@@ -69,9 +90,9 @@ slug: routing_confidence
 _Avoid_: assuming all GICS codes are unambiguous
 
 **Ambiguous Union**:
-When routing confidence is low, run the security through two relevant sector funnel templates in parallel; keep it if either template passes a track. Used only for known ambiguous GICS mappings, not for the full universe.
+When routing maps to `ambiguous_union` confidence, evaluate two declared sector templates in parallel; keep the security if either template passes a track. Used for known ambiguous industry mappings (e.g. semiconductors), not for unmapped fallback.
 slug: ambiguous_union
-_Avoid_: union across all templates, OR-merge without deduplication
+_Avoid_: union across all templates, OR-merge without deduplication, treating routing_fallback as ambiguous union
 
 **Sector Routing Map**:
 The maintained mapping from GICS Level 2/3 codes to sector funnel templates, including which codes trigger ambiguous union and which secondary template to add.
@@ -90,10 +111,25 @@ A sector-specific quantitative rule set that applies only after universe filteri
 slug: sector_funnel_template
 _Avoid_: one global funnel, business paradigm funnel (too coarse without sector routing)
 
+**Fixed Sector Template Taxonomy**:
+The live funnel uses six top-level sector templates (`financials`, `tech_saas`, `consumer`, `cyclicals`, `manufacturing`, `healthcare`) aligned with stock-analysis-audit sector blocks. Additional top-level templates are rare; finer splits use routing, sub-templates, overrides, or ambiguous union—not a seventh generic bucket.
+slug: fixed_sector_template_taxonomy
+_Avoid_: generic funnel template, per-Shenwan-L2 top-level template
+
+**Sector Sub-Template**:
+A named branch inside one sector YAML file that supplies a full alternate `quality_track` / `mispricing_track` (and optional flags or audit hints) when routing assigns `sub_template`. Replaces the parent track block for evaluation; not a metric subset inherited from the parent.
+slug: sector_sub_template
+_Avoid_: sub-template as inherited metric pick-list, sub-template as a new top-level sector
+
 **Funnel Track**:
 An optional sub-path inside a sector funnel template, such as a quality track or a mispricing track. Not every sector supports every track.
 slug: funnel_track
 _Avoid_: assuming exactly two global funnels
+
+**Sector Dual-Gate Screening**:
+Live sector track evaluation uses two quantitative gates in sequence: all required metrics must pass, then a supporting minimum (min_N_of_M) must pass. Supporting metrics also feed pool_score for seat ranking. Dead or deep-only metrics must not appear in YAML gates.
+slug: sector_dual_gate_screening
+_Avoid_: single required-only pass, supporting used only for ranking while claiming a strict sector pool
 
 **Shared Kill Gate**:
 A cross-sector exclusion rule applied before sector-specific scoring, such as status exclusions, deteriorating revenue/margin/cash-flow pre-filters, or extreme leverage.
@@ -253,7 +289,7 @@ slug: healthcare_template
 _Avoid_: pharma_template, screening pharma via consumer union
 
 **Medical Device Funnel Placement**:
-Medical-device names route to the manufacturing template only; passing names may rank in deferred rather than the primary top band under the global funnel ranker. Deep audit remains the path for qualitative review of deferred device names.
+Medical-device names route to the manufacturing template only; passing names compete for manufacturing seat pools under template seat allocation and may land in deferred rather than candidates. Deep audit remains the path for qualitative review of deferred device names.
 slug: medical_device_funnel_placement
 _Avoid_: re-routing devices to consumer for funnel convenience, treating deferred device names as funnel failures
 
@@ -279,10 +315,29 @@ slug: mid_cycle_normalization
 Classification of funnel metrics by implementation cost: low (derive or quote bulk), medium (peer overlays or enrich-cache history), high (new regulatory, NLP, or SaaS-only sources). MVP ships low and feasible medium only; high-tier metrics stay missing or block only bank-specific sub-templates.
 slug: enrichment_scope_tier
 
+**Deep-Only Metric**:
+A metric kept in sector philosophy and Deep audit but omitted from live sector YAML rules because enrichment cannot supply it reliably. Documented in spec notes or conventions; not evaluated at funnel stage.
+slug: deep_only_metric
+_Avoid_: deep_only metric left in YAML with permanent missing: skip
+
+**Live Template Metric Policy**:
+Permanently unavailable live metrics are removed from sector YAML; `pass_if` denominators match the remaining supporting list and minimums reflect the original track philosophy. Temporary gaps use `missing: skip` plus evaluator supporting downgrade—not deleted dead metrics.
+slug: live_template_metric_policy
+
+**Supporting Pass Downgrade**:
+When fewer supporting metrics are evaluable than `pass_if` requires solely because of `missing: skip`, the funnel may pass the track if every evaluable supporting metric passes. Does not apply to conditional skips such as `if_unprofitable: skip`.
+slug: supporting_pass_downgrade
+_Avoid_: treating downgrade as a substitute for deleting dead metrics
+
+**Bank Regulatory Enrich Priority**:
+CN and US bank regulatory metrics (NPL, provision coverage, capital adequacy, ROTCE, and related fields) are the first high-tier enrich spike: CN via East Money datacenter bank reports, US via SEC companyfacts bank tags with optional FFIEC supplements. Unlocks migration from `banks_proxy` to `financials.banks` when fields are live.
+slug: bank_regulatory_enrich_priority
+_Avoid_: prioritizing SaaS NDR scraping before bank regulatory fields, US-only bank enrich while CN stays on proxy permanently
+
 **CN Bank Routing Proxy**:
-Temporary grill decision (ADR 0003): CN 申万 L1 银行 routes to `financials.banks_proxy` instead of `banks` until bank regulatory enrich exists. Mispricing uses ROE + P/B only; credit-quality dimensions are manual in Deep. Requires `bank_routed_via_other_financials_proxy` funnel flag and CN template overrides (`net_debt_to_equity` skip, relaxed `revenue_3y_cagr`, quality `roe_ttm` CN min 0.10).
+CN 申万 L1 银行 routes to `financials.banks_proxy` while bank regulatory enrich is unavailable. Mispricing uses ROE + P/B only; credit-quality dimensions are manual in Deep. Requires `bank_routed_via_other_financials_proxy` funnel flag and CN template overrides (`net_debt_to_equity` skip, relaxed `revenue_3y_cagr`, quality `roe_ttm` CN min 0.10). Phase two: when NPL, capital adequacy, and related fields are live, reroute CN banks to `financials.banks` and retire proxy dependence.
 slug: cn_bank_routing_proxy
-_Avoid_: treating proxy pass as bank credit approval
+_Avoid_: treating proxy pass as bank credit approval, keeping proxy after true banks data ships
 
 **CN Tech SaaS Quality Skip**:
 Grill decision (ADR 0004): On CN market, `tech_saas` quality supporting metrics `sbc_to_revenue` and `share_dilution_3y` use `missing: skip` until CN sources exist. Emit `verify_sbc_dilution_in_deep_cn` when skipped. US rules unchanged.
@@ -294,8 +349,13 @@ A cyclical false-value signal where trailing multiples look cheap because earnin
 slug: peak_cycle_trap
 
 **Manufacturing Template**:
-Sector funnel for manufacturing, hardware, semiconductors, and industrial producers, aligned with capex intensity, inventory turnover, capacity utilization, and customer concentration checks.
+Sector funnel for manufacturing, hardware, semiconductors, and industrial producers. Live gates emphasize ROIC, FCF conversion, leverage, and capex discipline; capacity utilization and customer concentration are deep-only unless enrich adds sources (ADR 0002).
 slug: manufacturing_template
+
+**Manufacturing Mispricing ROIC Floor**:
+The manufacturing mispricing track keeps `roic_ttm` as a required metric so cheap valuation alone cannot pass; mispricing still requires acceptable capital returns, not pure cigar-butt screens.
+slug: manufacturing_mispricing_roic_floor
+_Avoid_: Graham net-net mispricing on manufacturers, removing ROIC from mispricing after live ROIC hygiene
 
 **Capex to Revenue Ratio**:
 Capital expenditure divided by revenue, using a multi-year average in funnel enrichment to smooth one-off capacity builds. Requires at least two fiscal years with capex data; two-year averages use medium data confidence, three-year averages use high. Aligns with Buffett/Munger capex-discipline screens for manufacturers.
@@ -365,6 +425,11 @@ _Avoid_: treating merged funnel rank as final conviction order, comparing raw su
 The integer order on a candidate record in candidates.yaml. Under template seat allocation, rank is the Deep audit queue priority: track confluence first, then remaining quality seats by allocation tier, not a global best-stock score.
 slug: candidate_rank
 _Avoid_: cross-template attractiveness ranking, equating rank 1 with the best security in the market
+
+**Pool Tie-Break**:
+When two securities tie on track confluence, pool_score, and data_confidence within the same template track seat pool, seat order uses one declared north-star metric from metric_snapshot (higher or lower per :desc/:asc). The north-star must match that pool's sector investment philosophy in template spec, not an empirical weighting. Ticker sort is last resort only. Declared per pool key in spec conventions.
+slug: pool_tie_break
+_Avoid_: multi-metric lexicographic chains with hidden priority weights, ticker localeCompare as primary tie-break, cross-template metric comparison, north-star metrics unrelated to sector philosophy
 
 **Deferred Candidate**:
 A security that passed sector funnel tracks but was not allocated a seat in candidates.yaml for its market in that run. Only a capped watchlist is written to deferred.yaml; additional passers are counted in funnel diagnostics only.
