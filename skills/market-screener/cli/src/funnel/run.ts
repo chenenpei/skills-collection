@@ -3,6 +3,7 @@ import {
   deferredWatchlistCapFromBundle,
   funnelSoftCapFromBundle,
   seatAllocationFromBundle,
+  templateLiveViability,
 } from "../spec/conventions.js";
 import type { SpecBundle, SectorTemplateSpec } from "../spec/types.js";
 import { writeYamlArtifact } from "../io/artifacts.js";
@@ -77,6 +78,9 @@ export function listTemplateTrackResults(
   const results: TemplateTrackResult[] = [];
 
   for (const tplRef of route.templates) {
+    if (templateLiveViability(bundle, tplRef.id, tplRef.subTemplate) === "quant_too_hard") {
+      continue;
+    }
     const tpl = bundle.templates[tplRef.id];
     if (!tpl) continue;
 

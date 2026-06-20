@@ -8,6 +8,7 @@ import {
   routeSecurityRecord,
   type PassingCandidate,
 } from "./run.js";
+import { templateLiveViability } from "../spec/conventions.js";
 import type { KillGateResult, SecurityRecord } from "./kill-gates.js";
 import { getUniverseProfileFailureReason } from "./universe.js";
 import type { Market } from "./types.js";
@@ -29,6 +30,7 @@ export interface FunnelDiagnosticsDoc {
   deferred_watchlist_cap: number;
   prefilter_by_reason: Record<string, number>;
   kill_by_reason: Record<string, number>;
+  sector_exit_by_reason: Record<string, number>;
   routing: {
     by_method: Record<string, number>;
     by_template: Record<string, number>;
@@ -62,11 +64,16 @@ export class FunnelDiagnosticsCollector {
   readonly byMethod: Record<string, number> = {};
   readonly byTemplate: Record<string, number> = {};
   readonly sectorByTemplate: Record<string, { routed: number; passed: number }> = {};
-  readonly unmappedSamples: Array<{ ticker: string; industry_proxy?: string }> = [];
+  readonly unmappedSamples: Array<{ ticker: string; industry_proxy?: string }> = {};
+  readonly sectorExitByReason: Record<string, number> = {};
 
   killExcluded = 0;
   sectorPassed = 0;
   fallbackCount = 0;
+
+  recordSectorExit(reason: string): void {
+    this.sectorExitByReason[reason] = (this.sectorExitByReason[reason] ?? 0) + 1;
+  }
 
   recordPrefilterExcluded(bundle: SpecBundle, records: SecurityRecord[]): void {
     for (const record of records) {
@@ -93,12 +100,21 @@ export class FunnelDiagnosticsCollector {
   ): PassingCandidate | null {
     const route = routeSecurityRecord(bundle, record);
     this.byMethod[route.routingMethod] = (this.byMethod[route.routingMethod] ?? 0) + 1;
+
     if (route.routingMethod === "fallback") {
       this.fallbackCount += 1;
+      this.recordSectorExit("routing_too_hard");
       if (this.unmappedSamples.length < 50) {
         this.unmappedSamples.push({ ticker: record.ticker, industry_proxy: record.industryProxy });
       }
+      return null;
     }
+
+    const allQuantTooHard =
+      route.templates.length > 0 &&
+      route.templates.every(
+        (t) => templateLiveViability(bundle, t.id, t.subTemplate) === "quant_too_hard"
+      );
 
     for (const template of route.templates) {
       this.byTemplate[template.id] = (this.byTemplate[template.id] ?? 0) + 1;
@@ -106,6 +122,11 @@ export class FunnelDiagnosticsCollector {
         this.sectorByTemplate[template.id] = { routed: 0, passed: 0 };
       }
       this.sectorByTemplate[template.id].routed += 1;
+    }
+
+    if (allQuantTooHard) {
+      this.recordSectorExit("sector_quant_too_hard");
+      return null;
     }
 
     const trackResults = listTemplateTrackResults(bundle, record, route);
@@ -178,6 +199,7 @@ export class FunnelDiagnosticsCollector {
       },
       prefilter_by_reason: this.prefilterByReason,
       kill_by_reason: this.killByReason,
+      sector_exit_by_reason: this.sectorExitByReason,
       routing: {
         by_method: this.byMethod,
         by_template: this.byTemplate,
@@ -351,6 +373,17 @@ export function formatFunnelReplayReport(doc: FunnelDiagnosticsDoc, market: Mark
     lines.push("");
   }
 
+  if (Object.keys(doc.sector_exit_by_reason ?? {}).length > 0) {
+    lines.push("## Sector exits (non-kill)");
+    lines.push("");
+    lines.push("| Reason | Count |");
+    lines.push("|--------|-------|");
+    for (const [reason, count] of sortedEntries(doc.sector_exit_by_reason)) {
+      lines.push(`| ${reason} | ${count} |`);
+    }
+    lines.push("");
+  }
+
   if (doc.unmapped_samples.length > 0) {
     lines.push("## Unmapped industry samples (fallback routing, up to 50)");
     lines.push("");
@@ -438,6 +471,7 @@ export function buildFunnelDiagnosticsFromArtifacts(
     },
     prefilter_by_reason: prefilterByReason,
     kill_by_reason: killByReason,
+    sector_exit_by_reason: {},
     routing: {
       by_method: routing?.by_method ?? {},
       by_template: routing?.by_template ?? {},
