@@ -5,16 +5,14 @@ date: 2026-06-14
 
 # Enrichment scope: ship low and feasible medium tiers; defer high-tier sources
 
-Sector templates reference many metrics, but live enrichment only derives a subset from East Money / SEC annual rows plus dividend. Grill decision: implement **all low-tier** enrichments, **feasible medium-tier** enrichments (derive + quote bulk + peer/history overlays without new regulatory or NLP sources), and **explicitly defer high-tier** metrics (bank regulatory fields, SaaS NDR/SBC, capacity utilization, customer concentration parsing, insurance specialty fields, same_store_sales_yoy).
+Live enrich derives from East Money / SEC annual rows, quotes, dividends, cache history, and peer overlays — not new regulatory or NLP sources.
 
-Low tier is primarily Wave 1 derive-first (`mid_cycle_*`, `rule_of_40`, `revenue_10y_cagr`, cyclicals/mfg supporting derivations) plus Wave 2a quote bulk (PE/PB/price/52w on CN clist and US quote modules) wired through `DeriveContext`. Medium tier adds peer-relative overlays (`*_vs_peer_median`, `*_vs_industry_median` extensions), EV/EBITDA proxies from annual + market cap, and **per-ticker quote history in enrich cache** to support `*_vs_5y_median` without external vendors.
+| Tier | Scope | Examples |
+|------|--------|----------|
+| Low | Derive + quote bulk | `mid_cycle_*`, `rule_of_40`, capex derive, CN/US ROIC hygiene |
+| Medium | Peer/history overlays | `*_vs_industry_median`, `*_vs_5y_median` from enrich cache |
+| High | Deferred | Bank regulatory fields, SaaS NDR/SBC (CN), insurance specialty, capacity utilization, customer concentration |
 
-High-tier items remain `missing: skip` or template-required fields that block pass until a future source spike; CN **banks** sub-template (`rotce`, `npl`, `nim`) is in this bucket. CN bank routing is resolved separately in ADR 0003 (`banks_proxy` until regulatory enrich; phase two in ADR 0006).
+**CN banks:** high-tier → ADR 0003 proxy routing until source exists. **CN tech_saas SBC/dilution:** ADR 0004 CN skip on supporting only.
 
-## Consequences
-
-- `spec/conventions.yaml` documents which metrics are in-scope per tier.
-- `funnel-diagnostics.yaml` may report `metric_coverage` by template after enrich.
-- Cyclicals and manufacturing mispricing tracks improved after Wave 1–2 (ROIC, quote bulk); **CN `tech_saas` quality may still show 0% pass** where required metrics or strict gates block (ADR 0004 covers SBC/dilution skip only on supporting). Revisit expectations per quarterly `funnel-diagnostics.yaml`, not blanket “post-Wave-1” claims.
-- CN banks: see ADR 0003 for proxy routing; US `banks` sub-template unchanged pending US bank enrich.
-- CN tech_saas quality: see ADR 0004 for CN-only `missing: skip` on SBC/dilution supporting metrics.
+**Observability:** `metric_coverage` in `funnel-diagnostics.yaml` (ADR 0006) reports required-metric presence per template after enrich.
