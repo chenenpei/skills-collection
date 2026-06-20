@@ -60,7 +60,8 @@ function formatReport(opts: {
   byTemplate: Record<string, number>;
   fallbackCount: number;
   unmappedByProxy: Record<string, number>;
-  consumerMisroute: number;
+  brandConsumerToConsumer: number;
+  routingTooHardCount: number;
 }): string {
   const lines: string[] = [];
   const fallbackRate = opts.total > 0 ? opts.fallbackCount / opts.total : 0;
@@ -106,7 +107,10 @@ function formatReport(opts: {
   lines.push("## Sanity checks");
   lines.push("");
   lines.push(
-    `- 消费电子 routed to consumer: **${opts.consumerMisroute}** (expected 0 after CN map fix)`
+    `- 品牌消费电子 → consumer (intentional L3 route): **${opts.brandConsumerToConsumer}**`
+  );
+  lines.push(
+    `- Unmapped fallback (routing_too_hard candidates): **${opts.routingTooHardCount}**`
   );
   if (fallbackRate > 0.05) {
     lines.push(`- WARN: fallback_rate ${fallbackRate.toFixed(3)} exceeds 5% target`);
@@ -146,7 +150,8 @@ async function main(): Promise<void> {
   const unmappedByProxy: Record<string, number> = {};
   let fallbackCount = 0;
   let missingProxy = 0;
-  let consumerMisroute = 0;
+  let brandConsumerToConsumer = 0;
+  let routingTooHardCount = 0;
 
   for (const { industryProxy, route } of perFile) {
     if (!industryProxy) missingProxy += 1;
@@ -154,6 +159,7 @@ async function main(): Promise<void> {
     byMethod[route.routingMethod] = (byMethod[route.routingMethod] ?? 0) + 1;
     if (route.routingMethod === "fallback") {
       fallbackCount += 1;
+      routingTooHardCount += 1;
       const key = industryProxy || "(missing)";
       unmappedByProxy[key] = (unmappedByProxy[key] ?? 0) + 1;
     }
@@ -163,10 +169,10 @@ async function main(): Promise<void> {
     }
 
     if (
-      industryProxy?.includes("消费电子") &&
+      industryProxy?.includes("品牌消费电子") &&
       route.templates.some((t) => t.id === "consumer")
     ) {
-      consumerMisroute += 1;
+      brandConsumerToConsumer += 1;
     }
   }
 
@@ -179,7 +185,8 @@ async function main(): Promise<void> {
     byTemplate,
     fallbackCount,
     unmappedByProxy,
-    consumerMisroute,
+    brandConsumerToConsumer,
+    routingTooHardCount,
   });
 
   if (args.write) {
