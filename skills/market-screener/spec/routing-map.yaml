@@ -9,7 +9,7 @@ classifier:
   proxy: yahoo_industry
   proxy_map_ref: industry_proxy_map
   cn_industry_map_ref: cn-industry-map.yaml
-  fallback_template: manufacturing
+  fallback_behavior: routing_too_hard
   fallback_confidence: low
 
 routing_confidence:

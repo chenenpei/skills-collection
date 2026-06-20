@@ -3,6 +3,8 @@ import path from "node:path";
 import { loadSpecBundle } from "../../src/spec/loader.js";
 import type { SpecBundle } from "../../src/spec/types.js";
 import { routeSecurity } from "../../src/funnel/router.js";
+import { listTemplateTrackResults } from "../../src/funnel/run.js";
+import { templateLiveViability } from "../../src/spec/conventions.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
 
@@ -39,14 +41,14 @@ describe("routeSecurity", () => {
     });
   });
 
-  it("falls back to manufacturing with low confidence when unmatched", () => {
+  it("returns routing_too_hard with no templates when unmatched", () => {
     expect(
       routeSecurity(bundle.routingMap, bundle.cnIndustryMap, { industryProxy: "Unknown Widget Corp" })
     ).toMatchObject({
-      templates: [{ id: "manufacturing" }],
+      templates: [],
       routingConfidence: "low",
       routingMethod: "fallback",
-      auditHints: ["routing_fallback_unmapped_industry"],
+      auditHints: ["routing_too_hard"],
     });
   });
 
@@ -90,6 +92,7 @@ describe("routeSecurity", () => {
       });
       expect(result.routingMethod).toBe("fallback");
       expect(result.routingConfidence).toBe("low");
+      expect(result.templates).toEqual([]);
     });
 
     it("routes 医药生物 L1 to healthcare without also_run union", () => {
@@ -158,5 +161,22 @@ describe("routeSecurity", () => {
     });
     expect(result.templates).toEqual([{ id: "healthcare" }]);
     expect(result.routingConfidence).toBe("high");
+  });
+
+  it("skips quant_too_hard banks template evaluation", () => {
+    expect(templateLiveViability(bundle, "financials", "banks")).toBe("quant_too_hard");
+    const route = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      market: "US",
+      gicsCode: "401010",
+    });
+    const record = {
+      ticker: "JPM",
+      market: "US" as const,
+      companyName: "JPM",
+      currency: "USD",
+      gicsCode: "401010",
+      metrics: {},
+    };
+    expect(listTemplateTrackResults(bundle, record, route)).toHaveLength(0);
   });
 });

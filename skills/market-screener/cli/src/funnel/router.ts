@@ -152,14 +152,12 @@ function routeViaIndustryProxy(
   return undefined;
 }
 
-function fallbackRoute(routingMap: RoutingMapSpec): RouteResult {
-  const classifier = routingMap.classifier as Record<string, unknown> | undefined;
-  const template = String(classifier?.fallback_template ?? "manufacturing");
+function fallbackRoute(): RouteResult {
   return {
-    templates: [{ id: template }],
+    templates: [],
     routingConfidence: "low",
     routingMethod: "fallback",
-    auditHints: ["routing_fallback_unmapped_industry"],
+    auditHints: ["routing_too_hard"],
     matchedRule: "fallback",
   };
 }
@@ -192,7 +190,7 @@ export function routeSecurity(
   const proxyRoute = routeViaIndustryProxy(routingMap, cnIndustryMap, input.industryProxy);
   if (proxyRoute) return proxyRoute;
 
-  return fallbackRoute(routingMap);
+  return fallbackRoute();
 }
 
 export function routeFromIndustryProxy(
