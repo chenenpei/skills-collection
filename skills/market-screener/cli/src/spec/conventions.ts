@@ -90,3 +90,28 @@ export function seatAllocationFromBundle(bundle: SpecBundle): TemplateSeatAlloca
     backfill: configured.backfill ?? DEFAULT_SEAT_ALLOCATION.backfill,
   };
 }
+
+export interface NorthStarSpec {
+  metric: string;
+  direction: "desc" | "asc";
+}
+
+export function parseNorthStar(raw: string): NorthStarSpec {
+  const [metric, dir] = raw.split(":");
+  if (dir === "asc") return { metric, direction: "asc" };
+  return { metric, direction: "desc" };
+}
+
+export function northStarForPool(
+  bundle: SpecBundle,
+  poolKey: string
+): NorthStarSpec | undefined {
+  const map = (bundle.conventions as { pool_tie_break_north_star?: Record<string, string> })
+    .pool_tie_break_north_star;
+  if (!map) return undefined;
+
+  const raw =
+    map[poolKey] ??
+    (poolKey.endsWith("_quality") ? map.default_quality : map.default_mispricing);
+  return raw ? parseNorthStar(raw) : undefined;
+}

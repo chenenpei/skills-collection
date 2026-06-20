@@ -223,8 +223,23 @@ template_seat_allocation:
 
 ranking:
   method: template_seat_allocation
-  tie_break: track confluence, then pool_score, then data_confidence
+  tie_break: track confluence, then pool_score, then data_confidence, then north_star_metric, then ticker
   note: merged candidates.yaml rank is Deep queue priority, not cross-template conviction
+
+pool_tie_break_north_star:
+  consumer_quality: roe_5y_avg
+  consumer_mispricing: fcf_yield
+  healthcare_quality: gross_margin
+  healthcare_mispricing: fcf_yield_vs_risk_free
+  manufacturing_quality: roic_5y_avg
+  manufacturing_mispricing: roic_ttm
+  cyclicals_mispricing: mid_cycle_fcf_yield
+  financials_quality: roe_ttm
+  financials_mispricing: pb:asc
+  tech_saas_quality: rule_of_40
+  tech_saas_mispricing: revenue_yield_vs_peer
+  default_quality: roic_5y_avg
+  default_mispricing: fcf_yield
 
 metric_snapshot:
   include_on_pass: all metrics evaluated for the passed track

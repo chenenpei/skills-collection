@@ -1,3 +1,4 @@
+import type { NorthStarSpec } from "../spec/conventions.js";
 import type { PassingCandidate } from "./run.js";
 
 export interface TemplateSeatPoolConfig {
@@ -31,19 +32,54 @@ export interface TemplateSeatAllocationResult {
   byPoolSelected: Record<string, number>;
 }
 
+export interface PoolNorthStarLookup {
+  forPool(poolKey: string): NorthStarSpec | undefined;
+  defaultQuality?: NorthStarSpec;
+}
+
 const CONFIDENCE_ORDER = { high: 3, medium: 2, low: 1 };
 
 export function poolKeyForCandidate(candidate: PassingCandidate): string {
   return `${candidate.winning_template}_${candidate.passed_track}`;
 }
 
-export function compareInPool(a: PassingCandidate, b: PassingCandidate): number {
+function northStarSortValue(candidate: PassingCandidate, northStar: NorthStarSpec): number {
+  const v = candidate.metric_snapshot[northStar.metric]?.value;
+  if (v === undefined || !Number.isFinite(v)) {
+    return northStar.direction === "desc" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
+  }
+  return v;
+}
+
+export function compareNorthStar(
+  a: PassingCandidate,
+  b: PassingCandidate,
+  northStar: NorthStarSpec
+): number {
+  const va = northStarSortValue(a, northStar);
+  const vb = northStarSortValue(b, northStar);
+  if (vb !== va) {
+    return northStar.direction === "desc" ? vb - va : va - vb;
+  }
+  return a.ticker.localeCompare(b.ticker);
+}
+
+export function compareInPool(
+  a: PassingCandidate,
+  b: PassingCandidate,
+  poolKey?: string,
+  northStarLookup?: PoolNorthStarLookup
+): number {
   if (a.track_confluence !== b.track_confluence) {
     return a.track_confluence ? -1 : 1;
   }
   if (b.pool_score !== a.pool_score) return b.pool_score - a.pool_score;
   if (CONFIDENCE_ORDER[b.data_confidence] !== CONFIDENCE_ORDER[a.data_confidence]) {
     return CONFIDENCE_ORDER[b.data_confidence] - CONFIDENCE_ORDER[a.data_confidence];
+  }
+  if (poolKey && northStarLookup) {
+    const northStar = northStarLookup.forPool(poolKey);
+    if (northStar) return compareNorthStar(a, b, northStar);
   }
   return a.ticker.localeCompare(b.ticker);
 }
@@ -55,15 +91,19 @@ function flexScore(candidate: PassingCandidate, multiplier: number): number {
 function compareFlex(
   a: PassingCandidate,
   b: PassingCandidate,
-  multiplier: number
+  multiplier: number,
+  northStarLookup?: PoolNorthStarLookup
 ): number {
   const scoreA = flexScore(a, multiplier);
   const scoreB = flexScore(b, multiplier);
   if (scoreB !== scoreA) return scoreB - scoreA;
-  return compareInPool(a, b);
+  return compareInPool(a, b, poolKeyForCandidate(a), northStarLookup);
 }
 
-function groupByPool(candidates: PassingCandidate[]): Map<string, PassingCandidate[]> {
+function groupByPool(
+  candidates: PassingCandidate[],
+  northStarLookup?: PoolNorthStarLookup
+): Map<string, PassingCandidate[]> {
   const buckets = new Map<string, PassingCandidate[]>();
   for (const candidate of candidates) {
     const key = poolKeyForCandidate(candidate);
@@ -71,8 +111,8 @@ function groupByPool(candidates: PassingCandidate[]): Map<string, PassingCandida
     bucket.push(candidate);
     buckets.set(key, bucket);
   }
-  for (const bucket of buckets.values()) {
-    bucket.sort(compareInPool);
+  for (const [poolKey, bucket] of buckets) {
+    bucket.sort((a, b) => compareInPool(a, b, poolKey, northStarLookup));
   }
   return buckets;
 }
@@ -119,16 +159,16 @@ export function allocateTemplateSeats(
   candidates: PassingCandidate[],
   config: TemplateSeatAllocationConfig,
   softCap: number,
-  deferredCap: number
+  deferredCap: number,
+  northStarLookup?: PoolNorthStarLookup
 ): TemplateSeatAllocationResult {
-  const buckets = groupByPool(candidates);
+  const buckets = groupByPool(candidates, northStarLookup);
   const selected: AllocatedCandidate[] = [];
   const selectedTickers = new Set<string>();
   const poolSelectedCount: Record<string, number> = {};
   const byPoolSelected: Record<string, number> = {};
   const state = { selected, selectedTickers, poolSelectedCount, byPoolSelected, softCap };
 
-  // Phase 1: floors
   for (const [poolKey, poolConfig] of Object.entries(config.pools)) {
     if (poolConfig.floor <= 0) continue;
     const bucket = buckets.get(poolKey) ?? [];
@@ -140,7 +180,6 @@ export function allocateTemplateSeats(
     }
   }
 
-  // Phase 2: fill each pool toward cap
   for (const [poolKey, poolConfig] of Object.entries(config.pools)) {
     const bucket = buckets.get(poolKey) ?? [];
     for (const candidate of bucket) {
@@ -150,7 +189,6 @@ export function allocateTemplateSeats(
     }
   }
 
-  // Phase 3: flex fill (respect per-pool cap)
   const multiplier = config.flex.confluence_weight_multiplier;
   while (selected.length < softCap) {
     const eligible = candidates.filter((candidate) => {
@@ -159,11 +197,10 @@ export function allocateTemplateSeats(
       return !poolAtCap(key, config, poolSelectedCount);
     });
     if (eligible.length === 0) break;
-    eligible.sort((a, b) => compareFlex(a, b, multiplier));
+    eligible.sort((a, b) => compareFlex(a, b, multiplier, northStarLookup));
     if (!trySelect(eligible[0]!, "flex", state)) break;
   }
 
-  // Phase 4: backfill vacant seats (ignores per-pool cap)
   if (selected.length < softCap && config.backfill.tier1 === "same_template_quality") {
     const templatesWithShortfall = new Set<string>();
     for (const [poolKey, poolConfig] of Object.entries(config.pools)) {
@@ -188,7 +225,9 @@ export function allocateTemplateSeats(
       (candidate) =>
         candidate.passed_track === "quality" && !selectedTickers.has(candidate.ticker)
     );
-    qualityCandidates.sort(compareInPool);
+    qualityCandidates.sort((a, b) =>
+      compareInPool(a, b, "default_quality", northStarLookup)
+    );
     for (const candidate of qualityCandidates) {
       if (selected.length >= softCap) break;
       trySelect(candidate, "backfill_global", state);
@@ -201,7 +240,7 @@ export function allocateTemplateSeats(
 
   const unselected = candidates
     .filter((candidate) => !selectedTickers.has(candidate.ticker))
-    .sort((a, b) => compareFlex(a, b, multiplier));
+    .sort((a, b) => compareFlex(a, b, multiplier, northStarLookup));
 
   const deferred = unselected.slice(0, deferredCap).map((candidate, index) => ({
     ...candidate,

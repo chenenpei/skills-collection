@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   deferredWatchlistCapFromBundle,
   funnelSoftCapFromBundle,
+  northStarForPool,
   seatAllocationFromBundle,
   templateLiveViability,
 } from "../spec/conventions.js";
@@ -256,7 +257,16 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
     }
 
     const seatConfig = seatAllocationFromBundle(opts.bundle);
-    const allocation = allocateTemplateSeats(passed, seatConfig, softCap, deferredCap);
+    const northStarLookup = {
+      forPool: (poolKey: string) => northStarForPool(opts.bundle, poolKey),
+    };
+    const allocation = allocateTemplateSeats(
+      passed,
+      seatConfig,
+      softCap,
+      deferredCap,
+      northStarLookup
+    );
 
     const stripInternalFields = ({
       compositeScore: _compositeScore,
