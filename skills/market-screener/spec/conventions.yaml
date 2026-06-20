@@ -110,6 +110,31 @@ enrich_tiers:
     note: Not in CLI MVP — manual in Deep only
     examples: [bank regulatory ratios, NDR, SBC detail CN, capacity utilization, customer concentration, forward_peg]
 
+template_live_viability:
+  # full | proxy | quant_too_hard — ADR 0006
+  consumer: full
+  healthcare: full
+  manufacturing: full
+  cyclicals: full
+  tech_saas: proxy
+  financials:
+    banks: quant_too_hard
+    banks_proxy: proxy
+    insurance: quant_too_hard
+    other_financials: full
+
+deep_only_metrics:
+  note: Not in live YAML supporting/required; Deep audit manual only
+  metrics:
+    - capacity_utilization
+    - top_customer_concentration
+    - same_store_sales_yoy
+    - ndr
+    - forward_peg
+    - embedded_value_growth_3y
+    - loss_ratio_3y_volatility
+    - investment_yield
+
 metric_source_hygiene:
   ref: docs/adr/0005-metric-source-hygiene.md
   policy: missing_over_proxy
@@ -164,7 +189,7 @@ pass_logic:
       consumer_quality: 5_of_7
       consumer_mispricing: 4_of_6
       cyclicals_mispricing: 4_of_6
-      manufacturing_quality: 5_of_7
+      manufacturing_quality: 5_of_5
       manufacturing_mispricing: 4_of_6
       financials_banks: 4_of_6  # unchanged; sparse bank data
 
@@ -212,7 +237,7 @@ funnel_flags:
 audit_hints:
   not_part_of: stock-analysis-audit core schema
   passed_by: orchestrator into Deep audit prompt
-  fallback_note: When routing_method is fallback or routing_confidence is low, Deep must flag sector classification uncertainty and honor audit_hints (e.g. routing_fallback_unmapped_industry)
+  fallback_note: When routing_method is fallback, sector scoring is skipped (routing_too_hard); Deep must flag sector classification uncertainty and honor audit_hints
 
 sector_kill_gates:
   execution: spec_contract_only

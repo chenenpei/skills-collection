@@ -1,5 +1,27 @@
 import type { SpecBundle } from "./types.js";
 
+export type TemplateLiveViability = "full" | "proxy" | "quant_too_hard";
+
+export function templateLiveViability(
+  bundle: SpecBundle,
+  templateId: string,
+  subTemplateId?: string
+): TemplateLiveViability {
+  const manifest = (bundle.conventions as {
+    template_live_viability?: Record<
+      string,
+      TemplateLiveViability | Record<string, TemplateLiveViability>
+    >;
+  }).template_live_viability;
+  if (!manifest) return "full";
+
+  const entry = manifest[templateId];
+  if (!entry) return "full";
+  if (typeof entry === "string") return entry;
+  if (subTemplateId && entry[subTemplateId]) return entry[subTemplateId];
+  return "full";
+}
+
 export function funnelSoftCapFromBundle(bundle: SpecBundle): number {
   const conventions = bundle.conventions as {
     funnel_soft_cap?: { max_candidates_per_market?: number };
