@@ -211,6 +211,20 @@ funnel_soft_cap:
 deferred_watchlist_cap:
   max_deferred_per_market: 20
 
+deferred_lite_sweep:
+  note: Tier-2 qualitative pass; reuses stock-analysis-audit Lite (not Deep)
+  default_top_n: 8
+  applies_to: deferred.yaml ordered by rank ascending
+  report_path: "{output}/{quarter}/audit/{market}/{ticker}.lite.md"
+  skip_when:
+    - user_requests_deep_all
+    - deferred.yaml empty for market
+  promote_next_quarter_when:
+    lite_verdict_slug:
+      - verdict_quality_reasonable_price
+      - verdict_medium_term_revaluation
+    min_confidence: 3
+
 template_seat_allocation:
   pools:
     healthcare_quality: { floor: 2, cap: 5 }

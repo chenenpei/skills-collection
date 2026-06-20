@@ -13,6 +13,6 @@ Live enrich derives from East Money / SEC annual rows, quotes, dividends, cache 
 | Medium | Peer/history overlays | `*_vs_industry_median`, `*_vs_5y_median` from enrich cache |
 | High | Deferred | Bank regulatory fields, SaaS NDR/SBC (CN), insurance specialty, capacity utilization, customer concentration |
 
-**CN banks:** high-tier → ADR 0003 proxy routing until source exists. **CN tech_saas SBC/dilution:** ADR 0004 CN skip on supporting only.
+**CN banks:** high-tier → ADR 0003 proxy routing until source exists. **CN tech_saas SBC/dilution:** CN skip on supporting in `tech-saas.yaml`.
 
 **Observability:** `metric_coverage` in `funnel-diagnostics.yaml` (ADR 0006) reports required-metric presence per template after enrich.

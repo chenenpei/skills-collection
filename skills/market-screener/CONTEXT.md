@@ -86,20 +86,10 @@ slug: `investable_universe`
 | `manufacturing` | ROIC/FCF/capex; mispricing requires `roic_ttm` (`manufacturing_mispricing_roic_floor`, ADR 0006) |
 | `consumer` | Brand/margin/dividend supporting optional |
 | `cyclicals` | Mid-cycle normalization (7y window) |
-| `tech_saas` | Proxy viability; CN SBC/dilution supporting skipped (ADR 0004) |
+| `tech_saas` | Proxy viability; CN SBC/dilution supporting skipped (`tech-saas.yaml`) |
 | `financials` | `banks_proxy` for CN 银行 until bank enrich (ADR 0003); `banks`/`insurance` quant_too_hard |
 
-**CN Bank Routing Proxy** — 银行 → `banks_proxy`; flag `bank_routed_via_other_financials_proxy`; credit quality in Deep only. Phase two **blocked** (ADR 0003/0006). slug: `cn_bank_routing_proxy`
-
-**CN Tech SaaS Quality Skip** — CN skip `sbc_to_revenue`, `share_dilution_3y` supporting; flag `verify_sbc_dilution_in_deep_cn`. slug: `cn_tech_saas_quality_skip`
-
-**Bank Regulatory Enrich Priority** — First high-tier spike when source found; **blocked** on East Money datacenter probe 2026-06-14. slug: `bank_regulatory_enrich_priority`
-
-**Healthcare Quality Dual Path** — Profitable compounders vs biotech exception gates. slug: `healthcare_quality_dual_path`
-
-**Mid-Cycle Normalization** — Multi-year average for cyclical valuation. slug: `mid_cycle_normalization`
-
-**Market Override** / **Unified Threshold** — Per-market threshold when norms differ; default unified. slugs: `market_override`, `unified_threshold`, `market_override_policy`
+Slugs: `cn_bank_routing_proxy`, `cn_tech_saas_quality_skip`, `bank_regulatory_enrich_priority` (blocked), `healthcare_quality_dual_path`, `mid_cycle_normalization`, `market_override`, `unified_threshold`, `market_override_policy`.
 
 ---
 
@@ -127,7 +117,7 @@ slug: `investable_universe`
 
 ---
 
-## Seat allocation & ranking (ADR 0001, 0007)
+## Seat allocation & ranking
 
 **Funnel Soft Cap** — Max candidates per market (20). Overflow → deferred. slug: `funnel_soft_cap`
 
@@ -156,6 +146,8 @@ slug: `investable_universe`
 **Deep Audit Limit** — Default 20 Deep audits per market per quarter. slug: `deep_audit_limit`
 
 **Deep All** — User-requested audit of all candidates. slug: `deep_all`
+
+**Deferred Lite Sweep** — Lite on deferred rank 1–8 after Deep (default 8); `{ticker}.lite.md` → `deferred_lite_screened`. Not a substitute for Deep on candidates. slug: `deferred_lite_sweep`
 
 **Parallel By Market** — CN and US Deep in parallel sessions. slug: `deep_execution_parallel_by_market`
 

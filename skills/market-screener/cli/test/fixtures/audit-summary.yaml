@@ -1,5 +1,6 @@
 quarter: 2026-Q2
 deep_limit_per_market: 20
+deferred_lite_top_n: 8
 shortlist_for_landmine:
   - ticker: "600519"
     market: CN
@@ -10,4 +11,16 @@ shortlist_for_landmine:
     current_price: 1600
     currency: CNY
 rejected_after_deep: []
-deep_deferred: []
+deferred_lite_screened:
+  - ticker: "603195"
+    market: CN
+    deferred_rank: 21
+    lite_verdict_slug: verdict_quality_reasonable_price
+    confidence: 4
+    promote_next_quarter: true
+    report_path: audit/CN/603195.lite.md
+deep_deferred:
+  - ticker: "002003"
+    market: CN
+    deferred_rank: 29
+quarter_diff_lite: []

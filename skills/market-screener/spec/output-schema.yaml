@@ -181,6 +181,14 @@ orchestrator:
     deep_all_requires_explicit_user_request: true
   report_output:
     path: "{output}/{quarter}/audit/{market}/{ticker}.md"
+  deferred_lite_sweep:
+    ref: conventions.yaml#deferred_lite_sweep
+    default_top_n: 8
+    applies_to: deferred.yaml_by_rank
+    downstream_mode: lite
+    report_output:
+      path: "{output}/{quarter}/audit/{market}/{ticker}.lite.md"
+    note: stock-analysis-audit Lite screening; preliminary_verdict only — not landmine input unless promoted to Deep same quarter
 
 audit_summary_schema:
   filename: audit-summary.yaml
@@ -197,8 +205,29 @@ audit_summary_schema:
       item_fields: [ticker, market, deep_verdict_slug, reject_reason]
     deep_deferred:
       type: array
-      description: Candidates not Deep-audited due to limit
-      item_fields: [ticker, market, rank]
+      description: Deferred.yaml entries not covered by deferred Lite sweep (rank below lite top-N)
+      item_fields: [ticker, market, deferred_rank]
+    deferred_lite_screened:
+      type: array
+      description: Tier-2 Lite results for deferred.yaml rank 1..N (see conventions.yaml deferred_lite_sweep)
+      item_fields:
+        - ticker
+        - market
+        - deferred_rank
+        - lite_verdict_slug
+        - confidence
+        - promote_next_quarter
+        - report_path
+    quarter_diff_lite:
+      type: array
+      description: Optional ad-hoc Lite for user-requested or quarter-over-quarter drops (not in deferred.yaml)
+      item_fields:
+        - ticker
+        - market
+        - reason
+        - lite_verdict_slug
+        - confidence
+        - report_path
 
 landmines_schema:
   filename: landmines.yaml

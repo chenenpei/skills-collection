@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Market Screener
 
-Orchestrate the **batch funnel → Deep audit → qualitative triage → landmine prices → trigger discipline** workflow. Deterministic funnel rules live in `spec/`; the TypeScript CLI at `cli/` executes the funnel. This skill drives **batch orchestration** and chains into **stock-analysis-audit** for single-name Deep work.
+Orchestrate the **batch funnel → Deep audit → deferred Lite sweep → qualitative triage → landmine prices → trigger discipline** workflow. Deterministic funnel rules live in `spec/`; the TypeScript CLI at `cli/` executes the funnel. This skill drives **batch orchestration** and chains into **stock-analysis-audit** for single-name Deep work.
 
 All outputs are research assistance only and are not investment advice.
 
@@ -24,9 +24,10 @@ When loaded, confirm the user's intent:
 1. **Never submit trades.** Landmines and alerts are for **human broker execution** only (GTC limits or price alerts).
 2. **Never run the quarterly funnel before the later-market disclosure anchor** for the active cycle. Warn if the user requests early runs; note `data_confidence: low` risk.
 3. **Default Deep limit:** rank 1–20 per market from `candidates.yaml`. Run full Deep on every candidate only when the user explicitly requests it.
-4. **Do not replace stock-analysis-audit** for single-ticker Deep/Lite. Invoke that skill per candidate with funnel context (`audit_hints`, `metric_snapshot`).
-5. **Funnel metrics are coarse.** Deep audit may override funnel snapshots; record conflicts in audit reports. When `routing_method` is `fallback` or `routing_confidence` is `low`, Deep must flag sector classification uncertainty and honor `audit_hints`.
-6. **Sector templates and output caps.** Six sector funnels: `financials`, `tech_saas`, `consumer`, `cyclicals`, `manufacturing`, `healthcare` (`spec/templates/*.yaml`). **Soft cap: 20 candidates per market**; overflow → `deferred.yaml` (watchlist capped at 20). **Ranking uses template track seat allocation** (`winning_template × passed_track` pools with floors/caps/flex in `spec/conventions.yaml#template_seat_allocation`) — not a global supporting-count sort across templates.
+4. **Default Deferred Lite sweep:** after Deep, run **stock-analysis-audit Lite** on deferred.yaml **rank 1–8** per market (see `spec/conventions.yaml#deferred_lite_sweep`). Reports → `{ticker}.lite.md`. Lite is **not** landmine input unless the user adds Deep same quarter.
+5. **Do not replace stock-analysis-audit** for single-ticker Deep/Lite. Invoke that skill per candidate with funnel context (`audit_hints`, `metric_snapshot`).
+6. **Funnel metrics are coarse.** Deep audit may override funnel snapshots; record conflicts in audit reports. When `routing_method` is `fallback` or `routing_confidence` is `low`, Deep must flag sector classification uncertainty and honor `audit_hints`.
+7. **Sector templates and output caps.** Six sector funnels: `financials`, `tech_saas`, `consumer`, `cyclicals`, `manufacturing`, `healthcare` (`spec/templates/*.yaml`). **Soft cap: 20 candidates per market**; overflow → `deferred.yaml` (watchlist capped at 20). **Ranking uses template track seat allocation** (`winning_template × passed_track` pools with floors/caps/flex in `spec/conventions.yaml#template_seat_allocation`) — not a global supporting-count sort across templates.
 
 ## Default Quarterly Run Sequence
 
@@ -35,9 +36,10 @@ Follow `docs/agent-guide.md` unless the user narrows scope.
 1. **Schedule check** — read `spec/schedule.yaml`; verify `later_market_gate` for the quarter.
 2. **Quantitative funnel** — run the CLI from `cli/` (see **CLI** below). Default adapter is `fixture` (offline); use `--adapter live` when the user wants real universe data and enrichment.
 3. **Deep audit** — parallel by market (CN session + US session). For each candidate (default top 20/market), load **stock-analysis-audit** Deep with funnel context attached. Reports → `funnel-output/{quarter}/audit/{market}/{ticker}.md`.
-4. **Qualitative triage** — produce `audit-summary.yaml`: `shortlist_for_landmine`, `rejected_after_deep`, `deep_deferred`.
-5. **Landmines** — `npm run dev -- landmine --from audit-summary.yaml --output landmines.yaml` from `cli/` → `landmines.yaml`. Remind user to place orders manually.
-6. **Trigger discipline** — on price touch, follow `spec/trigger-discipline.yaml` (scenario A default when ambiguous).
+4. **Deferred Lite sweep** — for each market, take `deferred.yaml` rank **1–8** (default). Load **stock-analysis-audit** **Lite** with deferred funnel context. Reports → `funnel-output/{quarter}/audit/{market}/{ticker}.lite.md`. Optional ad-hoc Lite for quarter-diff / user-requested names → `quarter_diff_lite` in audit-summary.
+5. **Qualitative triage** — produce `audit-summary.yaml`: `shortlist_for_landmine` (Deep only), `rejected_after_deep`, `deferred_lite_screened`, `deep_deferred`, optional `quarter_diff_lite`.
+6. **Landmines** — `npm run dev -- landmine --from audit-summary.yaml --output landmines.yaml` from `cli/` → `landmines.yaml`. Remind user to place orders manually.
+7. **Trigger discipline** — on price touch, follow `spec/trigger-discipline.yaml` (scenario A default when ambiguous).
 
 ## Required References
 
@@ -77,6 +79,27 @@ For each Deep candidate, attach funnel context in the prompt:
 ```
 
 Load **stock-analysis-audit** for the actual Deep workflow, templates, and verdict slugs. This skill owns batch orchestration and YAML artifacts only.
+
+### Deferred Lite prompt (Step 2b)
+
+```markdown
+对 {ticker}（{market}）执行 Lite 初筛（非 Deep）。
+
+漏斗上下文（需交叉验证，非最终证据）：
+- deferred_rank: {rank}
+- seat_source: deferred
+- passed_track: {quality|mispricing}
+- routed_templates: [...]
+- routing_method: {...}
+- routing_confidence: {...}
+- metric_snapshot: ...
+- audit_hints: ...
+
+Lite 目标：判断是否值得下季升格为 Deep 主队列。
+若 preliminary_verdict 为 verdict_quality_reasonable_price 或 verdict_medium_term_revaluation 且 confidence ≥ 3，标注 promote_next_quarter。
+```
+
+Report path: `audit/{market}/{ticker}.lite.md`. See `docs/agent-guide.md` Step 2b for promote rules and optional `quarter_diff_lite`.
 
 ## CLI
 
@@ -163,7 +186,8 @@ After a scheduled quarterly run, verify:
 - [ ] Live runs with prefilter skips: `prefilter-excluded.yaml` per market
 - [ ] `routing-diagnostics.yaml`, `funnel-diagnostics.yaml` per market (CN `fallback_rate` target < 5%)
 - [ ] Deep reports under `audit/{market}/` (≤20 per market unless user requested full Deep)
-- [ ] `audit-summary.yaml`
+- [ ] Deferred Lite reports under `audit/{market}/` as `*.lite.md` (≤8 per market unless Step 2b skipped)
+- [ ] `audit-summary.yaml` includes `deferred_lite_screened` when Step 2b ran
 - [ ] `landmines.yaml` if shortlist exists
 - [ ] No trades submitted by the agent
 - [ ] Funnel not run before `later_market_gate`

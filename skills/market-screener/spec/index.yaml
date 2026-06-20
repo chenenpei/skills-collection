@@ -50,7 +50,7 @@ data_sources:
     prefilter: quote-only universe gates before HTTP (status, cap, age)
     host_limits: { eastmoney_datacenter: 8, sec_edgar: 4 }
     default_enrich_concurrency: 4
-  ref: ../CONTEXT.md#Data Sources (MVP)
+  ref: ../CONTEXT.md#output--cli
 
 routing:
   classifier: gics_level_2_or_3
@@ -119,6 +119,13 @@ integration:
     execution: parallel_by_market
     report_path: "{output}/{quarter}/audit/{market}/{ticker}.md"
     summary_artifact: audit-summary.yaml
+  deferred_lite_sweep:
+    ref: conventions.yaml#deferred_lite_sweep
+    downstream_mode: lite
+    default_top_n: 8
+    report_path: "{output}/{quarter}/audit/{market}/{ticker}.lite.md"
+    runs_after: deep_audit
+    runs_before: audit_summary
 
 landmine:
   ref: landmine-rules.yaml

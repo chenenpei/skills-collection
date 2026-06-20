@@ -10,7 +10,7 @@ Quarterly quantitative funnel for A-share and US single-company equities. Feeds 
 |------|---------|
 | [SKILL.md](./SKILL.md) | Agent orchestration entry (manual invocation only) |
 | [cli/](./cli/) | TypeScript `screener` CLI (validate, run, explain, landmine, filter-breakdown) |
-| [docs/agent-guide.md](./docs/agent-guide.md) | Quarterly runbook for agents (schedule, Deep, landmine, triggers) |
+| [docs/agent-guide.md](./docs/agent-guide.md) | Quarterly runbook for agents (schedule, Deep, deferred Lite, landmine, triggers) |
 | [CONTEXT.md](./CONTEXT.md) | Domain vocabulary (glossary only) |
 | [spec/index.yaml](./spec/index.yaml) | Manifest, data sources, template list |
 | [spec/kill-gates.yaml](./spec/kill-gates.yaml) | Shared kill gates before sector funnels |

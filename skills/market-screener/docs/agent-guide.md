@@ -88,17 +88,59 @@ npm run dev -- run \
 若 metric_snapshot 与 Deep 数据冲突，以 Deep 为准并说明。
 ```
 
-`deferred.yaml` watchlist 条目本季不 Deep（除非用户扩大 Deep 范围）。
+### Step 2b — Deferred Lite 轻扫（stock-analysis-audit Lite）
+
+**目的：** 在不动 ranker / soft cap 的前提下，对「通过漏斗但未进 top-20」的标的做低成本扫雷，降低 deferred 漏审风险。
+
+- **范围：** 每市场 `deferred.yaml` **按 rank 升序取前 N**（默认 **N=8**，见 `spec/conventions.yaml#deferred_lite_sweep`）
+- **模式：** **stock-analysis-audit Lite**（非 Deep）；产出 `preliminary_verdict`，不得直接写入 landmine
+- **报告路径：** `funnel-output/{quarter}/audit/{market}/{ticker}.lite.md`
+- **执行：** 可与 Step 2 同市场 session 串行，或 CN/US 各开 Lite 子任务；**不得**用 Lite 替代 candidates 的 Deep
+- **跳过条件：** 用户明确要求 `--deep-all`；或该市场 `deferred.yaml` 为空
+
+对每只 deferred Lite 标的，调用 **stock-analysis-audit Lite**，并在 prompt 中附加：
+
+```markdown
+对 {ticker}（{market}）执行 Lite 初筛（非 Deep）。
+
+漏斗上下文（需交叉验证，非最终证据）：
+- deferred_rank: {rank in deferred.yaml}
+- seat_source: deferred
+- passed_track: {quality|mispricing}
+- routed_templates: [...]
+- routing_method: {...}
+- routing_confidence: {...}
+- metric_snapshot: ...
+- audit_hints: ...
+
+Lite 目标：判断是否值得下季升格为 Deep 主队列或纳入用户 watchlist。
+若 preliminary_verdict 为 verdict_quality_reasonable_price 或 verdict_medium_term_revaluation 且 confidence ≥ 3，在 Structured Summary 中明确标注，供 audit-summary 的 promote_next_quarter 使用。
+```
+
+**升格规则（写入 audit-summary）：**
+
+| Lite preliminary_verdict | confidence | promote_next_quarter |
+|---|---|---|
+| `verdict_quality_reasonable_price` 或 `verdict_medium_term_revaluation` | ≥ 3 | **true** |
+| `verdict_watchlist` | 任意 | false（继续跟踪） |
+| `verdict_reject` | 任意 | false |
+
+**可选 — 季度 diff / 用户补审（`quarter_diff_lite`）：**
+
+- 上季 `candidates` 本季既不在 candidates 也不在 deferred（如 sector 边际未过）→ 用户点名或季度 diff 清单 → **同一 Lite 流程**，报告仍写 `{ticker}.lite.md`，记入 `audit-summary.yaml#quarter_diff_lite`，`reason` 注明来源（如 `sector_borderline_fail`、`user_requested`）
+- 不扩大默认批量范围；避免对全市场 sector_filtered 做 Lite
 
 ### Step 3 — 定性筛选 & audit-summary
 
-阅读 Deep 报告，产出 `funnel-output/{quarter}/audit-summary.yaml`：
+阅读 **Deep** 报告（及 Step 2b Lite 报告），产出 `funnel-output/{quarter}/audit-summary.yaml`：
 
-- `shortlist_for_landmine` — 进入等待期并设置 landmine 限价
+- `shortlist_for_landmine` — **仅来自 Deep**（candidates rank 1–20）；Lite 不得直接进入 landmine，除非用户同季追加 Deep
 - `rejected_after_deep` — Deep 否决
-- `deep_deferred` — 因 limit 未 Deep
+- `deferred_lite_screened` — Step 2b Lite 结果（含 `promote_next_quarter`）
+- `deep_deferred` — `deferred.yaml` 中 **rank > N** 且仍 ≤ deferred cap 的条目（本季未 Lite）
+- `quarter_diff_lite` — 可选 ad-hoc Lite（见 Step 2b）
 
-Deep 合格输出标准见 stock-analysis-audit `docs/agent-guide.md`。
+Deep / Lite 合格输出标准见 stock-analysis-audit `docs/agent-guide.md` 与 `spec/workflow-company.md`。
 
 ---
 
@@ -142,6 +184,7 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 |------|-----------------|---------------------|
 | 全市场定量 | `cli/` → `npm run dev -- run` + `spec/templates/` | 不参与 |
 | 单票 Deep | 编排 + audit_hints | Deep workflow |
+| 单票 Deferred Lite | 编排 + deferred 上下文 | Lite workflow |
 | 到价后复核 | trigger-discipline | 可选再 Deep |
 
 ---
@@ -154,6 +197,7 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 - [ ] live 跑批时若有 quote prefilter 跳过：`prefilter-excluded.yaml`（CN、US）
 - [ ] `routing-diagnostics.yaml` / `funnel-diagnostics.yaml`（CN、US）；CN `fallback_rate` 宜 < 5%
 - [ ] `audit/{market}/*.md`（Deep，每市场 ≤20）
+- [ ] `audit/{market}/*.lite.md`（Deferred Lite，每市场 ≤8，除非跳过 Step 2b）
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml`（若有 shortlist）
 - [ ] 未在 anchor 前跑漏斗
