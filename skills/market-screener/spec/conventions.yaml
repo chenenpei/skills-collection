@@ -135,6 +135,16 @@ deep_only_metrics:
     - loss_ratio_3y_volatility
     - investment_yield
 
+metric_coverage:
+  ref: funnel-diagnostics.yaml#metric_coverage
+  meaning: Per-template required-metric presence after enrich; rate = present / routed
+  manifest_review:
+    meaning: Advisory hints when observed coverage diverges from template_live_viability
+    note: Does not auto-update manifest; operator follows suggestion then ADR/spec edit
+    promote_min_rate: 0.70
+    demote_warn_rate: 0.50
+    min_routed: 5
+
 metric_source_hygiene:
   ref: docs/adr/0005-metric-source-hygiene.md
   policy: missing_over_proxy

@@ -115,3 +115,20 @@ export function northStarForPool(
     (poolKey.endsWith("_quality") ? map.default_quality : map.default_mispricing);
   return raw ? parseNorthStar(raw) : undefined;
 }
+
+export interface ManifestReviewThresholds {
+  promote_min_rate: number;
+  demote_warn_rate: number;
+  min_routed: number;
+}
+
+export function manifestReviewThresholdsFromBundle(bundle: SpecBundle): ManifestReviewThresholds {
+  const mc = (bundle.conventions as {
+    metric_coverage?: { manifest_review?: Partial<ManifestReviewThresholds> };
+  }).metric_coverage?.manifest_review;
+  return {
+    promote_min_rate: mc?.promote_min_rate ?? 0.7,
+    demote_warn_rate: mc?.demote_warn_rate ?? 0.5,
+    min_routed: mc?.min_routed ?? 5,
+  };
+}

@@ -100,8 +100,25 @@ describe("runFunnel", () => {
     expect(Object.keys(funnelDiagnostics.sector_by_template).length).toBeGreaterThan(0);
     const funnelDiagnosticsFull = parseYaml(
       await fs.readFile(path.join(outDir, "CN/funnel-diagnostics.yaml"), "utf8")
-    ) as { by_pool_selected?: Record<string, number> };
+    ) as {
+      by_pool_selected?: Record<string, number>;
+      metric_coverage?: Record<
+        string,
+        { routed: number; required: Record<string, { present: number; rate: number }> }
+      >;
+      manifest_review?: unknown[];
+    };
     expect(funnelDiagnosticsFull.by_pool_selected).toBeDefined();
+    expect(funnelDiagnosticsFull.metric_coverage).toBeDefined();
+    expect(Object.keys(funnelDiagnosticsFull.metric_coverage ?? {}).length).toBeGreaterThan(0);
+    for (const bucket of Object.values(funnelDiagnosticsFull.metric_coverage ?? {})) {
+      for (const stat of Object.values(bucket.required)) {
+        expect(typeof stat.rate).toBe("number");
+        expect(stat.rate).toBeGreaterThanOrEqual(0);
+        expect(stat.rate).toBeLessThanOrEqual(1);
+      }
+    }
+    expect(Array.isArray(funnelDiagnosticsFull.manifest_review)).toBe(true);
   });
 
   it("includes capex_to_revenue in metric_snapshot when manufacturing fixture provides it", async () => {

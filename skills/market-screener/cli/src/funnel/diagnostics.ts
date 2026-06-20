@@ -8,8 +8,11 @@ import {
   routeSecurityRecord,
   type PassingCandidate,
 } from "./run.js";
-import { templateLiveViability } from "../spec/conventions.js";
+import { templateLiveViability, manifestReviewThresholdsFromBundle } from "../spec/conventions.js";
 import type { KillGateResult, SecurityRecord } from "./kill-gates.js";
+import { resolveTemplateForEvaluation } from "./template-evaluator.js";
+import type { SectorTemplateSpec } from "../spec/types.js";
+import type { RouteResult } from "./router.js";
 import { getUniverseProfileFailureReason } from "./universe.js";
 import type { Market } from "./types.js";
 
@@ -43,6 +46,14 @@ export interface FunnelDiagnosticsDoc {
   >;
   by_pool_selected: Record<string, number>;
   unmapped_samples: Array<{ ticker: string; industry_proxy?: string }>;
+  metric_coverage?: Record<
+    string,
+    {
+      routed: number;
+      required: Record<string, { present: number; rate: number }>;
+    }
+  >;
+  manifest_review?: ManifestReviewItem[];
   enrichment?: {
     enrich_failed_count: number;
     enrich_failed_samples: string[];
@@ -51,6 +62,14 @@ export interface FunnelDiagnosticsDoc {
     cache_missing_count: number;
     cache_missing_samples: string[];
   };
+}
+
+export interface ManifestReviewItem {
+  template_key: string;
+  declared_viability: string;
+  suggestion: "consider_promote_to_full" | "consider_demote_or_fix_enrich";
+  detail: string;
+  metrics?: Record<string, number>;
 }
 
 export class FunnelDiagnosticsCollector {
@@ -66,6 +85,10 @@ export class FunnelDiagnosticsCollector {
   readonly sectorByTemplate: Record<string, { routed: number; passed: number }> = {};
   readonly unmappedSamples: Array<{ ticker: string; industry_proxy?: string }> = {};
   readonly sectorExitByReason: Record<string, number> = {};
+  private metricCoverage: Record<
+    string,
+    { routed: number; required: Record<string, { present: number }> }
+  > = {};
 
   killExcluded = 0;
   sectorPassed = 0;
@@ -73,6 +96,40 @@ export class FunnelDiagnosticsCollector {
 
   recordSectorExit(reason: string): void {
     this.sectorExitByReason[reason] = (this.sectorExitByReason[reason] ?? 0) + 1;
+  }
+
+  private coverageKey(template: string, subTemplate?: string): string {
+    return subTemplate ? `${template}.${subTemplate}` : template;
+  }
+
+  private recordMetricCoverage(bundle: SpecBundle, route: RouteResult, record: SecurityRecord): void {
+    for (const tplRef of route.templates) {
+      const key = this.coverageKey(tplRef.id, tplRef.subTemplate);
+      const bucket = this.metricCoverage[key] ?? { routed: 0, required: {} };
+      bucket.routed += 1;
+
+      const tpl = bundle.templates[tplRef.id];
+      if (tpl) {
+        const evalTpl = resolveTemplateForEvaluation(
+          tpl as SectorTemplateSpec & Record<string, unknown>,
+          tplRef.subTemplate
+        );
+        const metricsNeeded = new Set<string>();
+        for (const track of ["quality", "mispricing"] as const) {
+          const required = (
+            evalTpl[`${track}_track`] as { required?: Record<string, unknown> } | undefined
+          )?.required;
+          if (!required) continue;
+          for (const metric of Object.keys(required)) metricsNeeded.add(metric);
+        }
+        for (const metric of metricsNeeded) {
+          const stat = bucket.required[metric] ?? { present: 0 };
+          if (record.metrics[metric]?.value !== undefined) stat.present += 1;
+          bucket.required[metric] = stat;
+        }
+      }
+      this.metricCoverage[key] = bucket;
+    }
   }
 
   recordPrefilterExcluded(bundle: SpecBundle, records: SecurityRecord[]): void {
@@ -109,6 +166,8 @@ export class FunnelDiagnosticsCollector {
       }
       return null;
     }
+
+    this.recordMetricCoverage(bundle, route, record);
 
     const allQuantTooHard =
       route.templates.length > 0 &&
@@ -222,6 +281,16 @@ export class FunnelDiagnosticsCollector {
       };
     }
 
+    const metricCoverage = buildMetricCoverageOutput(this.metricCoverage);
+    if (Object.keys(metricCoverage).length > 0) {
+      doc.metric_coverage = metricCoverage;
+      doc.manifest_review = buildManifestReview(
+        opts.bundle,
+        metricCoverage,
+        manifestReviewThresholdsFromBundle(opts.bundle)
+      );
+    }
+
     return doc;
   }
 }
@@ -233,6 +302,73 @@ function countReason(
 ): void {
   const key = reason ?? fallback;
   bucket[key] = (bucket[key] ?? 0) + 1;
+}
+
+function buildMetricCoverageOutput(
+  raw: Record<string, { routed: number; required: Record<string, { present: number }> }>
+): NonNullable<FunnelDiagnosticsDoc["metric_coverage"]> {
+  return Object.fromEntries(
+    Object.entries(raw).map(([key, bucket]) => [
+      key,
+      {
+        routed: bucket.routed,
+        required: Object.fromEntries(
+          Object.entries(bucket.required).map(([metric, stat]) => [
+            metric,
+            {
+              present: stat.present,
+              rate: bucket.routed > 0 ? stat.present / bucket.routed : 0,
+            },
+          ])
+        ),
+      },
+    ])
+  );
+}
+
+export function buildManifestReview(
+  bundle: SpecBundle,
+  coverage: FunnelDiagnosticsDoc["metric_coverage"],
+  thresholds: { promote_min_rate: number; demote_warn_rate: number; min_routed: number }
+): ManifestReviewItem[] {
+  const items: ManifestReviewItem[] = [];
+  for (const [key, bucket] of Object.entries(coverage ?? {})) {
+    if (bucket.routed < thresholds.min_routed) continue;
+    const dot = key.indexOf(".");
+    const template = dot >= 0 ? key.slice(0, dot) : key;
+    const sub = dot >= 0 ? key.slice(dot + 1) : undefined;
+    const declared = templateLiveViability(bundle, template, sub);
+    const rates = Object.values(bucket.required ?? {}).map((m) => m.rate);
+    const minRate = rates.length ? Math.min(...rates) : 0;
+
+    if (declared === "quant_too_hard" && minRate >= thresholds.promote_min_rate) {
+      items.push({
+        template_key: key,
+        declared_viability: declared,
+        suggestion: "consider_promote_to_full",
+        detail: `All required metrics >= ${thresholds.promote_min_rate}; review ADR/spec to promote manifest and routing.`,
+        metrics: Object.fromEntries(
+          Object.entries(bucket.required).map(([m, s]) => [m, s.rate])
+        ),
+      });
+    } else if (
+      (declared === "full" || declared === "proxy") &&
+      minRate < thresholds.demote_warn_rate
+    ) {
+      items.push({
+        template_key: key,
+        declared_viability: declared,
+        suggestion: "consider_demote_or_fix_enrich",
+        detail: `Required metric rate below ${thresholds.demote_warn_rate}; fix enrich or consider quant_too_hard / proxy in manifest.`,
+        metrics: Object.fromEntries(
+          Object.entries(bucket.required)
+            .filter(([, s]) => s.rate < thresholds.demote_warn_rate)
+            .map(([m, s]) => [m, s.rate])
+        ),
+      });
+    }
+  }
+  return items;
 }
 
 /** Slim routing artifact kept for backward compatibility. */
@@ -383,6 +519,38 @@ export function formatFunnelReplayReport(doc: FunnelDiagnosticsDoc, market: Mark
     }
     lines.push("");
   }
+
+  if (doc.metric_coverage && Object.keys(doc.metric_coverage).length > 0) {
+    lines.push("## Metric coverage (required metrics after enrich)");
+    lines.push("");
+    const topTemplates = Object.entries(doc.metric_coverage)
+      .sort((a, b) => b[1].routed - a[1].routed)
+      .slice(0, 5);
+    for (const [templateKey, bucket] of topTemplates) {
+      lines.push(`### ${templateKey} (routed: ${bucket.routed})`);
+      lines.push("");
+      lines.push("| Metric | Present | Rate |");
+      lines.push("|--------|---------|------|");
+      const sortedMetrics = Object.entries(bucket.required).sort((a, b) => a[1].rate - b[1].rate);
+      for (const [metric, stat] of sortedMetrics) {
+        lines.push(`| ${metric} | ${stat.present} | ${stat.rate.toFixed(3)} |`);
+      }
+      lines.push("");
+    }
+  }
+
+  lines.push("## Manifest review (advisory)");
+  lines.push("");
+  if (!doc.manifest_review?.length) {
+    lines.push("No manifest changes suggested this run.");
+  } else {
+    for (const item of doc.manifest_review) {
+      lines.push(
+        `- ACTION: **${item.suggestion}** — \`${item.template_key}\` (${item.declared_viability}): ${item.detail}`
+      );
+    }
+  }
+  lines.push("");
 
   if (doc.unmapped_samples.length > 0) {
     lines.push("## Unmapped industry samples (fallback routing, up to 50)");
