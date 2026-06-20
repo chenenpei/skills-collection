@@ -12,7 +12,7 @@ gics_overrides:
     capex_to_revenue_max: 0.25
 
 quality_track:
-  pass_if: all_required_and_supporting_min_5_of_7
+  pass_if: all_required_and_supporting_min_5_of_5
   required:
     roic_5y_avg: { min: 0.13 }
     fcf_conversion_5y: { min: 0.70 }
@@ -21,8 +21,6 @@ quality_track:
   supporting:
     - { metric: capex_to_revenue, max: 0.15, gics_override_semiconductors: 0.25, missing: skip }
     - { metric: inventory_turnover_vs_industry, min: 0, missing: skip }
-    - { metric: capacity_utilization, min: 0.70, max: 0.90, missing: skip }
-    - { metric: top_customer_concentration, max: 0.30, missing: skip }
     - { metric: roe_5y_avg, min: 0.12 }
     - { metric: revenue_3y_cagr, min: 0.03 }
     - { metric: gross_margin, min: 0.25 }

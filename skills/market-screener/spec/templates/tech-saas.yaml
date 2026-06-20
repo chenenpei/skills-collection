@@ -7,7 +7,7 @@ template: tech_saas
 tracks: [quality, mispricing]
 
 quality_track:
-  pass_if: all_required_and_supporting_min_5_of_7
+  pass_if: all_required_and_supporting_min_5_of_6
   required:
     rule_of_40: { min: 35 }
     gross_margin: { min: 0.50 }
@@ -15,7 +15,6 @@ quality_track:
   supporting:
     - { metric: rule_of_40, min: 40 }
     - { metric: gross_margin, min: 0.55 }
-    - { metric: ndr, min: 1.05, missing: skip }
     - { metric: roic, min: 0.15, if_unprofitable: skip }
     - { metric: sbc_to_revenue, max: 0.20, market_overrides: { CN: 0.10, US: 0.20 }, market_missing_overrides: { CN: skip } }
     - { metric: share_dilution_3y, max: 0.10, market_missing_overrides: { CN: skip } }
@@ -26,7 +25,7 @@ quality_track:
     - ai_platform_dependency_check_required
 
 mispricing_track:
-  pass_if: all_required_and_supporting_min_4_of_6
+  pass_if: all_required_and_supporting_min_4_of_5
   required:
     gross_margin: { min: 0.42 }
     rule_of_40: { min: 25 }
@@ -37,7 +36,6 @@ mispricing_track:
     - { metric: ps_vs_peer_median, max: 0.80 }
     - { metric: revenue_yield_vs_peer, min: 1.0 }
     - { metric: price_vs_52w_high, max: 0.65 }
-    - { metric: ndr, min: 1.00, missing: skip }
     - { metric: forward_peg, max: 1.5, if_unprofitable: skip }
 
 sector_kill_gates:

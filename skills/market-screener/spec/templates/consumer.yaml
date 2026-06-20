@@ -18,13 +18,12 @@ quality_track:
     - { metric: roic_5y_avg, min: 0.12 }
     - { metric: gross_margin_vs_industry, min: 0.05 }
     - { metric: operating_margin_vs_industry, min: 0 }
-    - { metric: same_store_sales_yoy, min: 0.00, missing: skip }
     - { metric: revenue_3y_cagr, min: 0.03 }
     - { metric: debt_to_equity, max: 0.50 }
     - { metric: dividend_yield, min: 0.02, missing: skip }
 
 mispricing_track:
-  pass_if: all_required_and_supporting_min_4_of_6
+  pass_if: all_required_and_supporting_min_4_of_5
   required:
     roe_ttm: { min: 0.10 }
     gross_margin: { min: 0.25 }
@@ -34,7 +33,6 @@ mispricing_track:
     - { metric: pe_vs_5y_median, max: 0.85 }
     - { metric: fcf_yield_vs_risk_free, min: 0.04 }
     - { metric: price_vs_52w_high, max: 0.70 }
-    - { metric: same_store_sales_yoy, min: -0.03, missing: skip }
     - { metric: inventory_growth_minus_revenue, max: 0.10 }
 
 sector_kill_gates:
