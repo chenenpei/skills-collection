@@ -18,12 +18,14 @@
   },
   "dependencies": {
     "commander": "^13.1.0",
+    "pdf-parse": "^2.4.5",
     "undici": "^7.27.2",
     "yaml": "^2.8.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pdf-parse": "^1.1.5",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
