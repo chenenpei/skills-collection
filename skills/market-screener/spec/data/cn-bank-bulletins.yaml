@@ -1,0 +1,53 @@
+version: "0.1.0"
+fiscal_year: 2024
+entries:
+  - ticker: "600036"
+    name: 招商银行
+    sina_url: "http://vip.stock.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10806393&stockid=600036"
+    pdf_url: "http://file.finance.sina.com.cn/211.154.219.97:9494/MRGG/CNSESH_STOCK/2025/2025-3/2025-03-26/10806393.PDF"
+    pdf_tier: sse_mirror_pdf
+  - ticker: "601398"
+    name: 工商银行
+    sina_url: "http://vip.stock.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10826973&stockid=601398"
+    pdf_url: "http://static.cninfo.com.cn/finalpage/2025-03-29/1222948910.PDF"
+    pdf_tier: cninfo_pdf
+  - ticker: "000001"
+    name: 平安银行
+    sina_url: "http://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10785625&stockid=000001"
+    pdf_url: "http://disc.static.szse.cn/disc/disk03/finalpage/2025-03-15/9d720b9d-4a29-4b57-bf54-c8ecfc9024d8.PDF"
+    pdf_tier: szse_disclosure_pdf
+  - ticker: "601939"
+    name: 建设银行
+    sina_url: "http://vip.stock.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10820954&stockid=601939"
+    pdf_url: "http://static.cninfo.com.cn/finalpage/2025-03-29/1222940502.PDF"
+    pdf_tier: cninfo_pdf
+  - ticker: "601288"
+    name: 农业银行
+    sina_url: "http://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10822408&stockid=601288"
+    pdf_url: "http://static.cninfo.com.cn/finalpage/2025-03-29/1222943088.PDF"
+    pdf_tier: cninfo_pdf
+  - ticker: "601988"
+    name: 中国银行
+    sina_url: "http://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10809876&stockid=601988"
+    pdf_url: "http://static.cninfo.com.cn/finalpage/2025-03-27/1222911238.PDF"
+    pdf_tier: cninfo_pdf
+  - ticker: "601328"
+    name: 交通银行
+    sina_url: "http://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10800050&stockid=601328"
+    pdf_url: "http://static.cninfo.com.cn/finalpage/2025-03-22/1222869568.PDF"
+    pdf_tier: cninfo_pdf
+  - ticker: "601166"
+    name: 兴业银行
+    sina_url: "http://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10816447&stockid=601166"
+    pdf_url: "http://file.finance.sina.com.cn/211.154.219.97:9494/MRGG/CNSESH_STOCK/2025/2025-3/2025-03-28/10816447.PDF"
+    pdf_tier: sse_mirror_pdf
+  - ticker: "600016"
+    name: 民生银行
+    sina_url: "http://vip.stock.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10829100&stockid=600016"
+    pdf_url: "http://static.cninfo.com.cn/finalpage/2025-03-29/1222951326.PDF"
+    pdf_tier: cninfo_pdf
+  - ticker: "601998"
+    name: 中信银行
+    sina_url: "http://vip.stock.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10810164&stockid=601998"
+    pdf_url: "http://static.cninfo.com.cn/finalpage/2025-03-27/1222911385.PDF"
+    pdf_tier: cninfo_pdf
