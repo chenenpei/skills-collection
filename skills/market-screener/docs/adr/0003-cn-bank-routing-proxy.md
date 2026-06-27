@@ -17,8 +17,8 @@ CN 申万 L1 **银行** cannot pass `financials.banks` without NPL, capital adeq
 
 Keep `banks` routing (0% pass); exclude banks from universe.
 
-## Phase two — BLOCKED
+## Phase two — IN PROGRESS (ADR 0008)
 
-Reroute 银行 → `financials.banks` when CN/US bank enrich is live. **Blocker (2026-06-14):** East Money datacenter bank-specialty reports return `9501 报表配置不存在`; generic financials lack regulatory fields. Requires **data-source spike** before code — see ADR 0006.
+Reroute 银行 → `financials.banks` when CN disclosure enrich is live. Blocker removed 2026-06-27: Scheme E Partial Go + ROTCE→ROE spec change. Implementation: [`docs/plans/2026-06-27-bank-enrich-implementation-plan.md`](../plans/2026-06-27-bank-enrich-implementation-plan.md).
 
-**Where it lives:** `spec/cn-industry-map.yaml`, `spec/templates/financials.yaml`, router/evaluator tests.
+**Where it lives:** `spec/cn-industry-map.yaml`, `spec/templates/financials.yaml`, `cli/src/data/cn/bank-indicators/`, router/evaluator tests.
