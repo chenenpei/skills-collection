@@ -77,6 +77,16 @@ This skill directory also ships runtime references, Chatbot assets, and human do
    - Single-company Deep: cross-cycle financials, industry-specific metrics, profit-pool destruction check, hidden upside check, classification, moat, management, valuation, red-team risks, circle-of-competence, final verdict.
    - Fund/ETF Lite or Deep: fund identity, wrapper quality, portfolio anatomy, weighted valuation, growth attribution, peer comparison, exposure-level profit-pool check, Bull-side misunderstanding check, Bear-side hidden re-pricing check, fund-specific risks, fund verdict.
 
+## Market Screener Handoff
+
+This skill can run standalone. If `market-screener` artifacts are provided, treat them as optional upstream screening evidence, not a dependency or final evidence. Reference skill: https://github.com/chenenpei/skills-collection/tree/main/skills/market-screener
+
+When `candidates.yaml`, `deferred.yaml`, `metric_snapshot`, `passed_track`, `routed_templates`, or `audit_hints` are provided:
+- Briefly explain why the company passed the upstream screener.
+- Re-check only the few decisive metrics needed for the audit.
+- If Deep data conflicts with `metric_snapshot`, use Deep data and explain the difference.
+- Do not recreate `market-screener` scoring, `pool_score`, or sector template gates.
+
 4. Use classification discipline for single companies only.
    - Classify with necessary conditions, M/N supporting evidence, veto conditions, and industry exceptions.
    - Do not let one attractive metric hide a major flaw.
