@@ -1,4 +1,9 @@
 import type { SecurityRecord } from "../../funnel/kill-gates.js";
+import { EASTMONEY_UT } from "./eastmoney.js";
+import { httpFetch } from "../../lib/http-fetch.js";
+import type { ProgressLogger } from "../../lib/progress.js";
+import type { Market } from "../../funnel/types.js";
+import type { MarketDataAdapter } from "../types.js";
 
 /** Shared adapter defaults for live providers that only supply quote-level fields. */
 export function withAdapterDefaults(
@@ -19,16 +24,34 @@ export function withAdapterDefaults(
   };
 }
 
-import { EASTMONEY_UT } from "./eastmoney.js";
-import { httpFetch } from "../../lib/http-fetch.js";
-import type { ProgressLogger } from "../../lib/progress.js";
-import type { Market } from "../../funnel/types.js";
-import type { MarketDataAdapter } from "../types.js";
-
 const CLIST_BASE = "https://push2delay.eastmoney.com/api/qt/clist/get";
 const A_SHARE_FS =
   "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048";
-const CLIST_FIELDS = "f12,f14,f20,f116,f127,f2,f9,f15,f23";
+
+// East Money clist field semantics (push2delay.eastmoney.com/api/qt/clist/get)
+const EM_FIELD_TICKER = "f12";
+const EM_FIELD_NAME = "f14";
+const EM_FIELD_MARKET_CAP = "f20";
+const EM_FIELD_LISTING_DATE = "f26";
+const EM_FIELD_STATUS = "f127";
+const EM_FIELD_PRICE = "f2";
+const EM_FIELD_PE_TTM = "f115";
+const EM_FIELD_PB = "f23";
+
+const CLIST_FIELDS = [
+  EM_FIELD_TICKER,
+  EM_FIELD_NAME,
+  EM_FIELD_MARKET_CAP,
+  EM_FIELD_LISTING_DATE,
+  EM_FIELD_STATUS,
+  EM_FIELD_PRICE,
+  EM_FIELD_PE_TTM,
+  EM_FIELD_PB,
+].join(",");
+
+const PE_PRICE_TOLERANCE = 0.01;
+const PB_CEILING = 15;
+
 /** East Money caps each page well below requested pz; paginate explicitly. */
 const PAGE_SIZE = 100;
 const REQUEST_HEADERS = {
@@ -39,7 +62,49 @@ const REQUEST_HEADERS = {
   Origin: "https://quote.eastmoney.com",
 };
 
-type EastMoneyRow = Record<string, number | string | undefined>;
+export type EastMoneyRow = Record<string, number | string | undefined>;
+
+export interface SanitizeCnQuoteResult {
+  metrics: SecurityRecord["metrics"];
+  warnings: string[];
+}
+
+export function sanitizeCnQuoteMetrics(
+  metrics: SecurityRecord["metrics"]
+): SanitizeCnQuoteResult {
+  const price = metrics.price?.value;
+  const pe = metrics.pe_ttm?.value;
+  const pb = metrics.pb?.value;
+
+  const peEqualsPrice =
+    price !== undefined &&
+    pe !== undefined &&
+    price > 0 &&
+    Math.abs(pe - price) / price <= PE_PRICE_TOLERANCE;
+  const pbLikelyPe = pb !== undefined && pb > PB_CEILING && pe === undefined;
+  const hasStale52w =
+    metrics.price_vs_52w_high !== undefined || metrics.high_52w !== undefined;
+
+  if (!peEqualsPrice && !pbLikelyPe && !hasStale52w) {
+    return { metrics, warnings: [] };
+  }
+
+  const next = { ...metrics };
+  const warnings: string[] = [];
+
+  if (peEqualsPrice) {
+    delete next.pe_ttm;
+    warnings.push("pe_ttm_equals_price");
+  }
+  if (pbLikelyPe) {
+    delete next.pb;
+    warnings.push("pb_likely_pe_mislabel");
+  }
+  delete next.price_vs_52w_high;
+  delete next.high_52w;
+
+  return { metrics: next, warnings };
+}
 
 function buildListUrl(page: number, pageSize: number): string {
   const params = new URLSearchParams({
@@ -58,7 +123,7 @@ function buildListUrl(page: number, pageSize: number): string {
 }
 
 function parseStatusFromF127(row: EastMoneyRow): string {
-  const raw = row.f127;
+  const raw = row[EM_FIELD_STATUS];
   if (raw === undefined || raw === null || raw === "") return "active";
 
   const text = String(raw).trim();
@@ -72,45 +137,55 @@ function parseStatusFromF127(row: EastMoneyRow): string {
   return text;
 }
 
-function quoteMetric(value: number | undefined): SecurityRecord["metrics"][string] | undefined {
+function positiveMetric(
+  value: number | undefined,
+  confidence: "medium" | "low" = "medium"
+): SecurityRecord["metrics"][string] | undefined {
   if (value === undefined || !Number.isFinite(value) || value <= 0) return undefined;
-  return { value, dataConfidence: "medium" };
+  return { value, dataConfidence: confidence };
 }
 
-function priceVs52wHigh(row: EastMoneyRow): number | undefined {
-  const a = Number(row.f15);
-  const b = Number(row.f23);
-  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) return undefined;
-  const high = Math.max(a, b);
-  const price = Math.min(a, b);
-  return price / high;
+export function mapEastMoneyRowToQuoteMetrics(
+  row: EastMoneyRow
+): SecurityRecord["metrics"] {
+  const metrics: SecurityRecord["metrics"] = {};
+  const price = positiveMetric(Number(row[EM_FIELD_PRICE]));
+  const peTtm = positiveMetric(Number(row[EM_FIELD_PE_TTM]));
+  const pb = positiveMetric(Number(row[EM_FIELD_PB]));
+
+  if (price) metrics.price = price;
+  if (peTtm) metrics.pe_ttm = peTtm;
+  if (pb) metrics.pb = pb;
+
+  return metrics;
+}
+
+export function listingAgeYearsFromEastMoneyDate(
+  value: number | string | undefined,
+  now = new Date()
+): number {
+  const raw = String(value ?? "").trim();
+  if (!/^\d{8}$/.test(raw)) return 0;
+  const year = Number(raw.slice(0, 4));
+  const month = Number(raw.slice(4, 6)) - 1;
+  const day = Number(raw.slice(6, 8));
+  const listedAt = new Date(Date.UTC(year, month, day));
+  if (Number.isNaN(listedAt.getTime())) return 0;
+  return Math.max(0, (now.getTime() - listedAt.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
 }
 
 function mapRowToSecurityRecord(row: EastMoneyRow): SecurityRecord {
-  const metrics: SecurityRecord["metrics"] = {};
-  const peTtm = quoteMetric(Number(row.f2));
-  const pb = quoteMetric(Number(row.f9));
-  const priceVsHigh = priceVs52wHigh(row);
-  if (peTtm) metrics.pe_ttm = peTtm;
-  if (pb) metrics.pb = pb;
-  if (priceVsHigh !== undefined) {
-    metrics.price_vs_52w_high = { value: priceVsHigh, dataConfidence: "medium" };
-    const a = Number(row.f15);
-    const b = Number(row.f23);
-    if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) {
-      metrics.price = { value: Math.min(a, b), dataConfidence: "medium" };
-      metrics.high_52w = { value: Math.max(a, b), dataConfidence: "medium" };
-    }
-  }
+  const rawMetrics = mapEastMoneyRowToQuoteMetrics(row);
+  const { metrics } = sanitizeCnQuoteMetrics(rawMetrics);
 
   return withAdapterDefaults({
-    ticker: String(row.f12 ?? ""),
+    ticker: String(row[EM_FIELD_TICKER] ?? ""),
     market: "CN",
-    companyName: String(row.f14 ?? ""),
+    companyName: String(row[EM_FIELD_NAME] ?? ""),
     currency: "CNY",
     status: parseStatusFromF127(row),
-    marketCap: Number(row.f20 ?? 0),
-    listingAgeYears: Number(row.f116 ?? 0) / 365,
+    marketCap: Number(row[EM_FIELD_MARKET_CAP] ?? 0),
+    listingAgeYears: listingAgeYearsFromEastMoneyDate(row[EM_FIELD_LISTING_DATE]),
     metrics,
   });
 }
@@ -131,6 +206,31 @@ async function fetchPage(page: number): Promise<{ rows: EastMoneyRow[]; total: n
   const rows = body.data?.diff ?? [];
   const total = body.data?.total ?? rows.length;
   return { rows, total };
+}
+
+/** Fetch quote records for specific tickers; stops paging once all are found. */
+export async function loadCnQuotesByTickers(tickers: string[]): Promise<SecurityRecord[]> {
+  const pending = new Set(tickers);
+  const found = new Map<string, SecurityRecord>();
+  let page = 1;
+
+  while (pending.size > 0 && page <= 200 && found.size < tickers.length) {
+    const { rows } = await fetchPage(page);
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const ticker = String(row[EM_FIELD_TICKER] ?? "");
+      if (!pending.has(ticker)) continue;
+      found.set(ticker, mapRowToSecurityRecord(row));
+      pending.delete(ticker);
+    }
+    page += 1;
+  }
+
+  return tickers.flatMap((ticker) => {
+    const record = found.get(ticker);
+    return record ? [record] : [];
+  });
 }
 
 export function createCnEastMoneyAdapter(_opts: { cacheDir: string }): MarketDataAdapter {

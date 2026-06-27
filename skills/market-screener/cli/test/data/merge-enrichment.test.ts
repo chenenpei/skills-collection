@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { mergeEnrichment } from "../../src/data/merge-enrichment.js";
+import {
+  CN_QUOTE_HISTORY_SCHEMA,
+  enrichRecordFromCachePayload,
+  mergeEnrichment,
+  updatedQuoteHistory,
+} from "../../src/data/merge-enrichment.js";
 import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
 
 describe("mergeEnrichment quote history overlays", () => {
@@ -44,5 +49,103 @@ describe("mergeEnrichment quote history overlays", () => {
     });
     expect(merged.metrics.mid_cycle_pe?.value).toBeGreaterThan(0);
     expect(merged.metrics.mid_cycle_pe_vs_10y_median?.value).toBeGreaterThan(0);
+  });
+});
+
+describe("enrichRecordFromCachePayload quoteHistory hygiene", () => {
+  const replayBase: SecurityRecord = {
+    ticker: "TEST",
+    market: "CN",
+    companyName: "Test",
+    currency: "CNY",
+    status: "active",
+    marketCap: 1000,
+    listingAgeYears: 10,
+    metrics: {},
+    revenueYoyHistory: [],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 0,
+  };
+
+  const replayRows = [
+    {
+      year: 2025,
+      revenue: 100,
+      grossProfit: 40,
+      netIncome: 10,
+      operatingCashFlow: 12,
+      roe: 0.1,
+      assetLiabilityRatio: 0.4,
+      operatingProfit: 15,
+      roic: 0.12,
+    },
+  ];
+
+  it("does not replay legacy quoteHistory without the corrected schema marker", () => {
+    const record = {
+      ...replayBase,
+      metrics: { price: { value: 38.35, dataConfidence: "medium" } },
+    };
+    const payload = {
+      annualRows: replayRows,
+      quoteHistory: [
+        { quarter: "2026-Q2", pe: 38.35, pb: 16.34, asOf: "2026-06-27T00:00:00.000Z" },
+      ],
+    };
+
+    const enriched = enrichRecordFromCachePayload(record, payload, "2026-Q2");
+    expect(enriched.metrics.pe_ttm).toBeUndefined();
+  });
+
+  it("replays corrected quoteHistory when schema marker is present", () => {
+    const record = {
+      ...replayBase,
+      metrics: { price: { value: 38.35, dataConfidence: "medium" } },
+    };
+    const payload = {
+      annualRows: replayRows,
+      quoteHistorySchema: CN_QUOTE_HISTORY_SCHEMA,
+      quoteHistory: [
+        { quarter: "2026-Q2", pe: 16.65, pb: 4.81, ps: 4.32, asOf: "2026-06-28T00:00:00.000Z" },
+      ],
+    };
+
+    const enriched = enrichRecordFromCachePayload(record, payload, "2026-Q2");
+    expect(enriched.metrics.pe_ttm?.value).toBe(16.65);
+    expect(enriched.metrics.pb?.value).toBe(4.81);
+  });
+
+  it("replays US quoteHistory without CN schema marker", () => {
+    const record: SecurityRecord = {
+      ...replayBase,
+      market: "US",
+      currency: "USD",
+      metrics: {},
+    };
+    const payload = {
+      annualRows: replayRows,
+      quoteHistory: [
+        { quarter: "2026-Q2", pe: 18.5, pb: 3.2, asOf: "2026-06-28T00:00:00.000Z" },
+      ],
+    };
+
+    const enriched = enrichRecordFromCachePayload(record, payload, "2026-Q2");
+    expect(enriched.metrics.pe_ttm?.value).toBe(18.5);
+    expect(enriched.metrics.pb?.value).toBe(3.2);
+  });
+});
+
+describe("updatedQuoteHistory", () => {
+  it("drops the current quarter when no quote snapshot is available", () => {
+    const history = [
+      { quarter: "2026-Q1", pe: 15, asOf: "2026-03-01T00:00:00.000Z" },
+      { quarter: "2026-Q2", pe: 38.35, pb: 16.34, asOf: "2026-06-27T00:00:00.000Z" },
+    ];
+
+    expect(updatedQuoteHistory(history, "2026-Q2")).toEqual([
+      { quarter: "2026-Q1", pe: 15, asOf: "2026-03-01T00:00:00.000Z" },
+    ]);
   });
 });

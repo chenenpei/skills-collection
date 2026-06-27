@@ -1,9 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { SecurityRecord } from "../funnel/kill-gates.js";
+import { sanitizeCnQuoteMetrics } from "./cn/quotes.js";
 import type { BankScrapeMetrics } from "./cn/bank-indicators/types.js";
 import type { DataConfidence, MetricValue } from "../funnel/types.js";
 import { deriveFromAnnualRows, type AnnualFinancialRow } from "./metrics.js";
+
+export const CN_QUOTE_HISTORY_SCHEMA = "eastmoney_f115_f23_v2" as const;
 
 export interface QuoteHistoryEntry {
   quarter: string;
@@ -19,6 +22,7 @@ export interface EnrichCachePayload {
   dividendYield?: number;
   dividendYieldConfidence?: DataConfidence;
   quoteHistory?: QuoteHistoryEntry[];
+  quoteHistorySchema?: typeof CN_QUOTE_HISTORY_SCHEMA;
   bankScrape?: {
     fiscalYear: number;
     metrics: BankScrapeMetrics;
@@ -88,8 +92,11 @@ export function updatedQuoteHistory(
   pb?: number,
   ps?: number
 ): QuoteHistoryEntry[] | undefined {
-  if (pe === undefined && pb === undefined && ps === undefined) return history;
-  const withoutCurrent = (history ?? []).filter((entry) => entry.quarter !== quarter);
+  const prior = history ?? [];
+  const withoutCurrent = prior.filter((entry) => entry.quarter !== quarter);
+  if (pe === undefined && pb === undefined && ps === undefined) {
+    return withoutCurrent.length === prior.length ? history : withoutCurrent;
+  }
   return appendQuoteHistory(withoutCurrent, {
     quarter,
     pe,
@@ -206,21 +213,33 @@ function stubReplayRecord(
   };
 }
 
-function quoteMetricsFromHistory(payload: EnrichCachePayload): SecurityRecord["metrics"] {
+function quoteMetricsFromHistory(
+  payload: EnrichCachePayload,
+  baseMetrics: SecurityRecord["metrics"],
+  market: SecurityRecord["market"]
+): SecurityRecord["metrics"] {
+  if (market === "CN" && payload.quoteHistorySchema !== CN_QUOTE_HISTORY_SCHEMA) {
+    return {};
+  }
+
   const latest = payload.quoteHistory?.at(-1);
   if (!latest) return {};
 
-  const metrics: SecurityRecord["metrics"] = {};
+  const raw: SecurityRecord["metrics"] = {};
   if (latest.pe !== undefined && latest.pe > 0) {
-    metrics.pe_ttm = { value: latest.pe, dataConfidence: "medium" };
+    raw.pe_ttm = { value: latest.pe, dataConfidence: "medium" };
   }
   if (latest.pb !== undefined && latest.pb > 0) {
-    metrics.pb = { value: latest.pb, dataConfidence: "medium" };
+    raw.pb = { value: latest.pb, dataConfidence: "medium" };
   }
   if (latest.ps !== undefined && latest.ps > 0) {
-    metrics.ps = { value: latest.ps, dataConfidence: "medium" };
+    raw.ps = { value: latest.ps, dataConfidence: "medium" };
   }
-  return metrics;
+
+  if (market === "CN") {
+    return sanitizeCnQuoteMetrics({ ...baseMetrics, ...raw }).metrics;
+  }
+  return raw;
 }
 
 export function enrichRecordFromCachePayload(
@@ -240,7 +259,7 @@ export function enrichRecordFromCachePayload(
     {
       ...record,
       industryProxy: payload.industryProxy ?? record.industryProxy,
-      metrics: { ...record.metrics, ...quoteMetricsFromHistory(payload) },
+      metrics: { ...record.metrics, ...quoteMetricsFromHistory(payload, record.metrics, record.market) },
     },
     payload.annualRows ?? [],
     payload.industryProxy,

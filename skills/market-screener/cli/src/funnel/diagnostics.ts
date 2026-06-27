@@ -83,7 +83,7 @@ export class FunnelDiagnosticsCollector {
   readonly byMethod: Record<string, number> = {};
   readonly byTemplate: Record<string, number> = {};
   readonly sectorByTemplate: Record<string, { routed: number; passed: number }> = {};
-  readonly unmappedSamples: Array<{ ticker: string; industry_proxy?: string }> = {};
+  readonly unmappedSamples: Array<{ ticker: string; industry_proxy?: string }> = [];
   readonly sectorExitByReason: Record<string, number> = {};
   private metricCoverage: Record<
     string,

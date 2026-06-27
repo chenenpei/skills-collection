@@ -5,6 +5,7 @@ import type { DataConfidence } from "../../funnel/types.js";
 import {
   mergeEnrichment,
   updatedQuoteHistory,
+  CN_QUOTE_HISTORY_SCHEMA,
   type DividendWithConfidence,
   type EnrichCachePayload,
 } from "../merge-enrichment.js";
@@ -112,6 +113,7 @@ async function persistEnrichCache(
   if (opts.skipCache) return;
   await writeCache(opts.cacheDir, opts.quarter, "CN", ticker, {
     ...payload,
+    quoteHistorySchema: CN_QUOTE_HISTORY_SCHEMA,
     quoteHistory: updatedQuoteHistory(
       payload.quoteHistory,
       opts.quarter,

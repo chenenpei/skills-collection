@@ -20,6 +20,8 @@ export interface SecurityRecord {
   latestFinancialMonthsOld: number;
   /** Set when live enrichment could not complete for this record. */
   enrichmentFailure?: "cik_unresolved" | "fetch_failed";
+  /** Optional hints for Deep audit (routing, bank scrape, template eval). */
+  auditHints?: string[];
 }
 
 export interface KillGateResult {

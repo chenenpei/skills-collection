@@ -35,7 +35,7 @@ Follow `docs/agent-guide.md` unless the user narrows scope.
 
 1. **Schedule check** — read `spec/schedule.yaml`; verify `later_market_gate` for the quarter.
 2. **Quantitative funnel** — run the CLI from `cli/` (see **CLI** below). Default adapter is `fixture` (offline); use `--adapter live` when the user wants real universe data and enrichment.
-3. **Deep audit** — parallel by market (CN session + US session). For each candidate (default top 20/market), load **stock-analysis-audit** Deep with funnel context attached. Reports → `funnel-output/{quarter}/audit/{market}/{ticker}.md`.
+3. **Deep audit** — parallel by market (CN session + US session). For each candidate (default top 20/market), load **stock-analysis-audit** Deep with funnel context attached. Reports → `funnel-output/{quarter}/audit/{market}/{ticker}.md`. **Each quarter: full 20/20 Deep** on current prices; do not carry forward prior-quarter report bodies (see `docs/agent-guide.md` Step 2).
 4. **Deferred Lite sweep** — for each market, take `deferred.yaml` rank **1–8** (default). Load **stock-analysis-audit** **Lite** with deferred funnel context. Reports → `funnel-output/{quarter}/audit/{market}/{ticker}.lite.md`. Optional ad-hoc Lite for quarter-diff / user-requested names → `quarter_diff_lite` in audit-summary.
 5. **Qualitative triage** — produce `audit-summary.yaml`: `shortlist_for_landmine` (Deep only), `rejected_after_deep`, `deferred_lite_screened`, `deep_deferred`, optional `quarter_diff_lite`.
 6. **Landmines** — `npm run dev -- landmine --from audit-summary.yaml --output landmines.yaml` from `cli/` → `landmines.yaml`. Remind user to place orders manually.

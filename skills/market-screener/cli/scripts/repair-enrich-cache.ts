@@ -1,8 +1,10 @@
 #!/usr/bin/env tsx
+import fs from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { enrichCnRecord } from "../src/data/cn/enrich.js";
-import { findEnrichCacheGapTickers } from "../src/lib/cache.js";
+import type { EnrichCachePayload } from "../src/data/merge-enrichment.js";
+import { findEnrichCacheGapTickers, readCache, writeCache } from "../src/lib/cache.js";
 import { partitionQuotePrefilter } from "../src/data/quote-prefilter.js";
 import { createCnEastMoneyAdapter } from "../src/data/cn/quotes.js";
 import { mapPool } from "../src/lib/concurrency.js";
@@ -16,8 +18,54 @@ const { values } = parseArgs({
     "cache-dir": { type: "string", default: DEFAULT_CACHE_DIR },
     spec: { type: "string", default: path.resolve(import.meta.dirname, "../../spec") },
     concurrency: { type: "string", default: "4" },
+    "force-all": { type: "boolean", default: false },
+    "purge-quote-history": { type: "boolean", default: false },
+    "dry-run": { type: "boolean", default: false },
+    backup: { type: "boolean", default: false },
   },
 });
+
+async function purgeCnQuoteHistory(opts: {
+  cacheDir: string;
+  quarter: string;
+  dryRun: boolean;
+  backup: boolean;
+}): Promise<number> {
+  const dir = path.join(opts.cacheDir, opts.quarter, "CN");
+  try {
+    await fs.access(dir);
+  } catch {
+    throw new Error(`Missing cache dir: ${dir}`);
+  }
+
+  if (opts.backup && !opts.dryRun) {
+    const backupDir = `${dir}.quote-history-backup-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+    await fs.cp(dir, backupDir, { recursive: true });
+    console.log(`Backed up ${dir} -> ${backupDir}`);
+  }
+
+  let purged = 0;
+  const files = (await fs.readdir(dir)).filter((file) => file.endsWith(".json"));
+  for (const file of files) {
+    const ticker = file.replace(/\.json$/, "");
+    const payload = await readCache<EnrichCachePayload>(opts.cacheDir, opts.quarter, "CN", ticker);
+    if (!payload?.quoteHistory?.length) continue;
+
+    purged += 1;
+    if (opts.dryRun) {
+      console.log(`Would purge quoteHistory: ${file}`);
+      continue;
+    }
+
+    delete payload.quoteHistory;
+    delete payload.quoteHistorySchema;
+    await writeCache(opts.cacheDir, opts.quarter, "CN", ticker, payload);
+    console.log(`Purged quoteHistory: ${file}`);
+  }
+
+  console.log(`${opts.dryRun ? "Would purge" : "Purged"} ${purged} cache files`);
+  return purged;
+}
 
 async function main(): Promise<void> {
   const quarter = values.quarter;
@@ -26,6 +74,20 @@ async function main(): Promise<void> {
 
   const cacheDir = path.resolve(values["cache-dir"]!);
   const concurrency = Number(values.concurrency);
+  const forceAll = values["force-all"] === true;
+  const purgeQuoteHistory = values["purge-quote-history"] === true;
+  const dryRun = values["dry-run"] === true;
+
+  if (purgeQuoteHistory) {
+    await purgeCnQuoteHistory({
+      cacheDir,
+      quarter,
+      dryRun,
+      backup: values.backup === true,
+    });
+    if (dryRun) return;
+  }
+
   const bundle = await loadSpecBundle(path.resolve(values.spec!));
   const adapter = createCnEastMoneyAdapter({ cacheDir });
   const records = await adapter.loadUniverse(["CN"]);
@@ -40,8 +102,16 @@ async function main(): Promise<void> {
     )
   );
   const missing = survivors.filter((r) => gapTickers.has(r.ticker));
+  const targets = forceAll ? survivors : missing;
 
-  console.log(`Cache gap: ${missing.length} / ${survivors.length} CN survivors`);
+  if (targets.length === 0) {
+    console.log("No tickers to re-enrich.");
+    return;
+  }
+
+  console.log(
+    `${forceAll ? "Force re-enrich" : "Cache gap"}: ${targets.length} / ${survivors.length} CN survivors`
+  );
 
   const enrichOpts = {
     quarter,
@@ -53,7 +123,7 @@ async function main(): Promise<void> {
   };
 
   await mapPool(
-    missing,
+    targets,
     concurrency,
     (record) => enrichCnRecord(record, enrichOpts),
     (done, total) => {
@@ -62,7 +132,7 @@ async function main(): Promise<void> {
       }
     }
   );
-  console.log(`Done. Re-enriched ${missing.length} tickers.`);
+  console.log(`Done. Re-enriched ${targets.length} tickers.`);
 }
 
 main().catch((err) => {

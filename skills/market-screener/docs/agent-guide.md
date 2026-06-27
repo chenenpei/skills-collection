@@ -46,6 +46,15 @@ npm run dev -- run \
 
 **Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。CN 银行缓存会包含 `bankScrape`，其披露来源在运行时从 Sina 年报页发现，不依赖静态 URL 表。
 
+### CN valuation cross-check (mandatory for Deep audit)
+
+Before using cache `quoteHistory.pe` / `pb` in valuation sections:
+
+1. Recompute TTM PE: `marketCap / TTM_net_income` OR `price / TTM_EPS`
+2. If `|cache_pe - price| / price < 1%`, treat cache PE as **invalid** (price mislabeled as PE)
+3. If `cache_pb > 15` for non-financials and PE missing, treat cache PB as **likely mislabeled dynamic PE**
+4. Prefer TTM recomputation over cache quote fields for final verdict
+
 **Live run 可选参数：**
 
 - `--enrich-concurrency <n>` — 并行 enrichment **ticker** 数（默认 **4**；每 ticker 约 2 次 HTTP；另有 East Money/SEC host 上限）
@@ -72,6 +81,7 @@ npm run dev -- run \
 - **全量 Deep：** 仅当用户明确要求 `--deep-all`
 - **执行：** **parallel_by_market** — CN 与 US 各开一个 session 并行
 - **报告路径：** `funnel-output/{quarter}/audit/{market}/{ticker}.md`
+- **禁止跨季复用正文：** 每个 `quarter` 的 candidates Deep 必须 **全量重跑**（默认 20/20）。不得将上一季 `.md` 仅改日期标签当作本季结论。仅当用户明确要求「引用上季 Deep」且 enrichment cache 与 funnel `metric_snapshot`、**当前股价/估值** 无实质变化时，才可标注 `carried_forward_from` 并跳过；**dividend_yield / bankScrape / rank 变化一律重审**。
 
 对每只 candidate，调用 **stock-analysis-audit Deep**，并在 prompt 中附加：
 

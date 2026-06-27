@@ -105,6 +105,8 @@ Offline and live end-to-end checks live in `scripts/` and are **not** part of `n
 | Fixture E2E | `npm run e2e:fixture` | Full CN+US funnel on fixtures; no network |
 | Live E2E | `npm run e2e:live` | Real-network live run (default: CN, `2026-Q1`) |
 | Live E2E (full) | `npm run e2e:live:full` | CN+US live run with enrichment assertions |
+| CN quote smoke | `npx tsx scripts/test-cn-quote-snapshot.ts` | Live East Money PE/PB mapping for 603195/600519/600919 |
+| US quote smoke | `npx tsx scripts/test-yahoo-universe.ts` | Live Yahoo universe fetch timing + top-5 sample |
 
 Pass extra args through to the live script:
 
@@ -177,6 +179,17 @@ npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
 ```
 
 Re-runs `enrichCnRecord` for quote-prefilter survivors missing cache files or empty `annualRows`. Then re-run funnel or document residual tickers.
+
+To purge polluted `quoteHistory` before a full re-enrich (e.g. after a quote-field mapping fix):
+
+```bash
+# Dry-run first
+npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --dry-run
+
+# Purge with backup, then force re-enrich all survivors
+npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --backup
+npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --force-all --concurrency 4
+```
 
 ## Tests
 
