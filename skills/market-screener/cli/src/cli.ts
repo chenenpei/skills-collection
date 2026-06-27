@@ -161,5 +161,16 @@ export async function runCli(argv: string[]): Promise<void> {
       });
     });
 
+  program
+    .command("bank-indicators")
+    .argument("<ticker>", "CN bank ticker")
+    .requiredOption("--year <year>", "Fiscal year", (v) => Number.parseInt(v, 10))
+    .requiredOption("--spec <dir>", "Path to spec directory")
+    .description("Scrape bank regulatory metrics from disclosure (debug)")
+    .action(async (ticker: string, opts: { year: number; spec: string }) => {
+      const { bankIndicatorsCommand } = await import("./commands/bank-indicators.js");
+      await bankIndicatorsCommand({ ticker, year: opts.year, spec: opts.spec });
+    });
+
   await program.parseAsync(argv);
 }

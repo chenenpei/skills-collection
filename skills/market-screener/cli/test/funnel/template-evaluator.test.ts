@@ -246,6 +246,38 @@ describe("evaluateTemplateTrack", () => {
     );
   });
 
+  const cnBankQualityRecord = (): SecurityRecord => ({
+    ticker: "601398",
+    market: "CN",
+    companyName: "ICBC",
+    currency: "CNY",
+    status: "active",
+    marketCap: 2e12,
+    listingAgeYears: 20,
+    metrics: {
+      roe_ttm: { value: 0.12, dataConfidence: "high" },
+      roa: { value: 0.0078, dataConfidence: "medium" },
+      npl_ratio: { value: 0.0134, dataConfidence: "medium" },
+      provision_coverage: { value: 2.1491, dataConfidence: "medium" },
+      capital_adequacy: { value: 0.1939, dataConfidence: "medium" },
+      pb_tangible: { value: 0.6, dataConfidence: "high" },
+      dividend_yield: { value: 0.05, dataConfidence: "high" },
+      revenue: { value: 1e11, dataConfidence: "high" },
+      net_income: { value: 3e10, dataConfidence: "high" },
+      operating_cash_flow: { value: 4e10, dataConfidence: "high" },
+    },
+    revenueYoyHistory: [0.02, 0.03],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 4,
+  });
+
+  it("passes financials.banks quality with roe_ttm and regulatory core", () => {
+    const result = evaluateTemplateTrack(financials, "quality", cnBankQualityRecord(), "banks");
+    expect(result.passed).toBe(true);
+  });
+
   const cnTechQualityWithoutSbc = (): SecurityRecord => ({
     ticker: "CNTECH",
     market: "CN",

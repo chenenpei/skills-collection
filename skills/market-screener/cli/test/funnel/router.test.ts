@@ -143,7 +143,7 @@ describe("routeSecurity", () => {
       expect(result.templates.map((t) => t.id)).not.toContain("tech_saas");
     });
 
-    it("routes CN 银行 to financials/banks_proxy via cn_industry_map before GICS", () => {
+    it("routes CN 银行 to financials/banks via cn_industry_map before GICS", () => {
       const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
         market: "CN",
         gicsCode: "401010",
@@ -151,7 +151,16 @@ describe("routeSecurity", () => {
       });
       expect(result.routingMethod).toBe("cn_industry_map");
       expect(result.matchedRule).toBe("l1:银行");
-      expect(result.templates).toEqual([{ id: "financials", subTemplate: "banks_proxy" }]);
+      expect(result.templates).toEqual([{ id: "financials", subTemplate: "banks" }]);
+    });
+
+    it("routes CN 银行 industry to financials.banks not banks_proxy", () => {
+      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+        market: "CN",
+        gicsCode: undefined,
+        industryProxy: "银行",
+      });
+      expect(result.templates[0].subTemplate).toBe("banks");
     });
   });
 

@@ -21,7 +21,7 @@ legacy_l1_aliases:
 
 # L1 default → sector template (full East Money L1 coverage)
 l1_defaults:
-  银行: { template: financials, sub_template: banks_proxy }
+  银行: { template: financials, sub_template: banks }
   非银金融: { template: financials, sub_template: other_financials }
   金融: { template: financials, sub_template: other_financials }
   石油石化: { template: cyclicals }
@@ -101,7 +101,7 @@ proxy_keyword_excludes:
 proxy_keyword_additions:
   - keywords: [银行]
     template: financials
-    sub_template: banks_proxy
+    sub_template: banks
   - keywords: [证券, 券商]
     template: financials
     sub_template: other_financials
