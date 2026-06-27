@@ -42,14 +42,16 @@ npm run dev -- run \
 ```
 
 - **`--adapter fixture`** — 离线 fixture，适合本地验证
-- **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙 → **quote prefilter**（status/市值/上市年限，未 enrichment 的写入 `prefilter-excluded.yaml`）→ **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；US：`sec_companyfacts` + `sec_submissions`），需联网
+- **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙 → **quote prefilter**（status/市值/上市年限，未 enrichment 的写入 `prefilter-excluded.yaml`）→ **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；CN 银行额外运行 Sina/cninfo disclosure scrape；US：`sec_companyfacts` + `sec_submissions`），需联网
 
-**Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。
+**Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。CN 银行缓存会包含 `bankScrape`，其披露来源在运行时从 Sina 年报页发现，不依赖静态 URL 表。
 
 **Live run 可选参数：**
 
 - `--enrich-concurrency <n>` — 并行 enrichment **ticker** 数（默认 **4**；每 ticker 约 2 次 HTTP；另有 East Money/SEC host 上限）
 - `--skip-cache` — 忽略磁盘缓存（不读不写），强制重新拉取
+
+**CN bank debug:** `npm run dev -- bank-indicators 600919 --year 2025` 会运行同一套 Sina discovery + disclosure scrape，输出 NPL、拨备覆盖率、资本充足率、NIM、ROA 等银行监管指标；该命令不需要 `--spec`。
 
 产出（每市场）：
 

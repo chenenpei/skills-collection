@@ -107,8 +107,10 @@ enrich_tiers:
       - fcf_yield_vs_risk_free
       - inventory_growth_minus_revenue
   high:
-    note: Not in CLI MVP — manual in Deep only
-    examples: [bank regulatory ratios, NDR, SBC detail CN, capacity utilization, customer concentration, forward_peg]
+    note: Not in CLI MVP unless explicitly implemented by a sector enrich path; otherwise manual in Deep only
+    examples: [NDR, SBC detail CN, capacity utilization, customer concentration, forward_peg]
+    implemented_exceptions:
+      - cn_bank_regulatory_ratios_via_disclosure_scrape
 
 template_live_viability:
   # full | proxy | quant_too_hard — ADR 0006

@@ -2,7 +2,7 @@
 
 Quarterly quantitative funnel for A-share and US single-company equities. Feeds candidates into [stock-analysis-audit](../stock-analysis-audit/) Deep audit.
 
-**Status:** Spec + SKILL.md (Package M tightened) — CLI **M3 live enrichment** done (`cli_m3_live_funnel_done`).
+**Status:** Spec + SKILL.md (Package M tightened) — CLI **M3 live enrichment** done (`cli_m3_live_funnel_done`), including CN bank disclosure scrape at proxy viability.
 
 ## Layout
 

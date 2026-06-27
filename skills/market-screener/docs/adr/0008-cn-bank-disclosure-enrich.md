@@ -12,6 +12,7 @@ supersedes_partial: docs/adr/0003-cn-bank-routing-proxy.md#phase-two
 - Funnel required profitability metric: **`roe_ttm` (East Money)**, not `rotce` (0/10 scrape coverage).
 - `enrichment_tier: disclosure_scrape`; promote target **`proxy`**, not `full`.
 - Source priority: (1) cninfo/Sina disclosure, (2) East Money `roe_ttm`/`roa`, (3) optional iFinD cross-check.
+- Implementation uses runtime Sina annual-report discovery (`ndbg`) plus detail-page PDF extraction, not a static `{ticker,fiscalYear} -> URL` seed file.
 
 ## Coverage (FY2024 sample, merged)
 
@@ -29,8 +30,11 @@ supersedes_partial: docs/adr/0003-cn-bank-routing-proxy.md#phase-two
 
 601988 中国银行: NPL/provision not in first 20 PDF pages (image tables). Policy: **omit + flag**, no silent proxy (ADR 0005).
 
+2026-Q2 live run observation: all cached CN banks triggered `bankScrape`, but `npl_ratio_yoy_change` remained unavailable and ROA coverage was partial. Keep `financials.banks` at **proxy** viability until supporting/regulatory coverage improves.
+
 ## Rejected
 
 - ROTCE as funnel required (derive blocked; ROTCE≈ROE for CN majors ~0.2–0.3pp).
 - NFRA/gov.cn as per-ticker source (industry aggregate only).
 - iWencai as production adapter (no stable API).
+- Static FY-specific bulletin URL map as production source (links age and require ongoing manual maintenance).

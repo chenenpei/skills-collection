@@ -20,7 +20,7 @@ Distinguish three outcomes: **unmapped routing** (`routing_too_hard`), **data-po
 | `proxy` | Degraded rules + flags |
 | `quant_too_hard` | Skip sector scoring |
 
-Mapping: `consumer`, `healthcare`, `manufacturing`, `cyclicals` → full; `financials.banks_proxy`, `tech_saas` → proxy; `financials.banks`, `financials.insurance` → quant_too_hard.
+Mapping: `consumer`, `healthcare`, `manufacturing`, `cyclicals` → full; `financials.banks`, `financials.banks_proxy`, `tech_saas` → proxy; `financials.insurance` → quant_too_hard. CN banks route to `financials.banks` after ADR 0008 disclosure enrich; `banks_proxy` remains as fallback documentation.
 
 **Live metric policy:** Permanent gaps → remove from YAML, list in `deep_only_metrics`, fix `pass_if` denominators. Temporary gaps → `missing: skip` + supporting downgrade. Manufacturing mispricing keeps **required** `roic_ttm`.
 
@@ -37,4 +37,5 @@ Router/run/diagnostics, template YAML cleanup, routing report, north-star tie-br
 ## Open
 
 - CN live/cache replay sign-off when operator cache present.
-- **Bank phase two — BLOCKED:** CN/US regulatory enrich; 银行 stays on `banks_proxy` (ADR 0003).
+- US bank SEC regulatory enrich probe.
+- CN bank coverage hardening for `full` viability, especially `npl_ratio_yoy_change`, NIM, and image-table ROA gaps.

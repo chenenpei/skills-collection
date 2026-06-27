@@ -15,7 +15,7 @@ npm install
 ```
 src/
   cli.ts
-  commands/     run | explain | validate | landmine | filter-breakdown
+  commands/     run | explain | validate | landmine | filter-breakdown | bank-indicators
   funnel/       run, router, kill-gates, template-evaluator, ranker, threshold, universe, diagnostics, types
   data/         registry, fixture, live, quote-prefilter, metrics, types; cn/ and us/ market adapters
   io/           artifacts (YAML output helpers)
@@ -34,6 +34,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 | `explain <ticker>` | Single-ticker routing trace (fixture only) |
 | `landmine` | Landmine YAML from audit-summary |
 | `filter-breakdown` | Industry-grouped filter statistics from funnel output |
+| `bank-indicators <ticker>` | Debug CN bank disclosure scrape for one fiscal year |
 
 ### `run` options
 
@@ -53,12 +54,20 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 
 1. **Quote universe** — CN East Money list + US Yahoo quotes (market cap, price, basic fields).
 2. **Quote prefilter** — skip status/cap/age failures before HTTP (written to `prefilter-excluded.yaml`).
-3. **Enrichment** — per surviving security, fetch annual financials and industry proxy, derive metrics (including `operating_margin`), apply industry median overlays, merge into `SecurityRecord`.
+3. **Enrichment** — per surviving security, fetch annual financials and industry proxy, derive metrics (including `operating_margin`), run disclosure scrape for CN banks, apply industry median overlays, merge into `SecurityRecord`.
 
 | Market | Enrichment sources |
 |--------|-------------------|
-| CN | East Money datacenter annual (`RPT_*`) + orginfo industry proxy |
+| CN | East Money datacenter annual (`RPT_*`) + orginfo industry proxy; CN banks add runtime Sina annual-report discovery + disclosure PDF scrape |
 | US | SEC EDGAR `companyfacts` + `submissions` industry proxy (CIK resolved via SEC ticker map) |
+
+### CN bank disclosure debug
+
+```bash
+npm run dev -- bank-indicators 600919 --year 2025
+```
+
+The command uses the same runtime Sina discovery and disclosure scrape path as live CN bank enrichment. It does not require `--spec`.
 
 Enrichment runs only with `--adapter live`. The fixture adapter ships pre-enriched JSON and skips network enrichment.
 

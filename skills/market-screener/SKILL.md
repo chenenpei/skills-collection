@@ -123,6 +123,7 @@ npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --out
 | `explain` | Single-ticker routing trace |
 | `landmine` | Landmine YAML from audit-summary |
 | `filter-breakdown` | Industry-grouped filter statistics from funnel output |
+| `bank-indicators` | Debug CN bank disclosure scrape for one ticker/year |
 | `alert` | Not implemented — use broker price alerts and `trigger-discipline.yaml` |
 
 ### Adapters
@@ -138,11 +139,11 @@ With `--adapter live`, the CLI:
 
 1. Loads CN/US quote universes (East Money / Yahoo screener).
 2. Applies **quote prefilter** (status, market cap, listing age). Skips → `prefilter-excluded.yaml`.
-3. **Enriches** survivors with annual financials and industry proxy; responses cached per quarter under `cli/data/cache/{quarter}/` (empty annual rows are not cached).
+3. **Enriches** survivors with annual financials and industry proxy; CN banks also run Sina/cninfo disclosure scrape for regulatory ratios. Responses are cached per quarter under `cli/data/cache/{quarter}/` (empty annual rows are not cached).
 
 **Enrichment sources** (see `spec/index.yaml`):
 
-- **CN:** East Money datacenter (annual, cashflow, balance, orginfo) + quote dividend yield
+- **CN:** East Money datacenter (annual, cashflow, balance, orginfo) + quote dividend yield; CN banks add runtime Sina annual-report discovery and disclosure PDF scrape
 - **US:** SEC companyfacts + submissions + Yahoo dividend yield
 
 **Derived metrics** include `operating_margin`, `capex_to_revenue`, `inventory_turnover`. Peer medians populate `gross_margin_vs_industry`, `operating_margin_vs_industry`, and `inventory_turnover_vs_industry`.
