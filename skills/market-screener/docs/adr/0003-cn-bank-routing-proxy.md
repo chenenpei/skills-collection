@@ -17,8 +17,6 @@ CN 申万 L1 **银行** cannot pass `financials.banks` without NPL, capital adeq
 
 Keep `banks` routing (0% pass); exclude banks from universe.
 
-## Phase two — IN PROGRESS (ADR 0008)
+## Phase two — DONE (2026-06-27)
 
-Reroute 银行 → `financials.banks` when CN disclosure enrich is live. Blocker removed 2026-06-27: Scheme E Partial Go + ROTCE→ROE spec change. Implementation: [`docs/plans/2026-06-27-bank-enrich-implementation-plan.md`](../plans/2026-06-27-bank-enrich-implementation-plan.md).
-
-**Where it lives:** `spec/cn-industry-map.yaml`, `spec/templates/financials.yaml`, `cli/src/data/cn/bank-indicators/`, router/evaluator tests.
+CN 银行 routes to `financials.banks` with disclosure enrich (ADR 0008). `banks_proxy` retained in spec for fallback documentation; CN industry map no longer routes to it.

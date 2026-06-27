@@ -87,7 +87,7 @@ slug: `investable_universe`
 | `consumer` | Brand/margin/dividend supporting optional |
 | `cyclicals` | Mid-cycle normalization (7y window) |
 | `tech_saas` | Proxy viability; CN SBC/dilution supporting skipped (`tech-saas.yaml`) |
-| `financials` | CN 银行 enrich in progress (ADR 0008): disclosure scrape + `roe_ttm`; `banks` @ proxy viability; `banks_proxy` until routing promote; `insurance` quant_too_hard |
+| `financials` | CN 银行 → `financials.banks` with disclosure scrape enrich (ADR 0008); `banks` @ proxy viability; `insurance` quant_too_hard |
 
 Slugs: `cn_bank_routing_proxy`, `cn_tech_saas_quality_skip`, `bank_regulatory_enrich_priority`, `healthcare_quality_dual_path`, `mid_cycle_normalization`, `market_override`, `unified_threshold`, `market_override_policy`.
 
