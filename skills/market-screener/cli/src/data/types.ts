@@ -10,6 +10,7 @@ export interface EnrichOptions {
   skipCache?: boolean;
   killGates?: KillGatesSpec;
   progress?: ProgressLogger;
+  specDir?: string;
 }
 
 export interface EnrichRunStats {

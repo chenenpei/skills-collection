@@ -49,6 +49,7 @@ async function main(): Promise<void> {
     concurrency,
     skipCache: false,
     killGates: bundle.killGates,
+    specDir: path.resolve(values.spec!),
   };
 
   await mapPool(

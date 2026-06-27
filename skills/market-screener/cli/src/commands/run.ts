@@ -39,6 +39,7 @@ export async function runCommand(opts: RunCommandOptions): Promise<void> {
     skipCache: opts.skipCache ?? false,
     killGates: bundle.killGates,
     progress,
+    specDir: path.resolve(opts.spec),
   };
 
   progress.phase(`Adapter: ${adapterKind} — loading ${marketScope} universe…`);

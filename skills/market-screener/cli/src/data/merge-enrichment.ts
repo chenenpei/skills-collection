@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { SecurityRecord } from "../funnel/kill-gates.js";
+import type { BankScrapeMetrics } from "./cn/bank-indicators/types.js";
 import type { DataConfidence, MetricValue } from "../funnel/types.js";
 import { deriveFromAnnualRows, type AnnualFinancialRow } from "./metrics.js";
 
@@ -18,6 +19,12 @@ export interface EnrichCachePayload {
   dividendYield?: number;
   dividendYieldConfidence?: DataConfidence;
   quoteHistory?: QuoteHistoryEntry[];
+  bankScrape?: {
+    fiscalYear: number;
+    metrics: BankScrapeMetrics;
+    scrapedAt: string;
+    sourceUrls: string[];
+  };
 }
 
 export type DividendWithConfidence = { yield: number; dataConfidence: DataConfidence };
