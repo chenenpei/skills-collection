@@ -13,7 +13,9 @@ sub_templates:
     quality_track:
       pass_if: all_required_and_supporting_min_4_of_6
       required:
-        rotce: { min: 0.13 }
+        roe_ttm:
+          min: 0.125
+          market_overrides: { CN: 0.11, US: 0.125 }
         roa:
           default: 0.009
           market_overrides: { CN: 0.0075, US: 0.009 }
@@ -21,27 +23,30 @@ sub_templates:
         provision_coverage: { min: 1.50 }
         capital_adequacy: { min: 0.115 }
       supporting:
-        - { metric: pb_tangible, max: 2.5 }
-        - { metric: rotce_3y_avg, min: 0.12 }
-        - { metric: npl_ratio_yoy_change, max: 0.005 }
-        - { metric: nim, min: 0.015 }
+        - { metric: pb_tangible, max: 2.5, missing: skip }
+        - { metric: rotce, min: 0.13, missing: skip }
+        - { metric: rotce_3y_avg, min: 0.12, missing: skip }
+        - { metric: npl_ratio_yoy_change, max: 0.005, missing: skip }
+        - { metric: nim, min: 0.015, missing: skip }
         - { metric: dividend_yield, min: 0.03, market_overrides: { CN: 0.03, US: 0.02 } }
-        - { metric: rotce_vs_industry_median, min: 0 }
+        - { metric: roe_vs_industry_median, min: 0, missing: skip }
 
     mispricing_track:
       pass_if: all_required_and_supporting_min_3_of_5
       required:
-        rotce: { min: 0.11 }
+        roe_ttm:
+          min: 0.108
+          market_overrides: { CN: 0.10, US: 0.108 }
         roa:
           default: 0.007
           market_overrides: { CN: 0.006, US: 0.007 }
         npl_ratio: { max: 0.035 }
-        npl_ratio_yoy_change: { max: 0.010 }
+        npl_ratio_yoy_change: { max: 0.010, missing: skip }
         capital_adequacy: { min: 0.105 }
       supporting:
-        - { metric: pb_tangible_vs_5y_median, max: 0.85 }
-        - { metric: pb_tangible, max: 0.80 }
-        - { metric: rotce, min: 0.12 }
+        - { metric: pb_tangible_vs_5y_median, max: 0.85, missing: skip }
+        - { metric: pb_tangible, max: 0.80, missing: skip }
+        - { metric: rotce, min: 0.12, missing: skip }
         - { metric: dividend_yield, min: 0.05 }
         - { metric: price_vs_52w_high, max: 0.70 }
 

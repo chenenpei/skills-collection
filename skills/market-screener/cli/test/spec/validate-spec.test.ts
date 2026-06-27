@@ -13,6 +13,14 @@ describe("validateSpecBundle", () => {
     expect(result.errors).toEqual([]);
   });
 
+  it("financials.banks quality required includes roe_ttm not rotce", async () => {
+    const bundle = await loadSpecBundle(SPEC_DIR);
+    const banks = bundle.templates.financials.sub_templates.banks;
+    const required = banks.quality_track.required as Record<string, unknown>;
+    expect(required).toHaveProperty("roe_ttm");
+    expect(required).not.toHaveProperty("rotce");
+  });
+
   it("fails when index references missing template", async () => {
     const bundle = await loadSpecBundle(SPEC_DIR);
     const invalid = {
