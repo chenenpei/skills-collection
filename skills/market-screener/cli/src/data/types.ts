@@ -11,6 +11,8 @@ export interface EnrichOptions {
   killGates?: KillGatesSpec;
   progress?: ProgressLogger;
   specDir?: string;
+  /** Wall-clock anchor for bank disclosure fiscal year; defaults to runtime Date. */
+  now?: Date;
 }
 
 export interface EnrichRunStats {

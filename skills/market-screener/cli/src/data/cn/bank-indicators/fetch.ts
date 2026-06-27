@@ -1,7 +1,12 @@
 import { PDFParse } from "pdf-parse";
 import { httpFetch } from "../../../lib/http-fetch.js";
-import { normalizeCjkText, stripHtml } from "./normalize.js";
-import type { BankBulletinEntry } from "./types.js";
+import {
+  decodeResponseBuffer,
+  decodeSinaBuffer,
+  normalizeCjkText,
+  stripHtml,
+} from "./normalize.js";
+import type { BankBulletinEntry, BankScrapeField, BankScrapeMetrics } from "./types.js";
 
 export const PDF_MAX_PAGES = 20;
 
@@ -10,15 +15,31 @@ const HEADERS = {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
 };
 
-function decodeBuffer(buf: Buffer): string {
-  for (const enc of ["utf-8", "gbk", "gb2312"] as const) {
-    try {
-      return new TextDecoder(enc).decode(buf);
-    } catch {
-      continue;
+const SCRAPE_FIELDS: BankScrapeField[] = [
+  "npl_ratio",
+  "provision_coverage",
+  "capital_adequacy",
+  "nim",
+  "roa",
+];
+
+export function mergeBankScrapeSources(
+  sina: BankScrapeMetrics,
+  pdf: BankScrapeMetrics
+): BankScrapeMetrics {
+  const out: BankScrapeMetrics = {};
+  for (const key of SCRAPE_FIELDS) {
+    const s = sina[key];
+    const p = pdf[key];
+    if (key === "capital_adequacy") {
+      const vals = [s, p].filter((v): v is number => v !== undefined);
+      if (vals.length) out[key] = Math.max(...vals);
+    } else {
+      const val = p ?? s;
+      if (val !== undefined) out[key] = val;
     }
   }
-  return buf.toString("utf8");
+  return out;
 }
 
 async function pdfToText(pdfBytes: Buffer, maxPages: number = PDF_MAX_PAGES): Promise<string> {
@@ -40,7 +61,13 @@ export async function fetchDisclosureTexts(entry: BankBulletinEntry): Promise<{
     httpFetch(entry.pdfUrl, { headers: HEADERS }),
   ]);
   const htmlRaw = Buffer.from(await htmlRes.arrayBuffer());
-  const html = normalizeCjkText(stripHtml(decodeBuffer(htmlRaw)));
+  const html = normalizeCjkText(
+    stripHtml(
+      entry.sinaUrl.includes("sina.com.cn")
+        ? decodeSinaBuffer(htmlRaw)
+        : decodeResponseBuffer(htmlRaw)
+    )
+  );
   const pdfBuf = Buffer.from(await pdfRes.arrayBuffer());
   const pdfText = normalizeCjkText(await pdfToText(pdfBuf));
   return { sinaText: html, pdfText };

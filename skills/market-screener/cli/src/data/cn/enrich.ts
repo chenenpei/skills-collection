@@ -16,16 +16,12 @@ import {
   fetchCnSupplementalAnnualRows,
   mergeSupplementalIntoAnnualRows,
 } from "./eastmoney.js";
-import { isCnBankIndustry } from "./bank-indicators/is-bank-industry.js";
-import { scrapeBankIndicators } from "./bank-indicators/index.js";
+import { isCnBankIndustry, applyBankScrapeToRecord } from "./bank-indicators/apply.js";
+import { scrapeBankIndicators } from "./bank-indicators/scrape.js";
 import type { BankScrapeMetrics } from "./bank-indicators/types.js";
-import { applyBankScrapeToRecord } from "./bank-enrich.js";
+import { deriveBankDisclosureFiscalYear } from "./bank-indicators/fiscal-year.js";
 
 export { mergeEnrichment as mergeCnEnrichment } from "../merge-enrichment.js";
-
-function deriveFiscalYear(quarter: string): number {
-  return quarter.startsWith("2026") ? 2024 : Number(quarter.slice(0, 4)) - 1;
-}
 
 async function refreshCnAnnualRows(
   ticker: string,
@@ -67,7 +63,7 @@ async function applyBankScrapeIfNeeded(
     return { record: enriched };
   }
 
-  const fiscalYear = deriveFiscalYear(opts.quarter);
+  const fiscalYear = deriveBankDisclosureFiscalYear(opts.quarter, opts.now);
   const cachedScrape = cached?.bankScrape;
 
   let scrape:
@@ -82,8 +78,8 @@ async function applyBankScrapeIfNeeded(
       sourceUrls: cachedScrape.sourceUrls,
     };
     bankScrape = cachedScrape;
-  } else if (opts.specDir) {
-    const result = await scrapeBankIndicators(ticker, fiscalYear, opts.specDir).catch(() => undefined);
+  } else {
+    const result = await scrapeBankIndicators(ticker, fiscalYear).catch(() => undefined);
     if (result) {
       scrape = {
         metrics: result.metrics,

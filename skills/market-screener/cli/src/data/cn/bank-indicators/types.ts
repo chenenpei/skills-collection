@@ -25,4 +25,5 @@ export type BankScrapeResult = {
   sourceUrls: string[];
   dataConfidence: "medium" | "low";
   scrapedAt: string;
+  bulletinTitle?: string;
 };

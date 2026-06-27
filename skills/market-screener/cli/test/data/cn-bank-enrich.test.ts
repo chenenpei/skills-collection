@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { applyBankScrapeToRecord } from "../../src/data/cn/bank-enrich.js";
-import { isCnBankIndustry } from "../../src/data/cn/bank-indicators/is-bank-industry.js";
+import { applyBankScrapeToRecord, isCnBankIndustry } from "../../src/data/cn/bank-indicators/apply.js";
 import { enrichCnRecord } from "../../src/data/cn/enrich.js";
 import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
 import type { AnnualFinancialRow } from "../../src/data/metrics.js";
@@ -19,7 +18,7 @@ vi.mock("../../src/data/cn/eastmoney.js", async (importOriginal) => {
   };
 });
 
-vi.mock("../../src/data/cn/bank-indicators/index.js", () => ({
+vi.mock("../../src/data/cn/bank-indicators/scrape.js", () => ({
   scrapeBankIndicators: vi.fn(),
 }));
 
@@ -28,7 +27,7 @@ import {
   fetchCnSupplementalAnnualRows,
   fetchCnIndustryProxy,
 } from "../../src/data/cn/eastmoney.js";
-import { scrapeBankIndicators } from "../../src/data/cn/bank-indicators/index.js";
+import { scrapeBankIndicators } from "../../src/data/cn/bank-indicators/scrape.js";
 
 const baseRecord: SecurityRecord = {
   ticker: "600036",
@@ -107,7 +106,7 @@ describe("enrichCnRecord bank scrape integration", () => {
     vi.mocked(fetchCnIndustryProxy).mockResolvedValue("银行-股份制银行Ⅱ-股份制银行Ⅲ");
     vi.mocked(scrapeBankIndicators).mockResolvedValue({
       ticker: "600036",
-      fiscalYear: 2024,
+      fiscalYear: 2025,
       metrics: { npl_ratio: 0.0095, capital_adequacy: 0.1905, provision_coverage: 2.1 },
       rawHits: {},
       missing: [],
@@ -122,9 +121,10 @@ describe("enrichCnRecord bank scrape integration", () => {
       concurrency: 1,
       skipCache: true,
       specDir,
+      now: new Date("2026-06-27T12:00:00Z"),
     });
 
-    expect(scrapeBankIndicators).toHaveBeenCalledWith("600036", 2024, specDir);
+    expect(scrapeBankIndicators).toHaveBeenCalledWith("600036", 2025);
     expect(enriched.metrics.npl_ratio?.value).toBeCloseTo(0.0095, 4);
     expect(enriched.metrics.capital_adequacy?.value).toBeCloseTo(0.1905, 4);
     expect(enriched.auditHints).toEqual(

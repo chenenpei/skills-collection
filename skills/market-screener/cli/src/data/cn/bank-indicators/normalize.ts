@@ -1,3 +1,23 @@
+export function decodeResponseBuffer(buf: Buffer): string {
+  for (const enc of ["utf-8", "gbk", "gb2312"] as const) {
+    try {
+      return new TextDecoder(enc).decode(buf);
+    } catch {
+      continue;
+    }
+  }
+  return buf.toString("utf8");
+}
+
+/** Sina Finance bulletin pages are GBK; UTF-8-first decoding mojibakes titles. */
+export function decodeSinaBuffer(buf: Buffer): string {
+  try {
+    return new TextDecoder("gbk").decode(buf);
+  } catch {
+    return decodeResponseBuffer(buf);
+  }
+}
+
 export function stripHtml(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")

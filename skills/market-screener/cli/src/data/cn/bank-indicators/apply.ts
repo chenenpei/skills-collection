@@ -1,6 +1,11 @@
-import type { SecurityRecord } from "../../funnel/kill-gates.js";
-import type { BankScrapeMetrics } from "./bank-indicators/types.js";
-import type { DataConfidence, MetricValue } from "../../funnel/types.js";
+import type { SecurityRecord } from "../../../funnel/kill-gates.js";
+import type { DataConfidence, MetricValue } from "../../../funnel/types.js";
+import type { BankScrapeMetrics } from "./types.js";
+
+export function isCnBankIndustry(industryProxy: string | undefined): boolean {
+  if (!industryProxy) return false;
+  return industryProxy.includes("银行");
+}
 
 export function applyBankScrapeToRecord(
   record: SecurityRecord,

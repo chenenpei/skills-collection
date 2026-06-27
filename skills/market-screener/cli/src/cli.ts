@@ -165,11 +165,10 @@ export async function runCli(argv: string[]): Promise<void> {
     .command("bank-indicators")
     .argument("<ticker>", "CN bank ticker")
     .requiredOption("--year <year>", "Fiscal year", (v) => Number.parseInt(v, 10))
-    .requiredOption("--spec <dir>", "Path to spec directory")
-    .description("Scrape bank regulatory metrics from disclosure (debug)")
-    .action(async (ticker: string, opts: { year: number; spec: string }) => {
+    .description("Discover Sina/cninfo disclosure URLs and scrape bank regulatory metrics")
+    .action(async (ticker: string, opts: { year: number }) => {
       const { bankIndicatorsCommand } = await import("./commands/bank-indicators.js");
-      await bankIndicatorsCommand({ ticker, year: opts.year, spec: opts.spec });
+      await bankIndicatorsCommand({ ticker, year: opts.year });
     });
 
   await program.parseAsync(argv);
