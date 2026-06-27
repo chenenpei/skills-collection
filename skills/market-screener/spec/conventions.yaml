@@ -118,7 +118,7 @@ template_live_viability:
   cyclicals: full
   tech_saas: proxy
   financials:
-    banks: quant_too_hard
+    banks: proxy
     banks_proxy: proxy
     insurance: quant_too_hard
     other_financials: full
@@ -126,6 +126,8 @@ template_live_viability:
 deep_only_metrics:
   note: Not in live YAML supporting/required; Deep audit manual only
   metrics:
+    - rotce
+    - rotce_3y_avg
     - capacity_utilization
     - top_customer_concentration
     - same_store_sales_yoy

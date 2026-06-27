@@ -163,18 +163,18 @@ describe("routeSecurity", () => {
     expect(result.routingConfidence).toBe("high");
   });
 
-  it("skips quant_too_hard banks template evaluation", () => {
-    expect(templateLiveViability(bundle, "financials", "banks")).toBe("quant_too_hard");
+  it("skips quant_too_hard insurance template evaluation", () => {
+    expect(templateLiveViability(bundle, "financials", "insurance")).toBe("quant_too_hard");
     const route = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
       market: "US",
-      gicsCode: "401010",
+      gicsCode: "403010",
     });
     const record = {
-      ticker: "JPM",
+      ticker: "BRK",
       market: "US" as const,
-      companyName: "JPM",
+      companyName: "Berkshire",
       currency: "USD",
-      gicsCode: "401010",
+      gicsCode: "403010",
       metrics: {},
     };
     expect(listTemplateTrackResults(bundle, record, route)).toHaveLength(0);
