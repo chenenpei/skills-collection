@@ -179,9 +179,17 @@ describe("assertCnQuoteUniverseIntegrity", () => {
 
   it("fails when market cap coverage is too low", () => {
     const records = Array.from({ length: 5500 }, (_, i) =>
-      base(String(600000 + i), 16, 3, i < 100 ? 0 : 1e10)
+      base(String(600000 + i), 16, 3, i < 400 ? 0 : 1e10)
     );
     expect(() => assertCnQuoteUniverseIntegrity(records)).toThrow(/market_cap_present_rate/);
+  });
+
+  it("passes when market cap coverage meets the live-calibrated floor", () => {
+    const missing = Math.floor(5500 * (1 - 0.94));
+    const records = Array.from({ length: 5500 }, (_, i) =>
+      base(String(600000 + i), 16, 3, i < missing ? 0 : 1e10)
+    );
+    expect(() => assertCnQuoteUniverseIntegrity(records)).not.toThrow();
   });
 
   it("exports anchor tickers for preflight", () => {

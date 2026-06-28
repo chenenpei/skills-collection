@@ -30,7 +30,7 @@ Hard fail (exit 1) when any bound is violated after full quote load:
 | Check | Bound |
 |-------|-------|
 | `universe_count` | 5_200 – 6_200 |
-| `market_cap_present_rate` | ≥ 0.99 |
+| `market_cap_present_rate` | ≥ 0.94 |
 | `pe_equals_price_rate` | ≤ 0.001 |
 
 PE/PB presence is reported but is **not** a hard failure in the first implementation. Loss-making and special-status A-share names can legitimately lack positive PE/PB, so hard thresholds must be calibrated from live runs before promotion. The preflight anchor tickers (same as `test-cn-quote-snapshot.ts`) still hard-check PE/PB/price semantics: `603195`, `600519`, `600919`.

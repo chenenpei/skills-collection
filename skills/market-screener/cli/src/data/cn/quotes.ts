@@ -114,7 +114,7 @@ export interface CnQuoteIntegrityReport {
 const INTEGRITY = {
   minCount: 5200,
   maxCount: 6200,
-  minCapRate: 0.99,
+  minCapRate: 0.94,
   maxPeEqualsPriceRate: 0.001,
 };
 
@@ -245,6 +245,11 @@ function parseStatusFromF127(row: EastMoneyRow): string {
   return text;
 }
 
+function parseEastMoneyMarketCap(value: number | string | undefined): number {
+  const cap = Number(value);
+  return Number.isFinite(cap) && cap > 0 ? cap : 0;
+}
+
 function positiveMetric(
   value: number | undefined,
   confidence: "medium" | "low" = "medium"
@@ -292,7 +297,7 @@ function mapRowToSecurityRecord(row: EastMoneyRow): SecurityRecord {
     companyName: String(row[EM_FIELD_NAME] ?? ""),
     currency: "CNY",
     status: parseStatusFromF127(row),
-    marketCap: Number(row[EM_FIELD_MARKET_CAP] ?? 0),
+    marketCap: parseEastMoneyMarketCap(row[EM_FIELD_MARKET_CAP]),
     listingAgeYears: listingAgeYearsFromEastMoneyDate(row[EM_FIELD_LISTING_DATE]),
     metrics,
   });

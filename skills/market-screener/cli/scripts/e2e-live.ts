@@ -4,6 +4,7 @@
  * Usage:
  *   HTTPS_PROXY=http://127.0.0.1:1082 npm run e2e:live
  *   npm run e2e:live -- --markets CN --quarter 2026-Q1
+ *   npm run e2e:live -- --markets CN --quarter 2026-Q2 --skip-cache
  */
 import { execSync } from "node:child_process";
 import fs from "node:fs";
@@ -35,26 +36,29 @@ function ensureProxyHint(): void {
   }
 }
 
-function parseArgs(argv: string[]): { markets: string; quarter: string } {
+function parseArgs(argv: string[]): { markets: string; quarter: string; skipCache: boolean } {
   let markets = "CN";
   let quarter = "2026-Q1";
+  let skipCache = false;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--markets") markets = argv[++i] ?? markets;
     if (argv[i] === "--quarter") quarter = argv[++i] ?? quarter;
+    if (argv[i] === "--skip-cache") skipCache = true;
   }
-  return { markets, quarter };
+  return { markets, quarter, skipCache };
 }
 
 async function main(): Promise<void> {
   ensureProxyHint();
 
-  const { markets, quarter } = parseArgs(process.argv.slice(2));
+  const { markets, quarter, skipCache } = parseArgs(process.argv.slice(2));
   const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "screener-live-e2e-"));
   const proxy = resolveProxyUrl();
 
   console.log("=== Live E2E ===");
   console.log("markets:", markets);
   console.log("quarter:", quarter);
+  console.log("skip_cache:", skipCache);
   console.log("output:", outRoot);
   console.log("proxy:", proxy ?? "(none — direct)");
   console.log("spec:", SPEC_DIR);
@@ -66,6 +70,7 @@ async function main(): Promise<void> {
     output: outRoot,
     spec: SPEC_DIR,
     adapter: "live",
+    skipCache,
   });
 
   for (const market of markets.split(",").map((m) => m.trim())) {
