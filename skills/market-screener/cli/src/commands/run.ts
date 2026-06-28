@@ -24,6 +24,9 @@ export interface RunCommandOptions {
   enrichConcurrency?: number;
   skipCache?: boolean;
   skipPreflight?: boolean;
+  allowDegraded?: boolean;
+  quoteFallbackQuarter?: string;
+  quoteFallbackFixturesDir?: string;
 }
 
 export async function runCommand(opts: RunCommandOptions): Promise<void> {
@@ -34,7 +37,11 @@ export async function runCommand(opts: RunCommandOptions): Promise<void> {
   progress.phase(`Loading spec from ${path.resolve(opts.spec)}…`);
   const bundle = await loadSpecBundle(path.resolve(opts.spec));
 
-  const adapter = createAdapter(adapterKind, opts.fixturesDir);
+  const adapter = createAdapter(adapterKind, opts.fixturesDir, {
+    allowDegraded: opts.allowDegraded,
+    quoteFallbackQuarter: opts.quoteFallbackQuarter,
+    quoteFallbackFixturesDir: opts.quoteFallbackFixturesDir,
+  });
   const enrichOpts = {
     quarter: opts.quarter,
     cacheDir: DEFAULT_CACHE_DIR,
@@ -52,7 +59,7 @@ export async function runCommand(opts: RunCommandOptions): Promise<void> {
   }
 
   progress.phase(`Adapter: ${adapterKind} — loading ${marketScope} universe…`);
-  let universe = await adapter.loadUniverse(markets, { progress });
+  let universe = await adapter.loadUniverse(markets, { progress, quarter: opts.quarter });
   progress.phase(`Loaded ${universe.length} securities`);
 
   const cnRecords = universe.filter((r) => r.market === "CN");

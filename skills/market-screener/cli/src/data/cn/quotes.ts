@@ -1,9 +1,11 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { SecurityRecord } from "../../funnel/kill-gates.js";
 import { getEastMoneyUt } from "./eastmoney.js";
 import { httpFetch } from "../../lib/http-fetch.js";
 import type { ProgressLogger } from "../../lib/progress.js";
 import type { Market } from "../../funnel/types.js";
-import type { MarketDataAdapter } from "../types.js";
+import type { LoadUniverseOptions, MarketDataAdapter } from "../types.js";
 
 /** Shared adapter defaults for live providers that only supply quote-level fields. */
 export function withAdapterDefaults(
@@ -53,6 +55,53 @@ const PE_PRICE_TOLERANCE = 0.01;
 const PB_CEILING = 15;
 
 export const CN_QUOTE_ANCHOR_TICKERS = ["603195", "600519", "600919"] as const;
+
+const CN_QUOTE_SNAPSHOT_FILE = "cn-quote-universe.json";
+const QUOTE_DERIVED_METRICS = new Set(["price", "pe_ttm", "pb", "ps"]);
+
+function cnQuoteUniverseSnapshotPath(cacheDir: string, quarter: string): string {
+  return path.join(cacheDir, quarter, "CN", CN_QUOTE_SNAPSHOT_FILE);
+}
+
+export async function writeCnQuoteUniverseSnapshot(
+  cacheDir: string,
+  quarter: string,
+  records: SecurityRecord[]
+): Promise<void> {
+  const file = cnQuoteUniverseSnapshotPath(cacheDir, quarter);
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(records, null, 2), "utf8");
+}
+
+export async function readCnQuoteUniverseSnapshot(
+  cacheDir: string,
+  quarter: string
+): Promise<SecurityRecord[]> {
+  try {
+    const raw = await fs.readFile(cnQuoteUniverseSnapshotPath(cacheDir, quarter), "utf8");
+    return JSON.parse(raw) as SecurityRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export function markCnQuoteUniverseDegraded(
+  records: SecurityRecord[],
+  hint: string
+): SecurityRecord[] {
+  return records.map((record) => {
+    const metrics = { ...record.metrics };
+    for (const key of QUOTE_DERIVED_METRICS) {
+      const metric = metrics[key];
+      if (metric) metrics[key] = { ...metric, dataConfidence: "low" };
+    }
+    return {
+      ...record,
+      metrics,
+      auditHints: Array.from(new Set([...(record.auditHints ?? []), hint])),
+    };
+  });
+}
 
 export interface CnQuoteIntegrityReport {
   universe_count: number;
@@ -317,7 +366,7 @@ export function createCnEastMoneyAdapter(_opts: { cacheDir: string }): MarketDat
   return {
     async loadUniverse(
       markets: Market[],
-      opts?: { progress?: ProgressLogger }
+      opts?: LoadUniverseOptions
     ): Promise<SecurityRecord[]> {
       if (!markets.includes("CN")) return [];
 
@@ -344,6 +393,10 @@ export function createCnEastMoneyAdapter(_opts: { cacheDir: string }): MarketDat
         }
 
         page += 1;
+      }
+
+      if (opts?.quarter) {
+        await writeCnQuoteUniverseSnapshot(_opts.cacheDir, opts.quarter, records);
       }
 
       return records;

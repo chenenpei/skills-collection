@@ -46,6 +46,8 @@ npm run dev -- run \
 
 **CN live preflight:** `--adapter live` runs CN quote/datacenter preflight by default and fails before enrichment when anchors or quote integrity fail. Do not use `--skip-preflight` for quarterly sign-off; it is only for diagnosing provider outages.
 
+**Degraded live runs:** `--allow-degraded` is only for diagnosing provider outages. Output with `quote_degraded:*` audit hints or low-confidence quote metrics is not quarterly sign-off quality. Hard CN quote integrity failures must not be bypassed by degraded mode.
+
 **Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。CN 银行缓存会包含 `bankScrape`，其披露来源在运行时从 Sina 年报页发现，不依赖静态 URL 表。
 
 ### CN valuation cross-check (mandatory for Deep audit)

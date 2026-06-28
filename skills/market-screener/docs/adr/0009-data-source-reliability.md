@@ -12,7 +12,7 @@ The 2026-06 CN quote field mapping bug showed that **HTTP 200 with wrong or empt
 
 ## Decision
 
-Add reliability guardrails **without new module directories**. Extend existing files only. Implement in phases: the current implementation plan covers **Phase 1 (preflight + integrity) and dynamic `ut` refresh**; degraded fallback, bank-source reordering, and incremental enrich are accepted follow-up plans.
+Add reliability guardrails **without new module directories**. Extend existing files only. Implement in phases: **Phase 1 (preflight + integrity + dynamic `ut` refresh)** is delivered; degraded fallback, bank-source reordering, and incremental enrich are accepted follow-up work tracked in this ADR.
 
 | Concern | Location | Behavior |
 |---------|----------|----------|
@@ -62,7 +62,3 @@ Record `sourceTier` on `BankBulletinEntry`; Sina-only success logs a warning.
 - New `screener probe` subcommand (preflight lives in `run` + optional `scripts/test-cn-preflight.ts`).
 - Auto-degrade on integrity hard fail.
 - Skipping preflight by default on live runs.
-
-## Implementation
-
-See `docs/plans/2026-06-28-data-source-reliability.md` for Phase 1 + dynamic `ut` refresh.

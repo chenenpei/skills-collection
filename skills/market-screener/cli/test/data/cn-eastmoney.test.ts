@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 vi.mock("../../src/lib/http-fetch.js", () => ({
   httpFetch: vi.fn(),
@@ -24,8 +27,11 @@ import {
   CN_QUOTE_ANCHOR_TICKERS,
   createCnEastMoneyAdapter,
   listingAgeYearsFromEastMoneyDate,
+  markCnQuoteUniverseDegraded,
   mapEastMoneyRowToQuoteMetrics,
+  readCnQuoteUniverseSnapshot,
   sanitizeCnQuoteMetrics,
+  writeCnQuoteUniverseSnapshot,
 } from "../../src/data/cn/quotes.js";
 
 const mockedHttpFetch = vi.mocked(httpFetch);
@@ -198,6 +204,70 @@ describe("resolveEastMoneyUt", () => {
         cacheFile: "/tmp/nonexistent-eastmoney-ut-test.json",
       })
     ).resolves.toBe(EASTMONEY_UT_FALLBACK);
+  });
+});
+
+describe("CN quote universe snapshot", () => {
+  it("writes and reads a quote-universe snapshot", async () => {
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "cn-quote-snapshot-"));
+    const record = {
+      ticker: "600519",
+      market: "CN" as const,
+      companyName: "贵州茅台",
+      currency: "CNY",
+      status: "active",
+      marketCap: 2e12,
+      listingAgeYears: 20,
+      metrics: {
+        price: { value: 1168.63, dataConfidence: "medium" as const },
+        pe_ttm: { value: 17.66, dataConfidence: "medium" as const },
+        pb: { value: 6.19, dataConfidence: "medium" as const },
+      },
+      revenueYoyHistory: [],
+      ocfNegativeYears: 0,
+      netLossWidening: false,
+      nonStandardAudit: false,
+      latestFinancialMonthsOld: 0,
+    };
+
+    await writeCnQuoteUniverseSnapshot(cacheDir, "2026-Q1", [record]);
+    await expect(readCnQuoteUniverseSnapshot(cacheDir, "2026-Q1")).resolves.toEqual([record]);
+
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  });
+
+  it("marks quote metrics low confidence and adds a degraded audit hint", () => {
+    const degraded = markCnQuoteUniverseDegraded(
+      [
+        {
+          ticker: "600519",
+          market: "CN" as const,
+          companyName: "贵州茅台",
+          currency: "CNY",
+          status: "active",
+          marketCap: 2e12,
+          listingAgeYears: 20,
+          metrics: {
+            price: { value: 1168.63, dataConfidence: "medium" as const },
+            pe_ttm: { value: 17.66, dataConfidence: "medium" as const },
+            pb: { value: 6.19, dataConfidence: "medium" as const },
+            roe_ttm: { value: 0.3, dataConfidence: "high" as const },
+          },
+          revenueYoyHistory: [],
+          ocfNegativeYears: 0,
+          netLossWidening: false,
+          nonStandardAudit: false,
+          latestFinancialMonthsOld: 0,
+        },
+      ],
+      "quote_degraded:snapshot:2026-Q1"
+    );
+
+    expect(degraded[0].metrics.price?.dataConfidence).toBe("low");
+    expect(degraded[0].metrics.pe_ttm?.dataConfidence).toBe("low");
+    expect(degraded[0].metrics.pb?.dataConfidence).toBe("low");
+    expect(degraded[0].metrics.roe_ttm?.dataConfidence).toBe("high");
+    expect(degraded[0].auditHints).toContain("quote_degraded:snapshot:2026-Q1");
   });
 });
 

@@ -48,6 +48,9 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 | `--enrich-concurrency` | `4` | Parallel enrichment tickers (live only; each may issue 2 HTTP calls) |
 | `--skip-cache` | off | Ignore enrichment disk cache — no read or write (live only) |
 | `--skip-preflight` | off | Live CN only; bypasses quote/datacenter preflight. Use only when diagnosing a known source outage. |
+| `--allow-degraded` | off | Live CN only; permits low-confidence quote fallback when the quote source is unavailable. Never use for quarterly sign-off. |
+| `--quote-fallback-quarter` | — | Prior quarter containing `data/cache/{quarter}/CN/cn-quote-universe.json` for degraded quote fallback |
+| `--quote-fallback-fixtures-dir` | — | Fixture directory used only when `--allow-degraded` is set and live CN quote loading fails |
 
 ## Live adapter & enrichment (M3)
 

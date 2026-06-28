@@ -16,6 +16,7 @@ skills/market-screener/cli/dist/
 skills/market-screener/cli/data/cache/
 skills/market-screener/cli/funnel-output/
 skills/market-screener/cli/scripts/__pycache__/
+skills/market-screener/docs/plans/
 
 # Editor / IDE
 .idea/

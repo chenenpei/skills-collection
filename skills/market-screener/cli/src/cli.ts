@@ -38,6 +38,13 @@ export async function runCli(argv: string[]): Promise<void> {
     )
     .option("--skip-cache", "Ignore enrichment disk cache", false)
     .option("--skip-preflight", "Skip live CN data-source preflight", false)
+    .option(
+      "--allow-degraded",
+      "Allow explicit low-confidence quote fallback when live CN quote source is unavailable",
+      false
+    )
+    .option("--quote-fallback-quarter <quarter>", "Prior quarter with a saved CN quote-universe snapshot")
+    .option("--quote-fallback-fixtures-dir <dir>", "Fixture directory for degraded CN quote fallback")
     .action(async (opts: {
       markets: string;
       quarter: string;
@@ -47,6 +54,9 @@ export async function runCli(argv: string[]): Promise<void> {
       enrichConcurrency: string;
       skipCache: boolean;
       skipPreflight: boolean;
+      allowDegraded: boolean;
+      quoteFallbackQuarter?: string;
+      quoteFallbackFixturesDir?: string;
     }) => {
       const { runCommand } = await import("./commands/run.js");
       await runCommand({
@@ -54,6 +64,9 @@ export async function runCli(argv: string[]): Promise<void> {
         enrichConcurrency: Number.parseInt(opts.enrichConcurrency, 10),
         skipCache: Boolean(opts.skipCache),
         skipPreflight: Boolean(opts.skipPreflight),
+        allowDegraded: Boolean(opts.allowDegraded),
+        quoteFallbackQuarter: opts.quoteFallbackQuarter,
+        quoteFallbackFixturesDir: opts.quoteFallbackFixturesDir,
       });
     });
 

@@ -11,7 +11,7 @@ Permanent **why** for market-screener funnel and enrich policy. Executable truth
 | [0005](./0005-metric-source-hygiene.md) | No silent metric proxies | Referenced from `spec/conventions.yaml` |
 | [0006](./0006-funnel-viability-and-sector-gates.md) | Viability exits, metric_coverage | Delivered; bank phase **blocked** |
 | [0008](./0008-cn-bank-disclosure-enrich.md) | CN bank disclosure scrape enrich; ROTCE→ROE required | **Delivered** — enrich live @ proxy viability |
-| [0009](./0009-data-source-reliability.md) | CN live preflight, integrity gates, ut refresh, degraded run, incremental enrich | **Accepted** — see `docs/plans/2026-06-28-data-source-reliability.md` |
+| [0009](./0009-data-source-reliability.md) | CN live preflight, integrity gates, ut refresh, degraded run, incremental enrich | **Accepted** — phased delivery |
 
 ## Delivered (spec/code is source of truth; ADR files removed)
 
