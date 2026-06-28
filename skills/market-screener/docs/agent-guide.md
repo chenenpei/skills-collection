@@ -50,6 +50,8 @@ npm run dev -- run \
 
 **Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。CN 银行缓存会包含 `bankScrape`，其披露 PDF 在运行时按 cninfo → 交易所 → Sina 优先级发现，不依赖静态 URL 表。
 
+**CN incremental enrich:** `--inherit-cache-from` is acceptable for opening a new quarter only when the source quarter cache was produced after the latest metric-source and quote schema fixes. It never replaces current quote refresh; verify `quoteHistory` contains the target quarter before sign-off.
+
 ### CN valuation cross-check (mandatory for Deep audit)
 
 Before using cache `quoteHistory.pe` / `pb` in valuation sections:

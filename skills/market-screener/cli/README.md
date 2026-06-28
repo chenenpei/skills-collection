@@ -51,6 +51,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 | `--allow-degraded` | off | Live CN only; permits low-confidence quote fallback when the quote source is unavailable. Never use for quarterly sign-off. |
 | `--quote-fallback-quarter` | — | Prior quarter containing `data/cache/{quarter}/CN/cn-quote-universe.json` for degraded quote fallback |
 | `--quote-fallback-fixtures-dir` | — | Fixture directory used only when `--allow-degraded` is set and live CN quote loading fails |
+| `--inherit-cache-from` | — | CN live only; seed stable annual/dividend/industry enrichment from a prior quarter while refreshing current quotes |
 
 ## Live adapter & enrichment (M3)
 
@@ -88,6 +89,8 @@ data/cache/{quarter}/{CN|US}/{ticker}.json
 - Empty financial responses are **not** cached (next run refetches).
 - Cache is keyed by quarter + market + ticker; safe to delete `data/cache/{quarter}/` to force a refresh.
 - Host in-flight caps: East Money datacenter 8, SEC 4 (in addition to `--enrich-concurrency`).
+
+Use `--inherit-cache-from 2026-Q1` when opening a new quarter to reuse stable CN annual/dividend/industry enrichment from the prior quarter. Current quote metrics and `quoteHistory` are still refreshed for the target quarter. Do not use inheritance when the prior quarter cache was produced before a metric-source or schema correction.
 
 ### Metric source hygiene (ADR 0005)
 
@@ -184,6 +187,8 @@ npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
 ```
 
 Re-runs `enrichCnRecord` for quote-prefilter survivors missing cache files or empty `annualRows`. Then re-run funnel or document residual tickers.
+
+`repair-enrich-cache.ts --inherit-cache-from 2026-Q1` seeds missing target-quarter CN cache entries from a prior quarter before falling back to live datacenter fetches.
 
 To purge polluted `quoteHistory` before a full re-enrich (e.g. after a quote-field mapping fix):
 

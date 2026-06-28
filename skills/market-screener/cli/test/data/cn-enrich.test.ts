@@ -5,6 +5,7 @@ import path from "node:path";
 import { readCache, writeCache } from "../../src/lib/cache.js";
 import {
   enrichCnRecord,
+  inheritCnEnrichPayload,
   mergeCnEnrichment,
 } from "../../src/data/cn/enrich.js";
 import { annualRowsNeedMetricRefresh } from "../../src/data/metrics.js";
@@ -25,6 +26,8 @@ vi.mock("../../src/data/cn/eastmoney.js", async (importOriginal) => {
 import {
   fetchCnAnnualRows,
   fetchCnSupplementalAnnualRows,
+  fetchCnIndustryProxy,
+  fetchCnDividendYield,
 } from "../../src/data/cn/eastmoney.js";
 
 const baseRecord: SecurityRecord = {
@@ -65,6 +68,42 @@ describe("annualRowsNeedMetricRefresh", () => {
   });
 });
 
+describe("inheritCnEnrichPayload", () => {
+  it("inherits stable annual/dividend/industry fields and prior quote history only", () => {
+    const inherited = inheritCnEnrichPayload({
+      annualRows: [{ year: 2024, revenue: 1, roic: 0.2, totalEquity: 100 }],
+      industryProxy: "食品饮料-白酒",
+      dividendYield: 0.025,
+      dividendYieldConfidence: "high",
+      quoteHistory: [{ quarter: "2026-Q1", pe: 18, pb: 6, asOf: "2026-04-01T00:00:00.000Z" }],
+      quoteHistorySchema: "eastmoney_f115_f23_v2",
+      bankScrape: {
+        fiscalYear: 2025,
+        metrics: { npl_ratio: 0.01 },
+        scrapedAt: "2026-04-01T00:00:00.000Z",
+        sourceUrls: ["https://static.cninfo.com.cn/finalpage/2025-03-26/report.PDF"],
+      },
+    });
+
+    expect(inherited).toEqual({
+      annualRows: [{ year: 2024, revenue: 1, roic: 0.2, totalEquity: 100 }],
+      industryProxy: "食品饮料-白酒",
+      dividendYield: 0.025,
+      dividendYieldConfidence: "high",
+      quoteHistory: [{ quarter: "2026-Q1", pe: 18, pb: 6, asOf: "2026-04-01T00:00:00.000Z" }],
+    });
+  });
+
+  it("does not inherit stale annual rows that need metric refresh", () => {
+    const inherited = inheritCnEnrichPayload({
+      annualRows: [{ year: 2024, revenue: 1 }],
+      industryProxy: "食品饮料-白酒",
+    });
+
+    expect(inherited).toBeUndefined();
+  });
+});
+
 describe("enrichCnRecord cache refresh", () => {
   let cacheDir: string;
 
@@ -72,6 +111,10 @@ describe("enrichCnRecord cache refresh", () => {
     cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "cn-enrich-cache-"));
     vi.mocked(fetchCnAnnualRows).mockReset();
     vi.mocked(fetchCnSupplementalAnnualRows).mockReset();
+    vi.mocked(fetchCnIndustryProxy).mockReset();
+    vi.mocked(fetchCnDividendYield).mockReset();
+    vi.mocked(fetchCnIndustryProxy).mockResolvedValue(undefined);
+    vi.mocked(fetchCnDividendYield).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -153,6 +196,60 @@ describe("enrichCnRecord cache refresh", () => {
     expect(fetchCnAnnualRows).not.toHaveBeenCalled();
     expect(fetchCnSupplementalAnnualRows).not.toHaveBeenCalled();
     expect(enriched.metrics.roic_ttm?.value).toBeCloseTo(0.31, 2);
+  });
+
+  it("inherits prior-quarter stable enrichment and refreshes current quote history", async () => {
+    await writeCache(cacheDir, "2026-Q1", "CN", "600519", {
+      annualRows: [
+        {
+          year: 2024,
+          revenue: 174e9,
+          grossProfit: 157e9,
+          netIncome: 86e9,
+          operatingCashFlow: 92e9,
+          roe: 0.36,
+          roic: 0.31,
+          totalEquity: 200e9,
+          totalLiabilities: 40e9,
+        },
+      ],
+      industryProxy: "食品饮料-白酒",
+      dividendYield: 0.02,
+      dividendYieldConfidence: "high",
+      quoteHistory: [{ quarter: "2026-Q1", pe: 18, pb: 6, asOf: "2026-04-01T00:00:00.000Z" }],
+    });
+
+    const enriched = await enrichCnRecord(
+      {
+        ...baseRecord,
+        metrics: {
+          price: { value: 1168.63, dataConfidence: "medium" },
+          pe_ttm: { value: 17.66, dataConfidence: "medium" },
+          pb: { value: 6.19, dataConfidence: "medium" },
+        },
+      },
+      {
+        cacheDir,
+        quarter: "2026-Q2",
+        skipCache: false,
+        inheritCacheFrom: "2026-Q1",
+      }
+    );
+
+    expect(fetchCnAnnualRows).not.toHaveBeenCalled();
+    expect(fetchCnSupplementalAnnualRows).not.toHaveBeenCalled();
+    expect(fetchCnIndustryProxy).not.toHaveBeenCalled();
+    expect(fetchCnDividendYield).not.toHaveBeenCalled();
+    expect(enriched.industryProxy).toBe("食品饮料-白酒");
+    expect(enriched.metrics.dividend_yield).toEqual({ value: 0.02, dataConfidence: "high" });
+
+    const cached = await readCache<{ quoteHistory: Array<{ quarter: string; pe?: number; pb?: number }> }>(
+      cacheDir,
+      "2026-Q2",
+      "CN",
+      "600519"
+    );
+    expect(cached?.quoteHistory.map((entry) => entry.quarter)).toEqual(["2026-Q1", "2026-Q2"]);
   });
 });
 

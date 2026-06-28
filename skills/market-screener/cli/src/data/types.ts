@@ -24,6 +24,8 @@ export interface EnrichOptions {
   specDir?: string;
   /** Wall-clock anchor for bank disclosure fiscal year; defaults to runtime Date. */
   now?: Date;
+  /** Prior quarter whose CN enrich cache can seed stable annual/dividend/industry fields. */
+  inheritCacheFrom?: string;
 }
 
 export interface EnrichRunStats {

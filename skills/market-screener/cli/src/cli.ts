@@ -45,6 +45,10 @@ export async function runCli(argv: string[]): Promise<void> {
     )
     .option("--quote-fallback-quarter <quarter>", "Prior quarter with a saved CN quote-universe snapshot")
     .option("--quote-fallback-fixtures-dir <dir>", "Fixture directory for degraded CN quote fallback")
+    .option(
+      "--inherit-cache-from <quarter>",
+      "Seed CN enrichment from a prior quarter cache while refreshing quotes"
+    )
     .action(async (opts: {
       markets: string;
       quarter: string;
@@ -57,6 +61,7 @@ export async function runCli(argv: string[]): Promise<void> {
       allowDegraded: boolean;
       quoteFallbackQuarter?: string;
       quoteFallbackFixturesDir?: string;
+      inheritCacheFrom?: string;
     }) => {
       const { runCommand } = await import("./commands/run.js");
       await runCommand({
@@ -67,6 +72,7 @@ export async function runCli(argv: string[]): Promise<void> {
         allowDegraded: Boolean(opts.allowDegraded),
         quoteFallbackQuarter: opts.quoteFallbackQuarter,
         quoteFallbackFixturesDir: opts.quoteFallbackFixturesDir,
+        inheritCacheFrom: opts.inheritCacheFrom,
       });
     });
 

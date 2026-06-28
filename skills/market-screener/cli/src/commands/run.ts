@@ -27,6 +27,7 @@ export interface RunCommandOptions {
   allowDegraded?: boolean;
   quoteFallbackQuarter?: string;
   quoteFallbackFixturesDir?: string;
+  inheritCacheFrom?: string;
 }
 
 export async function runCommand(opts: RunCommandOptions): Promise<void> {
@@ -50,6 +51,7 @@ export async function runCommand(opts: RunCommandOptions): Promise<void> {
     killGates: bundle.killGates,
     progress,
     specDir: path.resolve(opts.spec),
+    inheritCacheFrom: opts.inheritCacheFrom,
   };
 
   if (adapterKind === "live" && markets.includes("CN") && !opts.skipPreflight) {
