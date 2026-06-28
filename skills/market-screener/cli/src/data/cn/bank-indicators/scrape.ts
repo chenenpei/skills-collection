@@ -34,7 +34,7 @@ export async function scrapeBankIndicators(
     metrics,
     rawHits: { ...sinaExtract.rawHits, ...pdfExtract.rawHits },
     missing: [...missing],
-    sourceUrls: [entry.sinaUrl, entry.pdfUrl],
+    sourceUrls: [entry.sinaUrl, entry.pdfUrl].filter((url): url is string => url !== undefined),
     dataConfidence: missing.length <= 1 ? "medium" : "low",
     scrapedAt: new Date().toISOString(),
     bulletinTitle: entry.name,

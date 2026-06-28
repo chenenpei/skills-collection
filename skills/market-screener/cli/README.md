@@ -62,7 +62,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 
 | Market | Enrichment sources |
 |--------|-------------------|
-| CN | East Money datacenter annual (`RPT_*`) + orginfo industry proxy; CN banks add runtime Sina annual-report discovery + disclosure PDF scrape |
+| CN | East Money datacenter annual (`RPT_*`) + orginfo industry proxy; CN banks add runtime annual-report discovery (cninfo → SSE/SZSE → Sina fallback) + disclosure PDF scrape |
 | US | SEC EDGAR `companyfacts` + `submissions` industry proxy (CIK resolved via SEC ticker map) |
 
 ### CN bank disclosure debug
@@ -71,7 +71,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 npm run dev -- bank-indicators 600919 --year 2025
 ```
 
-The command uses the same runtime Sina discovery and disclosure scrape path as live CN bank enrichment. It does not require `--spec`.
+The command uses the same runtime disclosure discovery path as live CN bank enrichment (cninfo → exchange → Sina). It does not require `--spec`.
 
 Enrichment runs only with `--adapter live`. The fixture adapter ships pre-enriched JSON and skips network enrichment.
 
