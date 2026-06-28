@@ -37,6 +37,7 @@ export async function runCli(argv: string[]): Promise<void> {
       "4"
     )
     .option("--skip-cache", "Ignore enrichment disk cache", false)
+    .option("--skip-preflight", "Skip live CN data-source preflight", false)
     .action(async (opts: {
       markets: string;
       quarter: string;
@@ -45,12 +46,14 @@ export async function runCli(argv: string[]): Promise<void> {
       adapter: "fixture" | "live";
       enrichConcurrency: string;
       skipCache: boolean;
+      skipPreflight: boolean;
     }) => {
       const { runCommand } = await import("./commands/run.js");
       await runCommand({
         ...opts,
         enrichConcurrency: Number.parseInt(opts.enrichConcurrency, 10),
         skipCache: Boolean(opts.skipCache),
+        skipPreflight: Boolean(opts.skipPreflight),
       });
     });
 

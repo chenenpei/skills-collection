@@ -1,5 +1,5 @@
 import type { SecurityRecord } from "../../funnel/kill-gates.js";
-import { EASTMONEY_UT } from "./eastmoney.js";
+import { getEastMoneyUt } from "./eastmoney.js";
 import { httpFetch } from "../../lib/http-fetch.js";
 import type { ProgressLogger } from "../../lib/progress.js";
 import type { Market } from "../../funnel/types.js";
@@ -51,6 +51,65 @@ const CLIST_FIELDS = [
 
 const PE_PRICE_TOLERANCE = 0.01;
 const PB_CEILING = 15;
+
+export const CN_QUOTE_ANCHOR_TICKERS = ["603195", "600519", "600919"] as const;
+
+export interface CnQuoteIntegrityReport {
+  universe_count: number;
+  pe_ttm_present_rate: number;
+  pb_present_rate: number;
+  market_cap_present_rate: number;
+  pe_equals_price_rate: number;
+}
+
+const INTEGRITY = {
+  minCount: 5200,
+  maxCount: 6200,
+  minCapRate: 0.99,
+  maxPeEqualsPriceRate: 0.001,
+};
+
+export function buildCnQuoteIntegrityReport(records: SecurityRecord[]): CnQuoteIntegrityReport {
+  const n = records.length;
+  let pePresent = 0;
+  let pbPresent = 0;
+  let capPresent = 0;
+  let peEqualsPrice = 0;
+
+  for (const r of records) {
+    const price = r.metrics.price?.value;
+    const pe = r.metrics.pe_ttm?.value;
+    const pb = r.metrics.pb?.value;
+    if (pe !== undefined && pe > 0) pePresent += 1;
+    if (pb !== undefined && pb > 0) pbPresent += 1;
+    if (r.marketCap > 0) capPresent += 1;
+    if (price !== undefined && pe !== undefined && price > 0 && Math.abs(pe - price) / price <= PE_PRICE_TOLERANCE) {
+      peEqualsPrice += 1;
+    }
+  }
+
+  return {
+    universe_count: n,
+    pe_ttm_present_rate: n ? pePresent / n : 0,
+    pb_present_rate: n ? pbPresent / n : 0,
+    market_cap_present_rate: n ? capPresent / n : 0,
+    pe_equals_price_rate: n ? peEqualsPrice / n : 0,
+  };
+}
+
+export function assertCnQuoteUniverseIntegrity(records: SecurityRecord[]): CnQuoteIntegrityReport {
+  const report = buildCnQuoteIntegrityReport(records);
+  if (report.universe_count < INTEGRITY.minCount || report.universe_count > INTEGRITY.maxCount) {
+    throw new Error(`CN quote integrity: universe_count=${report.universe_count} outside [5200,6200]`);
+  }
+  if (report.market_cap_present_rate < INTEGRITY.minCapRate) {
+    throw new Error(`CN quote integrity: market_cap_present_rate=${report.market_cap_present_rate}`);
+  }
+  if (report.pe_equals_price_rate > INTEGRITY.maxPeEqualsPriceRate) {
+    throw new Error(`CN quote integrity: pe_equals_price_rate=${report.pe_equals_price_rate}`);
+  }
+  return report;
+}
 
 /** East Money caps each page well below requested pz; paginate explicitly. */
 const PAGE_SIZE = 100;
@@ -106,7 +165,7 @@ export function sanitizeCnQuoteMetrics(
   return { metrics: next, warnings };
 }
 
-function buildListUrl(page: number, pageSize: number): string {
+function buildListUrl(page: number, pageSize: number, ut: string): string {
   const params = new URLSearchParams({
     pn: String(page),
     pz: String(pageSize),
@@ -115,7 +174,7 @@ function buildListUrl(page: number, pageSize: number): string {
     fltt: "2",
     invt: "2",
     fid: "f12",
-    ut: EASTMONEY_UT,
+    ut,
     fs: A_SHARE_FS,
     fields: CLIST_FIELDS,
   });
@@ -190,8 +249,8 @@ function mapRowToSecurityRecord(row: EastMoneyRow): SecurityRecord {
   });
 }
 
-async function fetchPage(page: number): Promise<{ rows: EastMoneyRow[]; total: number }> {
-  const url = buildListUrl(page, PAGE_SIZE);
+async function fetchPage(page: number, ut: string): Promise<{ rows: EastMoneyRow[]; total: number }> {
+  const url = buildListUrl(page, PAGE_SIZE, ut);
   let res: Response;
   try {
     res = await httpFetch(url, { headers: REQUEST_HEADERS });
@@ -208,14 +267,35 @@ async function fetchPage(page: number): Promise<{ rows: EastMoneyRow[]; total: n
   return { rows, total };
 }
 
+export async function probeCnQuotes(tickers: string[] = [...CN_QUOTE_ANCHOR_TICKERS]): Promise<void> {
+  const records = await loadCnQuotesByTickers(tickers);
+  if (records.length !== tickers.length) {
+    const found = new Set(records.map((r) => r.ticker));
+    const missing = tickers.filter((t) => !found.has(t));
+    throw new Error(`CN quote preflight: missing tickers ${missing.join(", ")}`);
+  }
+  for (const r of records) {
+    const pe = r.metrics.pe_ttm?.value;
+    const pb = r.metrics.pb?.value;
+    const price = r.metrics.price?.value;
+    if (pe === undefined || pb === undefined || price === undefined) {
+      throw new Error(`CN quote preflight: ${r.ticker} missing pe/pb/price`);
+    }
+    if (Math.abs(pe - price) / price <= PE_PRICE_TOLERANCE) {
+      throw new Error(`CN quote preflight: ${r.ticker} pe equals price (${pe})`);
+    }
+  }
+}
+
 /** Fetch quote records for specific tickers; stops paging once all are found. */
 export async function loadCnQuotesByTickers(tickers: string[]): Promise<SecurityRecord[]> {
+  const ut = await getEastMoneyUt();
   const pending = new Set(tickers);
   const found = new Map<string, SecurityRecord>();
   let page = 1;
 
   while (pending.size > 0 && page <= 200 && found.size < tickers.length) {
-    const { rows } = await fetchPage(page);
+    const { rows } = await fetchPage(page, ut);
     if (rows.length === 0) break;
 
     for (const row of rows) {
@@ -241,6 +321,7 @@ export function createCnEastMoneyAdapter(_opts: { cacheDir: string }): MarketDat
     ): Promise<SecurityRecord[]> {
       if (!markets.includes("CN")) return [];
 
+      const ut = await getEastMoneyUt();
       const progress = opts?.progress;
       progress?.phase("Fetching CN quote list from East Money…");
 
@@ -249,7 +330,7 @@ export function createCnEastMoneyAdapter(_opts: { cacheDir: string }): MarketDat
       let total = Number.POSITIVE_INFINITY;
 
       while (records.length < total) {
-        const { rows, total: reportedTotal } = await fetchPage(page);
+        const { rows, total: reportedTotal } = await fetchPage(page, ut);
         total = reportedTotal;
 
         if (rows.length === 0) break;

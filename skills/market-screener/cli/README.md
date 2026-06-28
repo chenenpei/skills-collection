@@ -47,6 +47,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 | `--adapter` | `fixture` | `fixture` (offline) or `live` (network) |
 | `--enrich-concurrency` | `4` | Parallel enrichment tickers (live only; each may issue 2 HTTP calls) |
 | `--skip-cache` | off | Ignore enrichment disk cache — no read or write (live only) |
+| `--skip-preflight` | off | Live CN only; bypasses quote/datacenter preflight. Use only when diagnosing a known source outage. |
 
 ## Live adapter & enrichment (M3)
 
@@ -106,6 +107,7 @@ Offline and live end-to-end checks live in `scripts/` and are **not** part of `n
 | Live E2E | `npm run e2e:live` | Real-network live run (default: CN, `2026-Q1`) |
 | Live E2E (full) | `npm run e2e:live:full` | CN+US live run with enrichment assertions |
 | CN quote smoke | `npx tsx scripts/test-cn-quote-snapshot.ts` | Live East Money PE/PB mapping for 603195/600519/600919 |
+| CN preflight smoke | `npx tsx scripts/test-cn-preflight.ts` | Live East Money quote anchors + datacenter annual-row probe |
 | US quote smoke | `npx tsx scripts/test-yahoo-universe.ts` | Live Yahoo universe fetch timing + top-5 sample |
 
 Pass extra args through to the live script:

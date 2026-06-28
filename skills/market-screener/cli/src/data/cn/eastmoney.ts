@@ -1,5 +1,8 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { withHostLimit } from "../../lib/host-limit.js";
 import { httpFetch } from "../../lib/http-fetch.js";
+import { DEFAULT_CACHE_DIR } from "../../lib/paths.js";
 import type { DataConfidence } from "../../funnel/types.js";
 import type { AnnualFinancialRow } from "../metrics.js";
 
@@ -8,7 +11,14 @@ export const EASTMONEY_DATACENTER_BASE =
 
 export const EASTMONEY_DATACENTER_HOST = "datacenter-web.eastmoney.com";
 export const EASTMONEY_QUOTE_HOST = "push2delay.eastmoney.com";
-export const EASTMONEY_UT = "bd1d9ddb04089700cf9c27f6f7426281";
+export const EASTMONEY_UT_FALLBACK = "bd1d9ddb04089700cf9c27f6f7426281";
+export const EASTMONEY_UT = EASTMONEY_UT_FALLBACK;
+
+const UT_CACHE_FILE = path.join(DEFAULT_CACHE_DIR, ".eastmoney-ut.json");
+const UT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+type UtCache = { ut: string; fetchedAt: string };
+type FetchText = (url: string) => Promise<string>;
 
 const CASHFLOW_REPORT = "RPT_DMSK_FN_CASHFLOW";
 const BALANCE_REPORT = "RPT_DMSK_FN_BALANCE";
@@ -36,6 +46,61 @@ export async function fetchEastMoneyDatacenter(params: URLSearchParams): Promise
       headers: EASTMONEY_F10_HEADERS,
     })
   );
+}
+
+export function extractEastMoneyUt(text: string): string | undefined {
+  const match =
+    text.match(/ut["']?\s*[:=]\s*["']([a-f0-9]{32})["']/i) ??
+    text.match(/["']ut["']\s*:\s*["']([a-f0-9]{32})["']/i);
+  return match?.[1];
+}
+
+async function defaultFetchText(url: string): Promise<string> {
+  const res = await httpFetch(url, { headers: EASTMONEY_QUOTE_HEADERS });
+  if (!res.ok) throw new Error(`East Money token fetch failed: ${res.status}`);
+  return res.text();
+}
+
+async function readUtCache(cacheFile: string, now: Date): Promise<string | undefined> {
+  try {
+    const parsed = JSON.parse(await fs.readFile(cacheFile, "utf8")) as UtCache;
+    const fetchedAt = new Date(parsed.fetchedAt).getTime();
+    if (/^[a-f0-9]{32}$/i.test(parsed.ut) && now.getTime() - fetchedAt < UT_CACHE_TTL_MS) {
+      return parsed.ut;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function resolveEastMoneyUt(opts?: {
+  forceRefresh?: boolean;
+  fetchText?: FetchText;
+  now?: Date;
+  cacheFile?: string;
+}): Promise<string> {
+  const now = opts?.now ?? new Date();
+  const cacheFile = opts?.cacheFile ?? UT_CACHE_FILE;
+  if (!opts?.forceRefresh) {
+    const cached = await readUtCache(cacheFile, now);
+    if (cached) return cached;
+  }
+
+  try {
+    const text = await (opts?.fetchText ?? defaultFetchText)("https://quote.eastmoney.com/");
+    const ut = extractEastMoneyUt(text);
+    if (!ut) return EASTMONEY_UT_FALLBACK;
+    await fs.mkdir(path.dirname(cacheFile), { recursive: true });
+    await fs.writeFile(cacheFile, JSON.stringify({ ut, fetchedAt: now.toISOString() }, null, 2), "utf8");
+    return ut;
+  } catch {
+    return EASTMONEY_UT_FALLBACK;
+  }
+}
+
+export async function getEastMoneyUt(): Promise<string> {
+  return resolveEastMoneyUt();
 }
 
 export type CnDividendBonusRow = {
@@ -309,4 +374,11 @@ export async function fetchCnIndustryProxy(ticker: string): Promise<string | und
   const body = (await res.json()) as { result?: { data?: OrgRow[] } };
   const row = body.result?.data?.[0];
   return row ? parseEastMoneyIndustry(row) : undefined;
+}
+
+export async function probeCnDatacenter(ticker = "600519"): Promise<void> {
+  const rows = await fetchCnAnnualRows(ticker);
+  if (rows.length === 0) {
+    throw new Error(`CN datacenter preflight: no annual rows for ${ticker}`);
+  }
 }

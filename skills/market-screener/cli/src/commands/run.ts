@@ -1,6 +1,8 @@
 import path from "node:path";
 import { createAdapter } from "../data/registry.js";
 import { listEnrichCacheGaps } from "../lib/cache.js";
+import { assertCnQuoteUniverseIntegrity, probeCnQuotes } from "../data/cn/quotes.js";
+import { probeCnDatacenter } from "../data/cn/eastmoney.js";
 import { runFunnel } from "../funnel/run.js";
 import { parseMarkets } from "../lib/markets.js";
 import { DEFAULT_CACHE_DIR } from "../lib/paths.js";
@@ -21,6 +23,7 @@ export interface RunCommandOptions {
   fixturesDir?: string;
   enrichConcurrency?: number;
   skipCache?: boolean;
+  skipPreflight?: boolean;
 }
 
 export async function runCommand(opts: RunCommandOptions): Promise<void> {
@@ -42,9 +45,23 @@ export async function runCommand(opts: RunCommandOptions): Promise<void> {
     specDir: path.resolve(opts.spec),
   };
 
+  if (adapterKind === "live" && markets.includes("CN") && !opts.skipPreflight) {
+    progress.phase("Preflight: CN data sources…");
+    await probeCnDatacenter();
+    await probeCnQuotes();
+  }
+
   progress.phase(`Adapter: ${adapterKind} — loading ${marketScope} universe…`);
   let universe = await adapter.loadUniverse(markets, { progress });
   progress.phase(`Loaded ${universe.length} securities`);
+
+  const cnRecords = universe.filter((r) => r.market === "CN");
+  if (adapterKind === "live" && cnRecords.length > 0) {
+    const report = assertCnQuoteUniverseIntegrity(cnRecords);
+    progress.phase(
+      `CN quote integrity OK (${report.universe_count} tickers, PE ${(report.pe_ttm_present_rate * 100).toFixed(1)}%, PB ${(report.pb_present_rate * 100).toFixed(1)}%)`
+    );
+  }
 
   let prefilterExcluded: typeof universe = [];
   let enrichStatsByMarket: Partial<Record<Market, EnrichRunStats>> | undefined;
