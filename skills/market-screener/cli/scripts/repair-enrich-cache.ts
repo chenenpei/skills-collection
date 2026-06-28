@@ -22,6 +22,7 @@ const { values } = parseArgs({
     "purge-quote-history": { type: "boolean", default: false },
     "dry-run": { type: "boolean", default: false },
     backup: { type: "boolean", default: false },
+    "inherit-cache-from": { type: "string" },
   },
 });
 
@@ -77,6 +78,7 @@ async function main(): Promise<void> {
   const forceAll = values["force-all"] === true;
   const purgeQuoteHistory = values["purge-quote-history"] === true;
   const dryRun = values["dry-run"] === true;
+  const inheritCacheFrom = values["inherit-cache-from"];
 
   if (purgeQuoteHistory) {
     await purgeCnQuoteHistory({
@@ -120,6 +122,7 @@ async function main(): Promise<void> {
     skipCache: false,
     killGates: bundle.killGates,
     specDir: path.resolve(values.spec!),
+    inheritCacheFrom,
   };
 
   await mapPool(

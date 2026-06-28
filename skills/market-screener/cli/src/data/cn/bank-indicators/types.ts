@@ -7,13 +7,16 @@ export type BankScrapeField =
 
 export type BankScrapeMetrics = Partial<Record<BankScrapeField, number>>;
 
+export type BankBulletinSourceTier = "cninfo" | "sse" | "szse" | "sina_ndbg";
+
 export type BankBulletinEntry = {
   ticker: string;
   fiscalYear: number;
   name: string;
-  sinaUrl: string;
+  sinaUrl?: string;
   pdfUrl: string;
   pdfTier: "cninfo_pdf" | "szse_disclosure_pdf" | "sse_mirror_pdf";
+  sourceTier: BankBulletinSourceTier;
 };
 
 export type BankScrapeResult = {

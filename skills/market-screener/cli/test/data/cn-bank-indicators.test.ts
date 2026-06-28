@@ -5,7 +5,7 @@ import path from "node:path";
 vi.mock("../../src/lib/http-fetch.js", () => ({
   httpFetch: vi.fn(async (url: string) => {
     if (url.endsWith(".PDF") || url.includes(".PDF")) {
-      return new Response(Buffer.from("%PDF mock"), { status: 200 });
+      return new Response(MOCK_PDF_BYTES, { status: 200 });
     }
     return new Response("<html>不良贷款率0.95%</html>", { status: 200 });
   }),
@@ -18,12 +18,26 @@ vi.mock("pdf-parse", () => ({
   })),
 }));
 
+import { httpFetch } from "../../src/lib/http-fetch.js";
 import { extractBankMetricsFromText } from "../../src/data/cn/bank-indicators/extract.js";
-import { fetchDisclosureTexts, mergeBankScrapeSources } from "../../src/data/cn/bank-indicators/fetch.js";
 import {
+  fetchDisclosureTexts,
+  isPdfBuffer,
+  mergeBankScrapeSources,
+} from "../../src/data/cn/bank-indicators/fetch.js";
+import {
+  buildCninfoAnnouncementUrl,
+  buildSseDisclosureUrl,
+  buildSzseDisclosureRequest,
+  discoverBankBulletin,
   extractPdfUrlFromDetailHtml,
+  inferExchangeSourceTier,
+  parseCninfoAnnouncements,
+  parseExchangeDisclosureRows,
   parseSinaBulletinList,
   pickAnnualReportBulletin,
+  pickCninfoAnnualReport,
+  pickExchangeAnnualReport,
   resolveSinaUrl,
   scoreAnnualReportTitle,
 } from "../../src/data/cn/bank-indicators/discover.js";
@@ -36,6 +50,8 @@ import type { BankBulletinEntry } from "../../src/data/cn/bank-indicators/types.
 const fixture = (name: string) =>
   fs.readFileSync(path.join(import.meta.dirname, "fixtures", name), "utf8");
 
+const MOCK_PDF_BYTES = Buffer.from("%PDF-1.4\n%mock");
+
 const SINA_HOST = "http://vip.stock.finance.sina.com.cn";
 
 const sampleEntry: BankBulletinEntry = {
@@ -47,6 +63,7 @@ const sampleEntry: BankBulletinEntry = {
   pdfUrl:
     "http://file.finance.sina.com.cn/211.154.219.97:9494/MRGG/CNSESH_STOCK/2025/2025-3/2025-03-26/10806393.PDF",
   pdfTier: "sse_mirror_pdf",
+  sourceTier: "sina_ndbg",
 };
 
 const LIST_HTML = `
@@ -54,6 +71,15 @@ const LIST_HTML = `
 2025-03-28&nbsp;<a target='_blank' href='/corp/view/vCB_AllBulletinDetail.php?stockid=601398&id=10826900'>工商银行2024年度报告摘要</a><br>
 2024-03-28&nbsp;<a target='_blank' href='/corp/view/vCB_AllBulletinDetail.php?stockid=601398&id=9000001'>工商银行2023年度报告</a><br>
 `;
+
+const PDF_BYTES = MOCK_PDF_BYTES;
+
+describe("disclosure PDF probe", () => {
+  it("detects PDF magic bytes", () => {
+    expect(isPdfBuffer(PDF_BYTES)).toBe(true);
+    expect(isPdfBuffer(Buffer.from("<html></html>"))).toBe(false);
+  });
+});
 
 describe("extractBankMetricsFromText", () => {
   it("extracts CMB FY2024 regulatory core from fixture text", () => {
@@ -113,6 +139,20 @@ describe("fetchDisclosureTexts", () => {
     expect(sinaText).toContain("不良贷款率0.95%");
     expect(pdfText).toContain("资本充足率");
   });
+
+  it("returns pdf text when sinaUrl is absent", async () => {
+    const entry: BankBulletinEntry = {
+      ticker: "600036",
+      fiscalYear: 2024,
+      name: "招商银行2024年度报告",
+      pdfUrl: "http://static.cninfo.com.cn/finalpage/2025-03-26/report.PDF",
+      pdfTier: "cninfo_pdf",
+      sourceTier: "cninfo",
+    };
+    const { sinaText, pdfText } = await fetchDisclosureTexts(entry);
+    expect(sinaText).toBe("");
+    expect(pdfText).toContain("资本充足率");
+  });
 });
 
 describe("discoverBankBulletin helpers", () => {
@@ -134,6 +174,161 @@ describe("discoverBankBulletin helpers", () => {
         '<a href="http://static.cninfo.com.cn/finalpage/2025-03-29/1222948910.PDF">pdf</a>'
       )
     ).toContain("1222948910.PDF");
+  });
+});
+
+describe("cninfo announcement parsing", () => {
+  it("builds a cninfo search URL for annual reports", () => {
+    const url = buildCninfoAnnouncementUrl("600036", 2024);
+    expect(url).toContain("stock=600036");
+    expect(url).toContain("category_ndbg_szsh");
+    expect(url).toContain("pageNum=1");
+  });
+
+  it("picks the FY annual report and rejects summaries/corrections", () => {
+    const rows = parseCninfoAnnouncements({
+      announcements: [
+        {
+          announcementTitle: "招商银行2024年年度报告摘要",
+          adjunctUrl: "finalpage/2025-03-26/summary.PDF",
+        },
+        {
+          announcementTitle: "招商银行2024年年度报告",
+          adjunctUrl: "finalpage/2025-03-26/report.PDF",
+        },
+        {
+          announcementTitle: "招商银行2024年年度报告更正公告",
+          adjunctUrl: "finalpage/2025-03-27/fix.PDF",
+        },
+      ],
+    });
+
+    const picked = pickCninfoAnnualReport(rows, 2024);
+    expect(picked?.pdfUrl).toBe("http://static.cninfo.com.cn/finalpage/2025-03-26/report.PDF");
+    expect(picked?.sourceTier).toBe("cninfo");
+  });
+});
+
+describe("exchange disclosure parsing", () => {
+  it("uses SSE for 6-prefix tickers and SZSE for other tickers", () => {
+    expect(inferExchangeSourceTier("600036")).toBe("sse");
+    expect(inferExchangeSourceTier("000001")).toBe("szse");
+    expect(buildSseDisclosureUrl("600036", 2024)).toContain(
+      "https://query.sse.com.cn/security/stock/queryCompanyBulletin.do"
+    );
+    expect(buildSseDisclosureUrl("600036", 2024)).toContain("reportType=YEARLY");
+
+    const szse = buildSzseDisclosureRequest("000001", 2024);
+    expect(szse.url).toBe("https://www.szse.cn/api/disc/announcement/annList");
+    expect(szse.body).toEqual({
+      seDate: ["2025-01-01", "2025-12-31"],
+      channelCode: ["fixed_disc"],
+      bigCategoryId: ["010301"],
+      stock: ["000001"],
+      pageSize: 30,
+      pageNum: 1,
+    });
+  });
+
+  it("picks annual report rows from exchange JSON-like payloads", () => {
+    const rows = parseExchangeDisclosureRows(
+      [
+        {
+          title: "平安银行2024年年度报告摘要",
+          url: "https://disc.static.szse.cn/download/summary.PDF",
+        },
+        {
+          title: "平安银行2024年年度报告",
+          url: "https://disc.static.szse.cn/download/report.PDF",
+        },
+      ],
+      "000001"
+    );
+
+    const picked = pickExchangeAnnualReport(rows, 2024);
+    expect(picked?.pdfUrl).toBe("https://disc.static.szse.cn/download/report.PDF");
+    expect(picked?.sourceTier).toBe("szse");
+  });
+});
+
+describe("discoverBankBulletin priority", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("discovers cninfo before Sina when cninfo has the annual report", async () => {
+    vi.mocked(httpFetch).mockImplementation(async (url: string) => {
+      if (url.includes("static.cninfo.com.cn")) {
+        return new Response(PDF_BYTES, { status: 200 });
+      }
+      if (url.includes("hisAnnouncement/query")) {
+        return new Response(
+          JSON.stringify({
+            announcements: [
+              {
+                announcementTitle: "招商银行2024年年度报告",
+                adjunctUrl: "finalpage/2025-03-26/report.PDF",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      throw new Error(`unexpected URL ${url}`);
+    });
+
+    const entry = await discoverBankBulletin("600036", 2024);
+    expect(entry.sourceTier).toBe("cninfo");
+    expect(entry.pdfUrl).toBe("http://static.cninfo.com.cn/finalpage/2025-03-26/report.PDF");
+    expect(entry.sinaUrl).toBeUndefined();
+  });
+
+  it("falls back to Sina when exchange PDF URL returns HTML", async () => {
+    const gbkListHtml = fs.readFileSync(
+      path.join(import.meta.dirname, "fixtures", "sina-bank-600919-ndbg.gbk")
+    );
+
+    vi.mocked(httpFetch).mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes("static.cninfo.com.cn") || url.includes("12263611.PDF")) {
+        return new Response(PDF_BYTES, { status: 200 });
+      }
+      if (url.includes("hisAnnouncement/query")) {
+        return new Response(JSON.stringify({ announcements: [] }), { status: 200 });
+      }
+      if (url.includes("query.sse.com.cn")) {
+        return new Response(
+          JSON.stringify({
+            result: [
+              {
+                TITLE: "江苏银行2024年度报告",
+                URL: "/disclosure/listedinfo/announcement/c/new/2026-04-29/600919_20260429_X7YV.pdf",
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("600919_20260429_X7YV.pdf")) {
+        return new Response("<html>not a pdf</html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+      if (url.includes("page_type/ndbg.phtml")) {
+        return new Response(gbkListHtml, { status: 200 });
+      }
+      if (url.includes("vCB_AllBulletinDetail.php?stockid=600919")) {
+        return new Response(
+          '<a href="http://file.finance.sina.com.cn/MRGG/CNSESH_STOCK/2026/2026-4/2026-04-29/12263611.PDF">pdf</a>',
+          { status: 200 }
+        );
+      }
+      throw new Error(`unexpected URL ${url} ${init?.method ?? "GET"}`);
+    });
+
+    const entry = await discoverBankBulletin("600919", 2024);
+    expect(entry.sourceTier).toBe("sina_ndbg");
+    expect(entry.pdfUrl).toContain("12263611.PDF");
   });
 });
 

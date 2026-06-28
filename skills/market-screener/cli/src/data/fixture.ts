@@ -3,7 +3,7 @@ import path from "node:path";
 import type { SecurityRecord } from "../funnel/kill-gates.js";
 import type { Market } from "../funnel/types.js";
 import { DEFAULT_FIXTURES_DIR } from "../lib/paths.js";
-import type { MarketDataAdapter } from "./types.js";
+import type { LoadUniverseOptions, MarketDataAdapter } from "./types.js";
 
 async function loadFixtureFile(
   fixturesDir: string,
@@ -25,7 +25,7 @@ export function createFixtureAdapter(fixturesDir = DEFAULT_FIXTURES_DIR): Market
   return {
     async loadUniverse(
       markets: Market[],
-      _opts?: { progress?: import("../lib/progress.js").ProgressLogger }
+      _opts?: LoadUniverseOptions
     ): Promise<SecurityRecord[]> {
       const records: SecurityRecord[] = [];
       for (const market of markets) {

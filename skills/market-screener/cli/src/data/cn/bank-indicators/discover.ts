@@ -1,5 +1,6 @@
 import { withHostLimit } from "../../../lib/host-limit.js";
 import { httpFetch } from "../../../lib/http-fetch.js";
+import { fetchDisclosurePdfBytes } from "./pdf-bytes.js";
 import { decodeSinaBuffer } from "./normalize.js";
 import type { BankBulletinEntry } from "./types.js";
 
@@ -10,6 +11,7 @@ const SINA_HOSTS = [
 
 const SINA_HOST = "finance.sina.com.cn";
 const SINA_MAX_CONCURRENT = 4;
+const CNINFO_QUERY_URL = "http://www.cninfo.com.cn/new/hisAnnouncement/query";
 
 const HEADERS = {
   "User-Agent":
@@ -27,6 +29,25 @@ export type SinaBulletinCandidate = {
   href: string;
   title: string;
   score: number;
+};
+
+type CninfoAnnouncement = {
+  announcementTitle?: string;
+  adjunctUrl?: string;
+};
+
+export type CninfoAnnualReportCandidate = {
+  name: string;
+  pdfUrl: string;
+  sourceTier: "cninfo";
+};
+
+type ExchangeDisclosureRow = { title?: string; url?: string };
+
+export type ExchangeAnnualReportCandidate = {
+  name: string;
+  pdfUrl: string;
+  sourceTier: "sse" | "szse";
 };
 
 export function scoreAnnualReportTitle(title: string, fiscalYear: number): number {
@@ -81,6 +102,118 @@ export function extractPdfUrlFromDetailHtml(html: string): string | undefined {
   return matches[0]!;
 }
 
+function disclosurePublishYear(fiscalYear: number): number {
+  return fiscalYear + 1;
+}
+
+export function buildCninfoAnnouncementUrl(ticker: string, fiscalYear: number): string {
+  return `${CNINFO_QUERY_URL}?${cninfoAnnouncementParams(ticker, fiscalYear).toString()}`;
+}
+
+function cninfoAnnouncementParams(ticker: string, fiscalYear: number): URLSearchParams {
+  return new URLSearchParams({
+    stock: ticker,
+    searchkey: `${fiscalYear} 年度报告`,
+    category: "category_ndbg_szsh",
+    pageNum: "1",
+    pageSize: "30",
+    column: "szse",
+    tabName: "fulltext",
+  });
+}
+
+export function parseCninfoAnnouncements(body: {
+  announcements?: CninfoAnnouncement[];
+}): CninfoAnnualReportCandidate[] {
+  return (body.announcements ?? [])
+    .filter((row) => row.announcementTitle && row.adjunctUrl)
+    .map((row) => ({
+      name: String(row.announcementTitle),
+      pdfUrl: `http://static.cninfo.com.cn/${String(row.adjunctUrl).replace(/^\/+/, "")}`,
+      sourceTier: "cninfo" as const,
+    }));
+}
+
+export function pickCninfoAnnualReport(
+  rows: CninfoAnnualReportCandidate[],
+  fiscalYear: number
+): CninfoAnnualReportCandidate | undefined {
+  return rows.find((row) => scoreAnnualReportTitle(row.name, fiscalYear) > 0);
+}
+
+export function inferExchangeSourceTier(ticker: string): "sse" | "szse" {
+  return ticker.startsWith("6") ? "sse" : "szse";
+}
+
+export function buildSseDisclosureUrl(ticker: string, fiscalYear: number): string {
+  const publishYear = disclosurePublishYear(fiscalYear);
+  const params = new URLSearchParams({
+    isPagination: "true",
+    productId: ticker,
+    keyWord: "",
+    securityType: "0101,120100,020100,020200,120200",
+    reportType2: "DQBG",
+    reportType: "YEARLY",
+    beginDate: `${publishYear}-01-01`,
+    endDate: `${publishYear}-12-31`,
+    "pageHelp.pageSize": "25",
+    "pageHelp.pageNo": "1",
+    "pageHelp.beginPage": "1",
+    "pageHelp.cacheSize": "1",
+    "pageHelp.endPage": "5",
+  });
+  return `https://query.sse.com.cn/security/stock/queryCompanyBulletin.do?${params.toString()}`;
+}
+
+export function buildSzseDisclosureRequest(
+  ticker: string,
+  fiscalYear: number
+): {
+  url: string;
+  body: {
+    seDate: [string, string];
+    channelCode: ["fixed_disc"];
+    bigCategoryId: ["010301"];
+    stock: [string];
+    pageSize: 30;
+    pageNum: 1;
+  };
+} {
+  const publishYear = disclosurePublishYear(fiscalYear);
+  return {
+    url: "https://www.szse.cn/api/disc/announcement/annList",
+    body: {
+      seDate: [`${publishYear}-01-01`, `${publishYear}-12-31`],
+      channelCode: ["fixed_disc"],
+      bigCategoryId: ["010301"],
+      stock: [ticker],
+      pageSize: 30,
+      pageNum: 1,
+    },
+  };
+}
+
+export function parseExchangeDisclosureRows(
+  rows: ExchangeDisclosureRow[],
+  ticker: string
+): ExchangeAnnualReportCandidate[] {
+  const sourceTier = inferExchangeSourceTier(ticker);
+  return rows
+    .filter((row) => row.title && row.url)
+    .map((row) => ({
+      name: String(row.title),
+      pdfUrl: String(row.url),
+      sourceTier,
+    }));
+}
+
+export function pickExchangeAnnualReport(
+  rows: ExchangeAnnualReportCandidate[],
+  fiscalYear: number
+): ExchangeAnnualReportCandidate | undefined {
+  return rows.find((row) => scoreAnnualReportTitle(row.name, fiscalYear) > 0);
+}
+
 async function fetchText(url: string): Promise<string> {
   return withHostLimit(SINA_HOST, SINA_MAX_CONCURRENT, async () => {
     const res = await httpFetch(url, { headers: HEADERS });
@@ -114,11 +247,90 @@ async function loadSinaBulletinList(ticker: string): Promise<{
   return best;
 }
 
-/** Resolve FY annual-report disclosure URLs via Sina ndbg list + detail page. */
-export async function discoverBankBulletin(
+async function discoverCninfoBulletin(
   ticker: string,
   fiscalYear: number
-): Promise<BankBulletinEntry> {
+): Promise<BankBulletinEntry | undefined> {
+  const res = await httpFetch(CNINFO_QUERY_URL, {
+    method: "POST",
+    headers: {
+      ...HEADERS,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Referer: "http://www.cninfo.com.cn/",
+    },
+    body: cninfoAnnouncementParams(ticker, fiscalYear).toString(),
+  });
+  if (!res.ok) return undefined;
+  const candidate = pickCninfoAnnualReport(parseCninfoAnnouncements(await res.json()), fiscalYear);
+  if (!candidate) return undefined;
+  return {
+    ticker,
+    fiscalYear,
+    name: candidate.name,
+    pdfUrl: candidate.pdfUrl,
+    pdfTier: "cninfo_pdf",
+    sourceTier: "cninfo",
+  };
+}
+
+async function discoverExchangeBulletin(
+  ticker: string,
+  fiscalYear: number
+): Promise<BankBulletinEntry | undefined> {
+  let rows: ExchangeAnnualReportCandidate[];
+  if (inferExchangeSourceTier(ticker) === "sse") {
+    const res = await httpFetch(buildSseDisclosureUrl(ticker, fiscalYear), {
+      headers: {
+        ...HEADERS,
+        Referer: `https://www.sse.com.cn/assortment/stock/list/info/announcement/index.shtml?productId=${ticker}`,
+      },
+    });
+    if (!res.ok) return undefined;
+    const body = (await res.json()) as { result?: Array<{ TITLE?: string; URL?: string }> };
+    rows = parseExchangeDisclosureRows(
+      (body.result ?? []).map((row) => ({
+        title: row.TITLE,
+        url: row.URL ? `https://static.sse.com.cn${row.URL}` : undefined,
+      })),
+      ticker
+    );
+  } else {
+    const req = buildSzseDisclosureRequest(ticker, fiscalYear);
+    const res = await httpFetch(req.url, {
+      method: "POST",
+      headers: {
+        ...HEADERS,
+        "Content-Type": "application/json",
+        Origin: "https://www.szse.cn",
+        Referer: "https://www.szse.cn/disclosure/listed/fixed/index.html",
+        "X-Request-Type": "ajax",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify(req.body),
+    });
+    if (!res.ok) return undefined;
+    const body = (await res.json()) as { data?: Array<{ title?: string; attachPath?: string }> };
+    rows = parseExchangeDisclosureRows(
+      (body.data ?? []).map((row) => ({
+        title: row.title,
+        url: row.attachPath ? `https://disc.static.szse.cn${row.attachPath}` : undefined,
+      })),
+      ticker
+    );
+  }
+  const candidate = pickExchangeAnnualReport(rows, fiscalYear);
+  if (!candidate) return undefined;
+  return {
+    ticker,
+    fiscalYear,
+    name: candidate.name,
+    pdfUrl: candidate.pdfUrl,
+    pdfTier: candidate.sourceTier === "szse" ? "szse_disclosure_pdf" : "sse_mirror_pdf",
+    sourceTier: candidate.sourceTier,
+  };
+}
+
+async function discoverSinaBulletin(ticker: string, fiscalYear: number): Promise<BankBulletinEntry> {
   const { host, rows } = await loadSinaBulletinList(ticker);
   const picked = pickAnnualReportBulletin(rows, fiscalYear);
   if (!picked) {
@@ -139,5 +351,36 @@ export async function discoverBankBulletin(
     sinaUrl,
     pdfUrl,
     pdfTier: inferPdfTier(pdfUrl),
+    sourceTier: "sina_ndbg",
   };
+}
+
+/** Resolve FY annual-report disclosure URLs: cninfo → exchange → Sina fallback. */
+export async function discoverBankBulletin(
+  ticker: string,
+  fiscalYear: number
+): Promise<BankBulletinEntry> {
+  const attempts: Array<() => Promise<BankBulletinEntry | undefined>> = [
+    () => discoverCninfoBulletin(ticker, fiscalYear),
+    () => discoverExchangeBulletin(ticker, fiscalYear),
+    async () => discoverSinaBulletin(ticker, fiscalYear),
+  ];
+
+  let lastError: Error | undefined;
+  for (const attempt of attempts) {
+    let entry: BankBulletinEntry | undefined;
+    try {
+      entry = await attempt();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      continue;
+    }
+    if (!entry) continue;
+    if (await fetchDisclosurePdfBytes(entry.pdfUrl)) return entry;
+  }
+
+  throw (
+    lastError ??
+    new Error(`No readable disclosure PDF for ${ticker} FY${fiscalYear}`)
+  );
 }

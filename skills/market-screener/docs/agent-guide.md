@@ -44,7 +44,13 @@ npm run dev -- run \
 - **`--adapter fixture`** — 离线 fixture，适合本地验证
 - **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙 → **quote prefilter**（status/市值/上市年限，未 enrichment 的写入 `prefilter-excluded.yaml`）→ **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；CN 银行额外运行 Sina/cninfo disclosure scrape；US：`sec_companyfacts` + `sec_submissions`），需联网
 
-**Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。CN 银行缓存会包含 `bankScrape`，其披露来源在运行时从 Sina 年报页发现，不依赖静态 URL 表。
+**CN live preflight:** `--adapter live` runs CN quote/datacenter preflight by default and fails before enrichment when anchors or quote integrity fail. Do not use `--skip-preflight` for quarterly sign-off; it is only for diagnosing provider outages.
+
+**Degraded live runs:** `--allow-degraded` is only for diagnosing provider outages. Output with `quote_degraded:*` audit hints or low-confidence quote metrics is not quarterly sign-off quality. Hard CN quote integrity failures must not be bypassed by degraded mode.
+
+**Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。CN 银行缓存会包含 `bankScrape`，其披露 PDF 在运行时按 cninfo → 交易所 → Sina 优先级发现，不依赖静态 URL 表。
+
+**CN incremental enrich:** `--inherit-cache-from` is acceptable for opening a new quarter only when the source quarter cache was produced after the latest metric-source and quote schema fixes. It never replaces current quote refresh; verify `quoteHistory` contains the target quarter before sign-off.
 
 ### CN valuation cross-check (mandatory for Deep audit)
 
@@ -60,7 +66,7 @@ Before using cache `quoteHistory.pe` / `pb` in valuation sections:
 - `--enrich-concurrency <n>` — 并行 enrichment **ticker** 数（默认 **4**；每 ticker 约 2 次 HTTP；另有 East Money/SEC host 上限）
 - `--skip-cache` — 忽略磁盘缓存（不读不写），强制重新拉取
 
-**CN bank debug:** `npm run dev -- bank-indicators 600919 --year 2025` 会运行同一套 Sina discovery + disclosure scrape，输出 NPL、拨备覆盖率、资本充足率、NIM、ROA 等银行监管指标；该命令不需要 `--spec`。
+**CN bank debug:** `npm run dev -- bank-indicators 600919 --year 2025` 会运行同一套 cninfo/交易所/Sina 披露发现 + PDF scrape，输出 NPL、拨备覆盖率、资本充足率、NIM、ROA 等银行监管指标；该命令不需要 `--spec`。
 
 产出（每市场）：
 

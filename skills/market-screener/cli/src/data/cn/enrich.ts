@@ -24,6 +24,35 @@ import { deriveBankDisclosureFiscalYear } from "./bank-indicators/fiscal-year.js
 
 export { mergeEnrichment as mergeCnEnrichment } from "../merge-enrichment.js";
 
+export function inheritCnEnrichPayload(
+  prior: EnrichCachePayload | null | undefined
+): EnrichCachePayload | undefined {
+  if (!prior?.annualRows.length) return undefined;
+  if (annualRowsNeedMetricRefresh(prior.annualRows)) return undefined;
+
+  return {
+    annualRows: prior.annualRows,
+    industryProxy: prior.industryProxy,
+    dividendYield: prior.dividendYield,
+    dividendYieldConfidence: prior.dividendYieldConfidence,
+    quoteHistory: prior.quoteHistory,
+  };
+}
+
+async function readInheritedCnCache(
+  opts: EnrichOptions,
+  ticker: string
+): Promise<EnrichCachePayload | undefined> {
+  if (!opts.inheritCacheFrom || opts.skipCache) return undefined;
+  const prior = await readCache<EnrichCachePayload>(
+    opts.cacheDir,
+    opts.inheritCacheFrom,
+    "CN",
+    ticker
+  );
+  return inheritCnEnrichPayload(prior);
+}
+
 async function refreshCnAnnualRows(
   ticker: string,
   existing: AnnualFinancialRow[]
@@ -167,6 +196,31 @@ export async function enrichCnRecord(
       await persistEnrichCache(opts, record.ticker, payload, finalRecord);
       return finalRecord;
     }
+  }
+
+  const inherited = await readInheritedCnCache(opts, record.ticker);
+  if (inherited) {
+    const dividend = await resolveDividendYield(record.ticker, inherited);
+    const enriched = mergeEnrichment(
+      record,
+      inherited.annualRows,
+      inherited.industryProxy,
+      dividend,
+      { quarter: opts.quarter, quoteHistory: inherited.quoteHistory }
+    );
+    const { record: finalRecord, bankScrape } = await applyBankScrapeIfNeeded(
+      record.ticker,
+      enriched,
+      opts,
+      inherited.industryProxy
+    );
+    await persistEnrichCache(
+      opts,
+      record.ticker,
+      { ...inherited, bankScrape },
+      finalRecord
+    );
+    return finalRecord;
   }
 
   const annualRows = await fetchCnAnnualRows(record.ticker);

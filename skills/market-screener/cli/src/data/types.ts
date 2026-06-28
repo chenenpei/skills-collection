@@ -3,6 +3,17 @@ import type { KillGatesSpec } from "../spec/types.js";
 import type { Market } from "../funnel/types.js";
 import type { ProgressLogger } from "../lib/progress.js";
 
+export interface LoadUniverseOptions {
+  progress?: ProgressLogger;
+  quarter?: string;
+}
+
+export interface DegradedLiveOptions {
+  allowDegraded?: boolean;
+  quoteFallbackQuarter?: string;
+  quoteFallbackFixturesDir?: string;
+}
+
 export interface EnrichOptions {
   quarter: string;
   cacheDir: string;
@@ -13,6 +24,8 @@ export interface EnrichOptions {
   specDir?: string;
   /** Wall-clock anchor for bank disclosure fiscal year; defaults to runtime Date. */
   now?: Date;
+  /** Prior quarter whose CN enrich cache can seed stable annual/dividend/industry fields. */
+  inheritCacheFrom?: string;
 }
 
 export interface EnrichRunStats {
@@ -31,10 +44,7 @@ export interface EnrichResult {
 }
 
 export interface MarketDataAdapter {
-  loadUniverse(
-    markets: Market[],
-    opts?: { progress?: ProgressLogger }
-  ): Promise<SecurityRecord[]>;
+  loadUniverse(markets: Market[], opts?: LoadUniverseOptions): Promise<SecurityRecord[]>;
   enrichRecords?(
     records: SecurityRecord[],
     opts: EnrichOptions

@@ -47,6 +47,11 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 | `--adapter` | `fixture` | `fixture` (offline) or `live` (network) |
 | `--enrich-concurrency` | `4` | Parallel enrichment tickers (live only; each may issue 2 HTTP calls) |
 | `--skip-cache` | off | Ignore enrichment disk cache — no read or write (live only) |
+| `--skip-preflight` | off | Live CN only; bypasses quote/datacenter preflight. Use only when diagnosing a known source outage. |
+| `--allow-degraded` | off | Live CN only; permits low-confidence quote fallback when the quote source is unavailable. Never use for quarterly sign-off. |
+| `--quote-fallback-quarter` | — | Prior quarter containing `data/cache/{quarter}/CN/cn-quote-universe.json` for degraded quote fallback |
+| `--quote-fallback-fixtures-dir` | — | Fixture directory used only when `--allow-degraded` is set and live CN quote loading fails |
+| `--inherit-cache-from` | — | CN live only; seed stable annual/dividend/industry enrichment from a prior quarter while refreshing current quotes |
 
 ## Live adapter & enrichment (M3)
 
@@ -58,7 +63,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 
 | Market | Enrichment sources |
 |--------|-------------------|
-| CN | East Money datacenter annual (`RPT_*`) + orginfo industry proxy; CN banks add runtime Sina annual-report discovery + disclosure PDF scrape |
+| CN | East Money datacenter annual (`RPT_*`) + orginfo industry proxy; CN banks add runtime annual-report discovery (cninfo → SSE/SZSE → Sina fallback) + disclosure PDF scrape |
 | US | SEC EDGAR `companyfacts` + `submissions` industry proxy (CIK resolved via SEC ticker map) |
 
 ### CN bank disclosure debug
@@ -67,7 +72,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 npm run dev -- bank-indicators 600919 --year 2025
 ```
 
-The command uses the same runtime Sina discovery and disclosure scrape path as live CN bank enrichment. It does not require `--spec`.
+The command uses the same runtime disclosure discovery path as live CN bank enrichment (cninfo → exchange → Sina). It does not require `--spec`.
 
 Enrichment runs only with `--adapter live`. The fixture adapter ships pre-enriched JSON and skips network enrichment.
 
@@ -84,6 +89,8 @@ data/cache/{quarter}/{CN|US}/{ticker}.json
 - Empty financial responses are **not** cached (next run refetches).
 - Cache is keyed by quarter + market + ticker; safe to delete `data/cache/{quarter}/` to force a refresh.
 - Host in-flight caps: East Money datacenter 8, SEC 4 (in addition to `--enrich-concurrency`).
+
+Use `--inherit-cache-from 2026-Q1` when opening a new quarter to reuse stable CN annual/dividend/industry enrichment from the prior quarter. Current quote metrics and `quoteHistory` are still refreshed for the target quarter. Do not use inheritance when the prior quarter cache was produced before a metric-source or schema correction.
 
 ### Metric source hygiene (ADR 0005)
 
@@ -106,6 +113,7 @@ Offline and live end-to-end checks live in `scripts/` and are **not** part of `n
 | Live E2E | `npm run e2e:live` | Real-network live run (default: CN, `2026-Q1`) |
 | Live E2E (full) | `npm run e2e:live:full` | CN+US live run with enrichment assertions |
 | CN quote smoke | `npx tsx scripts/test-cn-quote-snapshot.ts` | Live East Money PE/PB mapping for 603195/600519/600919 |
+| CN preflight smoke | `npx tsx scripts/test-cn-preflight.ts` | Live East Money quote anchors + datacenter annual-row probe |
 | US quote smoke | `npx tsx scripts/test-yahoo-universe.ts` | Live Yahoo universe fetch timing + top-5 sample |
 
 Pass extra args through to the live script:
@@ -179,6 +187,8 @@ npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
 ```
 
 Re-runs `enrichCnRecord` for quote-prefilter survivors missing cache files or empty `annualRows`. Then re-run funnel or document residual tickers.
+
+`repair-enrich-cache.ts --inherit-cache-from 2026-Q1` seeds missing target-quarter CN cache entries from a prior quarter before falling back to live datacenter fetches.
 
 To purge polluted `quoteHistory` before a full re-enrich (e.g. after a quote-field mapping fix):
 

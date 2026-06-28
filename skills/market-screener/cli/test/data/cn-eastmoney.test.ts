@@ -1,15 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 vi.mock("../../src/lib/http-fetch.js", () => ({
   httpFetch: vi.fn(),
 }));
 
+vi.mock("../../src/data/cn/eastmoney.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/data/cn/eastmoney.js")>();
+  return {
+    ...actual,
+    getEastMoneyUt: vi.fn().mockResolvedValue(actual.EASTMONEY_UT_FALLBACK),
+  };
+});
+
 import { httpFetch } from "../../src/lib/http-fetch.js";
 import {
+  EASTMONEY_UT_FALLBACK,
+  extractEastMoneyUt,
+  resolveEastMoneyUt,
+} from "../../src/data/cn/eastmoney.js";
+import {
+  assertCnQuoteUniverseIntegrity,
+  buildCnQuoteIntegrityReport,
+  CN_QUOTE_ANCHOR_TICKERS,
   createCnEastMoneyAdapter,
   listingAgeYearsFromEastMoneyDate,
+  markCnQuoteUniverseDegraded,
   mapEastMoneyRowToQuoteMetrics,
+  readCnQuoteUniverseSnapshot,
   sanitizeCnQuoteMetrics,
+  writeCnQuoteUniverseSnapshot,
 } from "../../src/data/cn/quotes.js";
 
 const mockedHttpFetch = vi.mocked(httpFetch);
@@ -98,6 +120,162 @@ describe("sanitizeCnQuoteMetrics", () => {
     expect(result.metrics.pe_ttm?.value).toBe(16.7);
     expect(result.metrics.pb?.value).toBe(3.9);
     expect(result.warnings).toHaveLength(0);
+  });
+});
+
+describe("assertCnQuoteUniverseIntegrity", () => {
+  const base = (ticker: string, pe?: number, pb?: number, cap = 1e10, price = 38.35) => ({
+    ticker,
+    market: "CN" as const,
+    companyName: ticker,
+    currency: "CNY",
+    status: "active",
+    marketCap: cap,
+    listingAgeYears: 10,
+    metrics: {
+      ...(pe !== undefined ? { pe_ttm: { value: pe, dataConfidence: "medium" as const } } : {}),
+      ...(pb !== undefined ? { pb: { value: pb, dataConfidence: "medium" as const } } : {}),
+      price: { value: price, dataConfidence: "medium" as const },
+    },
+    revenueYoyHistory: [],
+    ocfNegativeYears: 0,
+    netLossWidening: false,
+    nonStandardAudit: false,
+    latestFinancialMonthsOld: 0,
+  });
+
+  it("passes for a healthy-sized universe even when some PE/PB are legitimately missing", () => {
+    const records = Array.from({ length: 5500 }, (_, i) =>
+      base(String(600000 + i), i % 4 === 0 ? undefined : 16, i % 5 === 0 ? undefined : 3)
+    );
+    expect(() => assertCnQuoteUniverseIntegrity(records)).not.toThrow();
+  });
+
+  it("reports PE/PB presence rates for diagnostics", () => {
+    const records = [
+      base("600519", 17, 6),
+      base("603195", undefined, 4),
+      base("600919", 6, undefined),
+      base("000001", undefined, undefined),
+    ];
+    const report = buildCnQuoteIntegrityReport(records);
+    expect(report.pe_ttm_present_rate).toBe(0.5);
+    expect(report.pb_present_rate).toBe(0.5);
+    expect(report.market_cap_present_rate).toBe(1);
+  });
+
+  it("fails when universe too small", () => {
+    expect(() => assertCnQuoteUniverseIntegrity([base("600519", 17, 6)])).toThrow(
+      /universe_count/
+    );
+  });
+
+  it("fails when pe equals price rate too high", () => {
+    const records = Array.from({ length: 5500 }, (_, i) =>
+      base(String(600000 + i), i < 100 ? 38.35 : 16, 3, 1e10, 38.35)
+    );
+    expect(() => assertCnQuoteUniverseIntegrity(records)).toThrow(/pe_equals_price/);
+  });
+
+  it("fails when market cap coverage is too low", () => {
+    const records = Array.from({ length: 5500 }, (_, i) =>
+      base(String(600000 + i), 16, 3, i < 400 ? 0 : 1e10)
+    );
+    expect(() => assertCnQuoteUniverseIntegrity(records)).toThrow(/market_cap_present_rate/);
+  });
+
+  it("passes when market cap coverage meets the live-calibrated floor", () => {
+    const missing = Math.floor(5500 * (1 - 0.94));
+    const records = Array.from({ length: 5500 }, (_, i) =>
+      base(String(600000 + i), 16, 3, i < missing ? 0 : 1e10)
+    );
+    expect(() => assertCnQuoteUniverseIntegrity(records)).not.toThrow();
+  });
+
+  it("exports anchor tickers for preflight", () => {
+    expect(CN_QUOTE_ANCHOR_TICKERS).toEqual(["603195", "600519", "600919"]);
+  });
+});
+
+describe("resolveEastMoneyUt", () => {
+  it("extractEastMoneyUt parses a 32-char ut token", () => {
+    expect(extractEastMoneyUt('window.quoteConfig={ut:"1234567890abcdef1234567890abcdef"}')).toBe(
+      "1234567890abcdef1234567890abcdef"
+    );
+  });
+
+  it("resolveEastMoneyUt returns fallback when scrape fails", async () => {
+    await expect(
+      resolveEastMoneyUt({
+        forceRefresh: true,
+        fetchText: async () => "",
+        cacheFile: "/tmp/nonexistent-eastmoney-ut-test.json",
+      })
+    ).resolves.toBe(EASTMONEY_UT_FALLBACK);
+  });
+});
+
+describe("CN quote universe snapshot", () => {
+  it("writes and reads a quote-universe snapshot", async () => {
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "cn-quote-snapshot-"));
+    const record = {
+      ticker: "600519",
+      market: "CN" as const,
+      companyName: "贵州茅台",
+      currency: "CNY",
+      status: "active",
+      marketCap: 2e12,
+      listingAgeYears: 20,
+      metrics: {
+        price: { value: 1168.63, dataConfidence: "medium" as const },
+        pe_ttm: { value: 17.66, dataConfidence: "medium" as const },
+        pb: { value: 6.19, dataConfidence: "medium" as const },
+      },
+      revenueYoyHistory: [],
+      ocfNegativeYears: 0,
+      netLossWidening: false,
+      nonStandardAudit: false,
+      latestFinancialMonthsOld: 0,
+    };
+
+    await writeCnQuoteUniverseSnapshot(cacheDir, "2026-Q1", [record]);
+    await expect(readCnQuoteUniverseSnapshot(cacheDir, "2026-Q1")).resolves.toEqual([record]);
+
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  });
+
+  it("marks quote metrics low confidence and adds a degraded audit hint", () => {
+    const degraded = markCnQuoteUniverseDegraded(
+      [
+        {
+          ticker: "600519",
+          market: "CN" as const,
+          companyName: "贵州茅台",
+          currency: "CNY",
+          status: "active",
+          marketCap: 2e12,
+          listingAgeYears: 20,
+          metrics: {
+            price: { value: 1168.63, dataConfidence: "medium" as const },
+            pe_ttm: { value: 17.66, dataConfidence: "medium" as const },
+            pb: { value: 6.19, dataConfidence: "medium" as const },
+            roe_ttm: { value: 0.3, dataConfidence: "high" as const },
+          },
+          revenueYoyHistory: [],
+          ocfNegativeYears: 0,
+          netLossWidening: false,
+          nonStandardAudit: false,
+          latestFinancialMonthsOld: 0,
+        },
+      ],
+      "quote_degraded:snapshot:2026-Q1"
+    );
+
+    expect(degraded[0].metrics.price?.dataConfidence).toBe("low");
+    expect(degraded[0].metrics.pe_ttm?.dataConfidence).toBe("low");
+    expect(degraded[0].metrics.pb?.dataConfidence).toBe("low");
+    expect(degraded[0].metrics.roe_ttm?.dataConfidence).toBe("high");
+    expect(degraded[0].auditHints).toContain("quote_degraded:snapshot:2026-Q1");
   });
 });
 

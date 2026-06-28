@@ -6,6 +6,7 @@ import {
   normalizeCjkText,
   stripHtml,
 } from "./normalize.js";
+import { fetchDisclosurePdfBytes } from "./pdf-bytes.js";
 import type { BankBulletinEntry, BankScrapeField, BankScrapeMetrics } from "./types.js";
 
 export const PDF_MAX_PAGES = 20;
@@ -52,23 +53,28 @@ async function pdfToText(pdfBytes: Buffer, maxPages: number = PDF_MAX_PAGES): Pr
   }
 }
 
+export { isPdfBuffer, fetchDisclosurePdfBytes } from "./pdf-bytes.js";
+
 export async function fetchDisclosureTexts(entry: BankBulletinEntry): Promise<{
   sinaText: string;
   pdfText: string;
 }> {
-  const [htmlRes, pdfRes] = await Promise.all([
-    httpFetch(entry.sinaUrl, { headers: HEADERS }),
-    httpFetch(entry.pdfUrl, { headers: HEADERS }),
-  ]);
-  const htmlRaw = Buffer.from(await htmlRes.arrayBuffer());
-  const html = normalizeCjkText(
-    stripHtml(
-      entry.sinaUrl.includes("sina.com.cn")
-        ? decodeSinaBuffer(htmlRaw)
-        : decodeResponseBuffer(htmlRaw)
-    )
-  );
-  const pdfBuf = Buffer.from(await pdfRes.arrayBuffer());
+  const htmlRes = entry.sinaUrl
+    ? await httpFetch(entry.sinaUrl, { headers: HEADERS })
+    : undefined;
+  const html = htmlRes
+    ? normalizeCjkText(
+        stripHtml(
+          entry.sinaUrl?.includes("sina.com.cn")
+            ? decodeSinaBuffer(Buffer.from(await htmlRes.arrayBuffer()))
+            : decodeResponseBuffer(Buffer.from(await htmlRes.arrayBuffer()))
+        )
+      )
+    : "";
+  const pdfBuf = await fetchDisclosurePdfBytes(entry.pdfUrl);
+  if (!pdfBuf) {
+    throw new Error(`Disclosure URL did not return a PDF: ${entry.pdfUrl}`);
+  }
   const pdfText = normalizeCjkText(await pdfToText(pdfBuf));
   return { sinaText: html, pdfText };
 }
