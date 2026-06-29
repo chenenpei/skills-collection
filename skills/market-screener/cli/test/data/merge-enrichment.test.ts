@@ -39,6 +39,44 @@ describe("mergeEnrichment quote history overlays", () => {
     roic: 0.12,
   }));
 
+  it("derives fcf_yield from the latest fiscal year when annualRows are reverse-sorted", () => {
+    const reverseRows = [
+      {
+        year: 2025,
+        revenue: 200,
+        grossProfit: 80,
+        netIncome: 60,
+        operatingCashFlow: 600,
+        capex: 0,
+        operatingProfit: 80,
+        roe: 0.2,
+        assetLiabilityRatio: 0.4,
+        totalLiabilities: 50,
+        totalEquity: 100,
+        monetaryFunds: 20,
+        roic: 0.12,
+      },
+      {
+        year: 2023,
+        revenue: 100,
+        grossProfit: 40,
+        netIncome: 10,
+        operatingCashFlow: 272,
+        capex: 0,
+        operatingProfit: 15,
+        roe: 0.1,
+        assetLiabilityRatio: 0.4,
+        totalLiabilities: 50,
+        totalEquity: 100,
+        monetaryFunds: 20,
+        roic: 0.12,
+      },
+    ];
+
+    const merged = mergeEnrichment({ ...base, marketCap: 10_000 }, reverseRows);
+    expect(merged.metrics.fcf_yield?.value).toBeCloseTo(0.06, 4);
+  });
+
   it("derives mid_cycle_pe_vs_10y_median from quote history not annual derive", () => {
     const merged = mergeEnrichment(base, rows, undefined, undefined, {
       quarter: "2026-Q1",

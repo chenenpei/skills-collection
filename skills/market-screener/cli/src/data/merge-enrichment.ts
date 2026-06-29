@@ -47,7 +47,7 @@ function normalizeDividend(
 }
 
 function latestFcfFromRows(rows: AnnualFinancialRow[]): number | undefined {
-  const latest = rows[rows.length - 1];
+  const latest = [...rows].sort((a, b) => a.year - b.year).at(-1);
   if (!latest) return undefined;
   const capex = latest.capex !== undefined ? Math.abs(latest.capex) : 0;
   return latest.operatingCashFlow - capex;
