@@ -139,6 +139,26 @@ deep_only_metrics:
     - loss_ratio_3y_volatility
     - investment_yield
 
+deferred_live_contracts:
+  note: "Agent/operator documentation only (not loaded by CLI). Spec hooks listed here are intentionally not produced or evaluated by the CLI live path yet. They stay in spec as forward-compatible gates with missing: skip or as documented non-executed contracts."
+  cn_banks:
+    npl_ratio_yoy_change:
+      status: deferred
+      reason: Requires FY and FY-1 disclosure scrapes plus a delta derive; current bank scrape stores one fiscal year per run.
+      current_behavior: "Referenced by financials.banks with missing: skip, so absent values do not block candidate selection."
+      unblock: Implement two-fiscal-year scrape/derive and validate live coverage before promoting financials.banks from proxy to full.
+    financial_kill_gates:
+      status: deferred
+      reason: CLI does not evaluate financial_kill_gates yet; npl_spike depends on npl_ratio_yoy_change.
+      current_behavior: Deep audit/manual review handles credit-quality kill checks.
+      unblock: Add a CLI evaluator for financial_kill_gates after npl_ratio_yoy_change coverage is reliable.
+    rotce:
+      status: deep_only
+      reason: ADR 0008 sample had 0/10 scrape coverage; roe_ttm is the required profitability metric.
+    nim:
+      status: partial
+      reason: "ADR 0008 sample had 5/10 scrape coverage; it remains supporting-only with missing: skip."
+
 metric_coverage:
   ref: funnel-diagnostics.yaml#metric_coverage
   meaning: Per-template required-metric presence after enrich; rate = present / routed

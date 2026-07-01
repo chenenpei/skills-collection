@@ -11,8 +11,8 @@ supersedes_partial: docs/adr/0003-cn-bank-routing-proxy.md#phase-two
 - **Partial Go** for CN A-share banks: cninfo/Sina PDF+HTML scrape covers regulatory core (~90% on 10-bank sample FY2024).
 - Funnel required profitability metric: **`roe_ttm` (East Money)**, not `rotce` (0/10 scrape coverage).
 - `enrichment_tier: disclosure_scrape`; promote target **`proxy`**, not `full`.
-- Source priority: (1) cninfo/Sina disclosure, (2) East Money `roe_ttm`/`roa`, (3) optional iFinD cross-check.
-- Implementation uses runtime Sina annual-report discovery (`ndbg`) plus detail-page PDF extraction, not a static `{ticker,fiscalYear} -> URL` seed file.
+- Source priority: (1) cninfo announcement search, (2) exchange disclosure index (SSE/SZSE), (3) Sina `ndbg` fallback (see ADR 0009); East Money still supplies `roe_ttm`/`roa` fallback fields.
+- Implementation uses runtime `discoverBankBulletin()` with official-first PDF discovery; Sina is last-resort fallback, not the primary path.
 
 ## Coverage (FY2024 sample, merged)
 
@@ -26,11 +26,13 @@ supersedes_partial: docs/adr/0003-cn-bank-routing-proxy.md#phase-two
 | nim | 5/10 (supporting only) |
 | rotce | 0/10 → deep_only |
 
-## Known gap
+## Known gaps and deferred contracts
 
 601988 中国银行: NPL/provision not in first 20 PDF pages (image tables). Policy: **omit + flag**, no silent proxy (ADR 0005).
 
-2026-Q2 live run observation: all cached CN banks triggered `bankScrape`, but `npl_ratio_yoy_change` remained unavailable and ROA coverage was partial. Keep `financials.banks` at **proxy** viability until supporting/regulatory coverage improves.
+`npl_ratio_yoy_change` is intentionally deferred. The current bank scrape stores one fiscal year per run; YoY requires FY and FY-1 disclosure discovery, extraction, and a delta derive. The spec keeps this metric under `missing: skip`, so absent YoY values do not block candidate selection.
+
+`financial_kill_gates` are also deferred in the CLI. The `npl_spike` condition depends on `npl_ratio_yoy_change`, so credit-quality spike checks remain Deep/manual until a two-fiscal-year bank scrape phase validates coverage. Keep `financials.banks` at **proxy** viability until YoY (`npl_ratio_yoy_change`), NIM supporting coverage, and remaining image-table disclosure gaps support a full promote.
 
 ## Rejected
 
