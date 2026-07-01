@@ -47,7 +47,7 @@ Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.
 | `--adapter` | `fixture` | `fixture` (offline) or `live` (network) |
 | `--enrich-concurrency` | `4` | Parallel enrichment tickers (live only; each may issue 2 HTTP calls) |
 | `--skip-cache` | off | Ignore enrichment disk cache — no read or write (live only) |
-| `--skip-preflight` | off | Live CN only; bypasses quote/datacenter preflight. Use only when diagnosing a known source outage. |
+| `--skip-preflight` | off | Live CN and US; bypasses quote/datacenter/Yahoo preflight. Use only when diagnosing a known source outage. |
 | `--allow-degraded` | off | Live CN only; permits low-confidence quote fallback when the quote source is unavailable. Never use for quarterly sign-off. |
 | `--quote-fallback-quarter` | — | Prior quarter containing `data/cache/{quarter}/CN/cn-quote-universe.json` for degraded quote fallback |
 | `--quote-fallback-fixtures-dir` | — | Fixture directory used only when `--allow-degraded` is set and live CN quote loading fails |
@@ -112,9 +112,10 @@ Offline and live end-to-end checks live in `scripts/` and are **not** part of `n
 | Fixture E2E | `npm run e2e:fixture` | Full CN+US funnel on fixtures; no network |
 | Live E2E | `npm run e2e:live` | Real-network live run (default: CN, `2026-Q1`) |
 | Live E2E (full) | `npm run e2e:live:full` | CN+US live run with enrichment assertions |
-| CN quote smoke | `npx tsx scripts/test-cn-quote-snapshot.ts` | Live East Money PE/PB mapping for 603195/600519/600919 |
-| CN preflight smoke | `npx tsx scripts/test-cn-preflight.ts` | Live East Money quote anchors + datacenter annual-row probe |
-| US quote smoke | `npx tsx scripts/test-yahoo-universe.ts` | Live Yahoo universe fetch timing + top-5 sample |
+| CN quote smoke | `npm run smoke:cn` | Live East Money quote anchors + datacenter annual-row probe (`probeCnQuotes`) |
+| US quote smoke | `npm run smoke:us` | Live Yahoo session bootstrap + universe fetch timing + top-5 sample |
+
+Optional CN PE/PB range regression: `npx tsx scripts/test-cn-quote-snapshot.ts` (not wired into `npm run smoke:cn`).
 
 Pass extra args through to the live script:
 
@@ -123,6 +124,18 @@ npm run e2e:live -- --markets CN,US --quarter 2026-Q2
 ```
 
 Live E2E asserts enriched candidates (`candidates >= 1`, non-empty `metric_snapshot`), CN universe scale, and no false `kill_revenue_decline_3y_consecutive` on empty YoY. Requires network; on macOS with a system proxy, set `HTTPS_PROXY` (see `scripts/e2e-live.ts`).
+
+### Yahoo live availability
+
+US quote universe loading depends on Yahoo Finance (`fc.yahoo.com` session bootstrap plus `query1.finance.yahoo.com` quote/screener endpoints). Some cloud IP ranges receive Yahoo CDN/ATS 429s before the crumb request completes; cookies and retries do not fix that class of block.
+
+Run `npm run smoke:us` on every new server agent before enabling `--markets US` live runs. If the smoke test fails with Yahoo 429 errors (for example `Yahoo session bootstrap failed: 429`, `Yahoo crumb failed: 429`, or `Yahoo screener failed: 429`), use one of these operating modes:
+
+- Run CN-only live (`--markets CN`) on that host.
+- Set `HTTPS_PROXY` to a non-cloud exit IP and rerun `npm run smoke:us`.
+- Syncing US enrichment cache can speed up SEC enrichment on Yahoo-reachable hosts, but it does **not** bypass Yahoo for the US quote universe. On a Yahoo-blocked host, run CN-only or use a host/proxy where `npm run smoke:us` succeeds.
+
+`npm test` mocks Yahoo adapters by design; it does not validate Yahoo reachability.
 
 ### Output artifacts (per market)
 

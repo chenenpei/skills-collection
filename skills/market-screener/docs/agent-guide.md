@@ -44,7 +44,7 @@ npm run dev -- run \
 - **`--adapter fixture`** — 离线 fixture，适合本地验证
 - **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙 → **quote prefilter**（status/市值/上市年限，未 enrichment 的写入 `prefilter-excluded.yaml`）→ **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；CN 银行额外运行 Sina/cninfo disclosure scrape；US：`sec_companyfacts` + `sec_submissions`），需联网
 
-**CN live preflight:** `--adapter live` runs CN quote/datacenter preflight by default and fails before enrichment when anchors or quote integrity fail. Do not use `--skip-preflight` for quarterly sign-off; it is only for diagnosing provider outages.
+**Live preflight:** `--adapter live` runs CN quote/datacenter preflight and US Yahoo session/quote preflight by default, then fails before full universe loading or enrichment when probes fail. Run `npm run smoke:cn` / `npm run smoke:us` on new server agents before sign-off. Do not use `--skip-preflight` for quarterly sign-off; it is only for diagnosing provider outages. If Yahoo returns 429 on cloud hosts, run CN-only or set `HTTPS_PROXY` to a non-cloud exit before enabling `--markets US`.
 
 **Degraded live runs:** `--allow-degraded` is only for diagnosing provider outages. Output with `quote_degraded:*` audit hints or low-confidence quote metrics is not quarterly sign-off quality. Hard CN quote integrity failures must not be bypassed by degraded mode.
 

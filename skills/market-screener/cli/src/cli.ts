@@ -37,7 +37,7 @@ export async function runCli(argv: string[]): Promise<void> {
       "4"
     )
     .option("--skip-cache", "Ignore enrichment disk cache", false)
-    .option("--skip-preflight", "Skip live CN data-source preflight", false)
+    .option("--skip-preflight", "Skip live CN and US data-source preflight", false)
     .option(
       "--allow-degraded",
       "Allow explicit low-confidence quote fallback when live CN quote source is unavailable",
