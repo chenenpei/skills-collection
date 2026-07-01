@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { SecurityRecord } from "../../funnel/kill-gates.js";
+import { mergeAuditHints, type SecurityRecord } from "../../funnel/kill-gates.js";
 import { getEastMoneyUt } from "./eastmoney.js";
 import { httpFetch } from "../../lib/http-fetch.js";
 import type { ProgressLogger } from "../../lib/progress.js";
@@ -98,7 +98,7 @@ export function markCnQuoteUniverseDegraded(
     return {
       ...record,
       metrics,
-      auditHints: Array.from(new Set([...(record.auditHints ?? []), hint])),
+      auditHints: mergeAuditHints(record.auditHints, [hint]),
     };
   });
 }

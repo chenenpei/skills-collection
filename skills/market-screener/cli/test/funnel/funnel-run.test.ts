@@ -121,6 +121,37 @@ describe("runFunnel", () => {
     expect(Array.isArray(funnelDiagnosticsFull.manifest_review)).toBe(true);
   });
 
+  it("propagates record-level audit hints into candidates", async () => {
+    const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "screener-test-"));
+    const hintedUniverse = universe.map((record) =>
+      record.ticker === "600519"
+        ? {
+            ...record,
+            auditHints: ["quote_degraded:snapshot:2026-Q1"],
+          }
+        : record
+    );
+
+    await runFunnel({
+      bundle,
+      universe: hintedUniverse,
+      quarter: "2026-Q2",
+      marketScope: "CN",
+      outputDir: outDir,
+    });
+
+    const candidates = parseYaml(
+      await fs.readFile(path.join(outDir, "CN/candidates.yaml"), "utf8")
+    ) as {
+      candidates: Array<{
+        ticker: string;
+        audit_hints?: string[];
+      }>;
+    };
+    const moutai = candidates.candidates.find((c) => c.ticker === "600519");
+    expect(moutai?.audit_hints).toContain("quote_degraded:snapshot:2026-Q1");
+  });
+
   it("includes capex_to_revenue in metric_snapshot when manufacturing fixture provides it", async () => {
     const mfgRecord: SecurityRecord = {
       ticker: "301626",

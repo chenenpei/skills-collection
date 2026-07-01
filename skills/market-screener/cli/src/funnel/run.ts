@@ -13,7 +13,7 @@ import {
   FunnelDiagnosticsCollector,
   routingDiagnosticsFromFunnel,
 } from "./diagnostics.js";
-import { applyKillGates, type KillGateResult, type SecurityRecord } from "./kill-gates.js";
+import { applyKillGates, mergeAuditHints, type KillGateResult, type SecurityRecord } from "./kill-gates.js";
 import { allocateTemplateSeats } from "./ranker.js";
 import { routeSecurity, type RouteResult } from "./router.js";
 import { evaluateTemplateTrack, type TemplateEvalResult } from "./template-evaluator.js";
@@ -182,7 +182,11 @@ function buildPassingCandidate(
     data_confidence: kill.dataConfidence,
     funnel_flags: [...kill.funnelFlags, ...winningEntry.result.funnelFlags],
     audit_mode: "deep",
-    audit_hints: [...route.auditHints, ...winningEntry.result.auditHints],
+    audit_hints: mergeAuditHints(
+      record.auditHints,
+      route.auditHints,
+      winningEntry.result.auditHints
+    ),
     compositeScore: poolScore,
     supportingPassCount: poolScore,
   };

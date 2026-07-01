@@ -24,6 +24,11 @@ export interface SecurityRecord {
   auditHints?: string[];
 }
 
+/** Merge audit hint arrays in order, dropping duplicates. */
+export function mergeAuditHints(...parts: Array<string[] | undefined>): string[] {
+  return Array.from(new Set(parts.flatMap((part) => part ?? [])));
+}
+
 export interface KillGateResult {
   excluded: boolean;
   killReason?: string;
