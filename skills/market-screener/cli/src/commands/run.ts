@@ -3,6 +3,7 @@ import { createAdapter } from "../data/registry.js";
 import { listEnrichCacheGaps } from "../lib/cache.js";
 import { assertCnQuoteUniverseIntegrity, probeCnQuotes } from "../data/cn/quotes.js";
 import { probeCnDatacenter } from "../data/cn/eastmoney.js";
+import { probeYahooFinance } from "../data/us/yahoo-preflight.js";
 import { runFunnel } from "../funnel/run.js";
 import { parseMarkets } from "../lib/markets.js";
 import { DEFAULT_CACHE_DIR } from "../lib/paths.js";
@@ -54,10 +55,26 @@ export async function runCommand(opts: RunCommandOptions): Promise<void> {
     inheritCacheFrom: opts.inheritCacheFrom,
   };
 
-  if (adapterKind === "live" && markets.includes("CN") && !opts.skipPreflight) {
-    progress.phase("Preflight: CN data sources…");
-    await probeCnDatacenter();
-    await probeCnQuotes();
+  if (adapterKind === "live" && !opts.skipPreflight) {
+    const preflightTasks: Promise<void>[] = [];
+    if (markets.includes("CN")) {
+      preflightTasks.push(
+        (async () => {
+          progress.phase("Preflight: CN data sources…");
+          await probeCnDatacenter();
+          await probeCnQuotes();
+        })()
+      );
+    }
+    if (markets.includes("US")) {
+      preflightTasks.push(
+        (async () => {
+          progress.phase("Preflight: US Yahoo Finance…");
+          await probeYahooFinance();
+        })()
+      );
+    }
+    await Promise.all(preflightTasks);
   }
 
   progress.phase(`Adapter: ${adapterKind} — loading ${marketScope} universe…`);

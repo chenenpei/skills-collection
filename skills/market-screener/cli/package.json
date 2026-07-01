@@ -14,7 +14,9 @@
     "validate": "tsx bin/screener.ts validate ../spec",
     "e2e:fixture": "tsx scripts/e2e-fixture.ts",
     "e2e:live": "tsx scripts/e2e-live.ts",
-    "e2e:live:full": "tsx scripts/e2e-live.ts --markets CN,US --quarter 2026-Q1"
+    "e2e:live:full": "tsx scripts/e2e-live.ts --markets CN,US --quarter 2026-Q1",
+    "smoke:cn": "tsx scripts/test-cn-preflight.ts",
+    "smoke:us": "tsx scripts/test-yahoo-universe.ts"
   },
   "dependencies": {
     "commander": "^13.1.0",
