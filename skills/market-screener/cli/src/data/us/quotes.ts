@@ -19,7 +19,7 @@ export function withAdapterDefaults(
   };
 }
 
-import { yahooFetch } from "../../lib/yahoo-session.js";
+import { yahooFetch } from "./yahoo-session.js";
 import { withHostLimit } from "../../lib/host-limit.js";
 import type { ProgressLogger } from "../../lib/progress.js";
 import type { Market } from "../../domain/types.js";

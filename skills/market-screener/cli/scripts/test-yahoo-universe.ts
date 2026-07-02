@@ -1,5 +1,5 @@
 import { createUsYahooAdapter } from "../src/data/us/quotes.js";
-import { resetYahooSessionForTests } from "../src/lib/yahoo-session.js";
+import { resetYahooSessionForTests } from "../src/data/us/yahoo-session.js";
 
 async function main(): Promise<void> {
   resetYahooSessionForTests();

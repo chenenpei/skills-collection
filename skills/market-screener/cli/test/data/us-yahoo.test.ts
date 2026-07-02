@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createUsYahooAdapter } from "../../src/data/us/quotes.js";
-import { yahooFetch } from "../../src/lib/yahoo-session.js";
+import { yahooFetch } from "../../src/data/us/yahoo-session.js";
 
-vi.mock("../../src/lib/yahoo-session.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/lib/yahoo-session.js")>();
+vi.mock("../../src/data/us/yahoo-session.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/data/us/yahoo-session.js")>();
   return {
     ...actual,
     yahooFetch: vi.fn(),

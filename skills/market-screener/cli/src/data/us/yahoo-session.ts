@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { resolveProxyUrl } from "./http-fetch.js";
+import { resolveProxyUrl } from "../../lib/http-fetch.js";
 
 const execFileAsync = promisify(execFile);
 

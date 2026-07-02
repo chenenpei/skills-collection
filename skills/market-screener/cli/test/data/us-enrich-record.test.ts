@@ -5,7 +5,7 @@ vi.mock("../../src/data/us/sec.js", () => ({
   resolveCik: vi.fn(async () => undefined),
 }));
 
-vi.mock("../../src/lib/yahoo-session.js", () => ({
+vi.mock("../../src/data/us/yahoo-session.js", () => ({
   yahooFetch: vi.fn(async () => ({ ok: false, status: 404 })),
 }));
 
