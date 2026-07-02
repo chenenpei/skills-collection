@@ -7,9 +7,9 @@ Permanent **why** for market-screener funnel and enrich policy. Executable truth
 | ADR | Topic | Notes |
 |-----|-------|--------|
 | [0002](./0002-enrichment-scope-tiers.md) | Low/medium enrich; defer high-tier | Policy reference |
-| [0003](./0003-cn-bank-routing-proxy.md) | CN 银行 → `financials.banks` | Phase two **done** (ADR 0008 enrich live) |
+| [0003](./0003-cn-bank-routing-proxy.md) | CN 银行历史代理路由 | Partially superseded by ADR 0008; current route is `financials.banks` |
 | [0005](./0005-metric-source-hygiene.md) | No silent metric proxies | Referenced from `spec/conventions.yaml` |
-| [0006](./0006-funnel-viability-and-sector-gates.md) | Viability exits, metric_coverage | Delivered; bank phase **blocked** |
+| [0006](./0006-funnel-viability-and-sector-gates.md) | Viability exits, metric_coverage | Accepted; CN bank `full` viability still requires stronger coverage |
 | [0008](./0008-cn-bank-disclosure-enrich.md) | CN bank disclosure scrape enrich; ROTCE→ROE required | **Delivered** — enrich live @ proxy viability |
 | [0009](./0009-data-source-reliability.md) | CN live preflight, integrity gates, ut refresh, degraded run, incremental enrich | **Accepted** — phased delivery |
 

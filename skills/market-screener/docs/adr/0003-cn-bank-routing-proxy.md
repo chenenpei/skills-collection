@@ -1,11 +1,14 @@
 ---
-status: accepted
+status: partially_superseded
 date: 2026-06-14
+superseded_by: docs/adr/0008-cn-bank-disclosure-enrich.md
 ---
 
-# CN banks route to banks_proxy until bank regulatory enrich exists
+# Historical CN bank proxy route
 
-CN 申万 L1 **银行** cannot pass `financials.banks` without NPL, capital adequacy, ROTCE, NIM, etc. **Route to `financials.banks_proxy`** — ROE + P/B mispricing only; not a Buffett bank audit.
+Current rule: CN banks route to `financials.banks` after ADR 0008 disclosure enrichment. This ADR records the earlier proxy decision and should not be used as the current routing source. Current executable truth lives in `spec/cn-industry-map.yaml` and `spec/templates/financials.yaml`.
+
+Original decision: CN 申万 L1 **银行** could not pass `financials.banks` without NPL, capital adequacy, ROTCE, NIM, etc. The temporary route was `financials.banks_proxy` — ROE + P/B mispricing only; not a Buffett bank audit.
 
 ## Guardrails
 
@@ -17,6 +20,6 @@ CN 申万 L1 **银行** cannot pass `financials.banks` without NPL, capital adeq
 
 Keep `banks` routing (0% pass); exclude banks from universe.
 
-## Phase two — DONE (2026-06-27)
+## Superseded update (2026-06-27)
 
 CN 银行 routes to `financials.banks` with disclosure enrich (ADR 0008). `banks_proxy` retained in spec for fallback documentation; CN industry map no longer routes to it.
