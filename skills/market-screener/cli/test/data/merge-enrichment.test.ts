@@ -5,7 +5,7 @@ import {
   mergeEnrichment,
   updatedQuoteHistory,
 } from "../../src/data/merge-enrichment.js";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 
 describe("mergeEnrichment quote history overlays", () => {
   const base: SecurityRecord = {

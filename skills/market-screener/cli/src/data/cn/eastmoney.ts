@@ -3,7 +3,7 @@ import path from "node:path";
 import { withHostLimit } from "../../lib/host-limit.js";
 import { httpFetch } from "../../lib/http-fetch.js";
 import { DEFAULT_CACHE_DIR } from "../../lib/paths.js";
-import type { DataConfidence } from "../../funnel/types.js";
+import type { DataConfidence } from "../../domain/types.js";
 import type { AnnualFinancialRow } from "../metrics.js";
 
 export const EASTMONEY_DATACENTER_BASE =

@@ -1,4 +1,4 @@
-import type { SecurityRecord } from "../../funnel/kill-gates.js";
+import type { SecurityRecord } from "../../domain/types.js";
 
 /** Shared adapter defaults for live providers that only supply quote-level fields. */
 export function withAdapterDefaults(
@@ -22,7 +22,7 @@ export function withAdapterDefaults(
 import { yahooFetch } from "../../lib/yahoo-session.js";
 import { withHostLimit } from "../../lib/host-limit.js";
 import type { ProgressLogger } from "../../lib/progress.js";
-import type { Market } from "../../funnel/types.js";
+import type { Market } from "../../domain/types.js";
 import type { MarketDataAdapter } from "../types.js";
 
 const SCREENER_URL = "https://query1.finance.yahoo.com/v1/finance/screener";

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { applyBankScrapeToRecord, isCnBankIndustry } from "../../src/data/cn/bank-indicators/apply.js";
 import { enrichCnRecord } from "../../src/data/cn/enrich.js";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 import type { AnnualFinancialRow } from "../../src/data/metrics.js";
 
 vi.mock("../../src/data/cn/eastmoney.js", async (importOriginal) => {

@@ -1,4 +1,4 @@
-import type { Market } from "../funnel/types.js";
+import type { Market } from "../domain/types.js";
 
 export function parseMarkets(raw: string): { marketScope: Market | "CN,US"; markets: Market[] } {
   const normalized = raw.replace(/\s+/g, "").toUpperCase();

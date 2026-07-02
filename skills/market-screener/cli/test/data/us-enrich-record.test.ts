@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 
 vi.mock("../../src/data/us/sec.js", () => ({
   resolveCik: vi.fn(async () => undefined),

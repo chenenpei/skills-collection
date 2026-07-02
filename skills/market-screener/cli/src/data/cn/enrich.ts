@@ -1,7 +1,7 @@
 import { readCache, writeCache } from "../../lib/cache.js";
 import type { EnrichOptions } from "../types.js";
-import type { SecurityRecord } from "../../funnel/kill-gates.js";
-import type { DataConfidence } from "../../funnel/types.js";
+import type { SecurityRecord } from "../../domain/types.js";
+import type { DataConfidence } from "../../domain/types.js";
 import {
   mergeEnrichment,
   updatedQuoteHistory,

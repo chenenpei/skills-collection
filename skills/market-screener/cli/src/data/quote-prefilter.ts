@@ -1,5 +1,5 @@
 import type { KillGatesSpec } from "../spec/types.js";
-import type { SecurityRecord } from "../funnel/kill-gates.js";
+import type { SecurityRecord } from "../domain/types.js";
 import { getUniverseProfileFailureReason, passesUniverseProfile } from "../funnel/universe.js";
 
 export function passesQuotePrefilter(

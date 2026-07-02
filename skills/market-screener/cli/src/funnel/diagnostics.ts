@@ -9,7 +9,8 @@ import {
   type PassingCandidate,
 } from "./run.js";
 import { templateLiveViability, manifestReviewThresholdsFromBundle } from "../spec/conventions.js";
-import type { KillGateResult, SecurityRecord } from "./kill-gates.js";
+import type { KillGateResult } from "./kill-gates.js";
+import type { SecurityRecord } from "../domain/types.js";
 import { resolveTemplateForEvaluation } from "./template-evaluator.js";
 import type { SectorTemplateSpec } from "../spec/types.js";
 import type { RouteResult } from "./router.js";

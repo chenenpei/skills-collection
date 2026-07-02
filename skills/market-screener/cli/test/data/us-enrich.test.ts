@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mergeUsEnrichment } from "../../src/data/us/enrich.js";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 import type { AnnualFinancialRow } from "../../src/data/metrics.js";
 
 describe("mergeUsEnrichment", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 import { enrichLiveUniverse } from "../../src/data/live.js";
 import { loadSpecBundle } from "../../src/spec/loader.js";
 import path from "node:path";

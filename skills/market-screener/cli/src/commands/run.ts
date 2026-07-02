@@ -9,7 +9,7 @@ import { DEFAULT_CACHE_DIR } from "../lib/paths.js";
 import { createProgressLogger } from "../lib/progress.js";
 import { loadSpecBundle } from "../spec/loader.js";
 import type { EnrichRunStats } from "../data/types.js";
-import type { Market } from "../funnel/types.js";
+import type { Market } from "../domain/types.js";
 
 /** Default per-ticker enrichment workers; each ticker may issue multiple HTTP calls. */
 const DEFAULT_ENRICH_CONCURRENCY = 4;

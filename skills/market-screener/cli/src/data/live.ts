@@ -3,8 +3,8 @@ import { ENRICH_STATS_SAMPLE_CAP } from "../lib/cache.js";
 import { partitionQuotePrefilter } from "./quote-prefilter.js";
 import { applyIndustryBenchmarks } from "./metrics.js";
 import type { EnrichOptions, EnrichResult, EnrichRunStats } from "./types.js";
-import type { SecurityRecord } from "../funnel/kill-gates.js";
-import type { Market } from "../funnel/types.js";
+import type { SecurityRecord } from "../domain/types.js";
+import type { Market } from "../domain/types.js";
 import { enrichCnRecord } from "./cn/enrich.js";
 import { enrichUsRecord } from "./us/enrich.js";
 

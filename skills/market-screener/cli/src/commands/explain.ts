@@ -5,8 +5,8 @@ import {
   listTemplateTrackResults,
   routeSecurityRecord,
 } from "../funnel/run.js";
-import { applyKillGates, type SecurityRecord } from "../funnel/kill-gates.js";
-import type { Market } from "../funnel/types.js";
+import { applyKillGates } from "../funnel/kill-gates.js";
+import type { Market, SecurityRecord } from "../domain/types.js";
 import { loadSpecBundle } from "../spec/loader.js";
 
 export interface ExplainCommandOptions {

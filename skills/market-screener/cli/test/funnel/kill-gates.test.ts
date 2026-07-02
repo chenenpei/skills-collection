@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
 import { loadSpecBundle } from "../../src/spec/loader.js";
 import type { KillGatesSpec } from "../../src/spec/types.js";
-import { applyKillGates, type SecurityRecord } from "../../src/funnel/kill-gates.js";
+import { applyKillGates } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
 

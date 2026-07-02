@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 
 const CN_FIXTURE = path.resolve(import.meta.dirname, "../fixtures/universe-cn.json");
 

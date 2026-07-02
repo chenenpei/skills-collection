@@ -11,7 +11,7 @@ import type { ExitStage } from "../funnel/filter-breakdown.js";
 import { parseMarkets } from "../lib/markets.js";
 import { DEFAULT_CACHE_DIR } from "../lib/paths.js";
 import { loadSpecBundle } from "../spec/loader.js";
-import type { Market } from "../funnel/types.js";
+import type { Market } from "../domain/types.js";
 
 export interface FilterBreakdownCommandOptions {
   fromOutput?: string;

@@ -1,5 +1,5 @@
 import type { SectorTemplateSpec } from "../spec/types.js";
-import type { SecurityRecord } from "./kill-gates.js";
+import type { SecurityRecord } from "../domain/types.js";
 import { evaluateThreshold, formatThresholdMiss, isMarketMissingOverrideSkip, shouldSkipMissingMetric } from "./threshold.js";
 import type { MetricValue, ThresholdRule } from "./types.js";
 

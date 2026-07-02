@@ -1,5 +1,5 @@
-import type { SecurityRecord } from "../funnel/kill-gates.js";
-import type { MetricValue } from "../funnel/types.js";
+import type { SecurityRecord } from "../domain/types.js";
+import type { MetricValue } from "../domain/types.js";
 
 /** Insufficient history sentinel — exceeds any spec max threshold (e.g. max: 5). */
 const INSUFFICIENT_DECLINE_PP = 99;

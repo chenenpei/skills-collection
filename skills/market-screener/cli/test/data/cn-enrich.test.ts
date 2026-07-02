@@ -9,7 +9,7 @@ import {
   mergeCnEnrichment,
 } from "../../src/data/cn/enrich.js";
 import { annualRowsNeedMetricRefresh } from "../../src/data/metrics.js";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 import type { AnnualFinancialRow } from "../../src/data/metrics.js";
 
 vi.mock("../../src/data/cn/eastmoney.js", async (importOriginal) => {

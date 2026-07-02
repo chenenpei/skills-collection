@@ -3,7 +3,7 @@ import path from "node:path";
 import { loadSpecBundle } from "../../src/spec/loader.js";
 import type { SectorTemplateSpec } from "../../src/spec/types.js";
 import { evaluateTemplateTrack, evaluateTemplateTrackDiagnostic } from "../../src/funnel/template-evaluator.js";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 import { loadCnFixtureRecord } from "../helpers/universe-fixture.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");

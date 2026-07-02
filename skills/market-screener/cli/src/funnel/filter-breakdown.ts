@@ -4,7 +4,7 @@ import { parse as parseYaml } from "yaml";
 import type { SpecBundle } from "../spec/types.js";
 import { applyIndustryBenchmarks } from "../data/metrics.js";
 import { loadEnrichedUniverseFromCache } from "../data/merge-enrichment.js";
-import type { SecurityRecord } from "./kill-gates.js";
+import type { SecurityRecord } from "../domain/types.js";
 import { routeSecurityRecord } from "./run.js";
 import {
   evaluateTemplateTrackDiagnostic,

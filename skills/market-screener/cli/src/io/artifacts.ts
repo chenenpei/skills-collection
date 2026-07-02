@@ -1,4 +1,4 @@
-import type { Market } from "../funnel/types.js";
+import type { Market } from "../domain/types.js";
 import type { SpecBundle } from "../spec/types.js";
 import { funnelSoftCapFromBundle } from "../spec/conventions.js";
 

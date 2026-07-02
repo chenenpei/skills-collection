@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
 import { loadSpecBundle } from "../../src/spec/loader.js";
 import { passesQuotePrefilter } from "../../src/data/quote-prefilter.js";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
 

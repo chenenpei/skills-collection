@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { SecurityRecord } from "../../funnel/kill-gates.js";
+import type { SecurityRecord } from "../../domain/types.js";
 import { getEastMoneyUt } from "./eastmoney.js";
 import { httpFetch } from "../../lib/http-fetch.js";
 import type { ProgressLogger } from "../../lib/progress.js";
-import type { Market } from "../../funnel/types.js";
+import type { Market } from "../../domain/types.js";
 import type { LoadUniverseOptions, MarketDataAdapter } from "../types.js";
 
 /** Shared adapter defaults for live providers that only supply quote-level fields. */

@@ -6,7 +6,7 @@ import { parse as parseYaml } from "yaml";
 import { loadSpecBundle } from "../../src/spec/loader.js";
 import type { SpecBundle } from "../../src/spec/types.js";
 import { runFunnel } from "../../src/funnel/run.js";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
 const FIXTURE = path.resolve(import.meta.dirname, "../fixtures/universe-cn.json");

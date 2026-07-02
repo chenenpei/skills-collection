@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { SecurityRecord } from "../funnel/kill-gates.js";
-import type { Market } from "../funnel/types.js";
+import type { SecurityRecord } from "../domain/types.js";
+import type { Market } from "../domain/types.js";
 import { DEFAULT_FIXTURES_DIR } from "../lib/paths.js";
 import type { LoadUniverseOptions, MarketDataAdapter } from "./types.js";
 

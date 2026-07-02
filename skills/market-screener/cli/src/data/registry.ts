@@ -14,8 +14,8 @@ import type {
   LoadUniverseOptions,
   MarketDataAdapter,
 } from "./types.js";
-import type { Market } from "../funnel/types.js";
-import type { SecurityRecord } from "../funnel/kill-gates.js";
+import type { Market } from "../domain/types.js";
+import type { SecurityRecord } from "../domain/types.js";
 
 export type AdapterKind = "fixture" | "live";
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { summarizeEnrichRunStats } from "../../src/data/live.js";
-import type { SecurityRecord } from "../../src/funnel/kill-gates.js";
+import type { SecurityRecord } from "../../src/domain/types.js";
 
 function rec(ticker: string, extra: Partial<SecurityRecord> = {}): SecurityRecord {
   return {

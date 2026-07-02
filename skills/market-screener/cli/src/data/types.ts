@@ -1,6 +1,6 @@
-import type { SecurityRecord } from "../funnel/kill-gates.js";
+import type { SecurityRecord } from "../domain/types.js";
 import type { KillGatesSpec } from "../spec/types.js";
-import type { Market } from "../funnel/types.js";
+import type { Market } from "../domain/types.js";
 import type { ProgressLogger } from "../lib/progress.js";
 
 export interface LoadUniverseOptions {

@@ -1,28 +1,6 @@
 import type { KillGatesSpec } from "../spec/types.js";
 import { BLOCKED_STATUSES, getUniverseFloors } from "./universe.js";
-import type { DataConfidence, Market, MetricValue } from "./types.js";
-
-export interface SecurityRecord {
-  ticker: string;
-  market: Market;
-  companyName: string;
-  currency: string;
-  status: string;
-  marketCap: number;
-  listingAgeYears: number;
-  gicsCode?: string;
-  industryProxy?: string;
-  metrics: Record<string, MetricValue>;
-  revenueYoyHistory: number[];
-  ocfNegativeYears: number;
-  netLossWidening: boolean;
-  nonStandardAudit: boolean;
-  latestFinancialMonthsOld: number;
-  /** Set when live enrichment could not complete for this record. */
-  enrichmentFailure?: "cik_unresolved" | "fetch_failed";
-  /** Optional hints for Deep audit (routing, bank scrape, template eval). */
-  auditHints?: string[];
-}
+import type { DataConfidence, MetricValue, SecurityRecord } from "../domain/types.js";
 
 export interface KillGateResult {
   excluded: boolean;

@@ -13,7 +13,8 @@ import {
   FunnelDiagnosticsCollector,
   routingDiagnosticsFromFunnel,
 } from "./diagnostics.js";
-import { applyKillGates, type KillGateResult, type SecurityRecord } from "./kill-gates.js";
+import { applyKillGates, type KillGateResult } from "./kill-gates.js";
+import type { SecurityRecord } from "../domain/types.js";
 import { allocateTemplateSeats } from "./ranker.js";
 import { routeSecurity, type RouteResult } from "./router.js";
 import { evaluateTemplateTrack, type TemplateEvalResult } from "./template-evaluator.js";

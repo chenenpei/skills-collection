@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { SecurityRecord } from "../funnel/kill-gates.js";
+import type { SecurityRecord } from "../domain/types.js";
 import { sanitizeCnQuoteMetrics } from "./cn/quotes.js";
 import type { BankScrapeMetrics } from "./cn/bank-indicators/types.js";
-import type { DataConfidence, MetricValue } from "../funnel/types.js";
+import type { DataConfidence, MetricValue } from "../domain/types.js";
 import { deriveFromAnnualRows, type AnnualFinancialRow } from "./metrics.js";
 
 export const CN_QUOTE_HISTORY_SCHEMA = "eastmoney_f115_f23_v2" as const;
