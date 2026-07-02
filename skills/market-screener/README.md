@@ -1,57 +1,57 @@
 # market-screener
 
-Quarterly quantitative funnel for A-share and US single-company equities. Feeds candidates into [stock-analysis-audit](../stock-analysis-audit/) Deep audit.
+面向 A 股和美股个股的季度定量筛选技能。它先用 `cli/` 中的 `screener` 命令生成 `candidates.yaml`、`deferred.yaml`、`excluded.yaml` 等结果，再把候选标的交给 [stock-analysis-audit](../stock-analysis-audit/) 做 Deep（深度审计）。
 
-**Status:** Spec + SKILL.md (Package M tightened) — CLI **M3 live enrichment** done (`cli_m3_live_funnel_done`), including CN bank disclosure scrape at proxy viability.
+本目录包含两部分：`spec/` 保存规则，`cli/` 执行定量漏斗。投资结论仅用于研究辅助，不构成投资建议。
 
-## Layout
+## 目录结构
 
-| Path | Purpose |
-|------|---------|
-| [SKILL.md](./SKILL.md) | Agent orchestration entry (manual invocation only) |
-| [cli/](./cli/) | TypeScript `screener` CLI (validate, run, explain, landmine, filter-breakdown) |
-| [docs/agent-guide.md](./docs/agent-guide.md) | Quarterly runbook for agents (schedule, Deep, deferred Lite, landmine, triggers) |
-| [CONTEXT.md](./CONTEXT.md) | Domain vocabulary (glossary only) |
-| [spec/index.yaml](./spec/index.yaml) | Manifest, data sources, template list |
-| [spec/kill-gates.yaml](./spec/kill-gates.yaml) | Shared kill gates before sector funnels |
-| [spec/routing-map.yaml](./spec/routing-map.yaml) | GICS / industry proxy → sector templates |
-| [spec/cn-industry-map.yaml](./spec/cn-industry-map.yaml) | A-share Shenwan L1/L2 → sector templates (primary CN routing) |
-| [spec/output-schema.yaml](./spec/output-schema.yaml) | `candidates.yaml` / `excluded.yaml` / diagnostics contract |
-| [spec/conventions.yaml](./spec/conventions.yaml) | Threshold and pass-logic syntax |
-| [spec/landmine-rules.yaml](./spec/landmine-rules.yaml) | Landmine price formulas (Phase 2) |
-| [spec/trigger-discipline.yaml](./spec/trigger-discipline.yaml) | Scenario A/B trigger rules (alert CLI Phase 2) |
-| [spec/schedule.yaml](./spec/schedule.yaml) | Scheduled quarterly run dates — CN+US same day after later disclosure |
-| [spec/templates/](./spec/templates/) | Sector funnel rules (6 templates) |
+| 路径 | 用途 |
+|------|------|
+| [SKILL.md](./SKILL.md) | Agent 编排入口，仅在用户明确调用时使用 |
+| [cli/](./cli/) | TypeScript 命令行工具，包含 `validate`、`run`、`explain`、`landmine`、`filter-breakdown`、`bank-indicators` |
+| [docs/agent-guide.md](./docs/agent-guide.md) | 面向 Agent 的季度运行手册 |
+| [CONTEXT.md](./CONTEXT.md) | 领域词汇表，仅保存术语和 slug |
+| [spec/index.yaml](./spec/index.yaml) | 规则索引、数据源和模板清单 |
+| [spec/kill-gates.yaml](./spec/kill-gates.yaml) | 行业模板前的共享剔除规则 |
+| [spec/routing-map.yaml](./spec/routing-map.yaml) | GICS / 行业代理到模板的路由规则 |
+| [spec/cn-industry-map.yaml](./spec/cn-industry-map.yaml) | A 股申万行业到模板的主要路由规则 |
+| [spec/output-schema.yaml](./spec/output-schema.yaml) | 输出文件结构约定 |
+| [spec/conventions.yaml](./spec/conventions.yaml) | 阈值语法和通过规则约定 |
+| [spec/landmine-rules.yaml](./spec/landmine-rules.yaml) | 限价观察价计算规则 |
+| [spec/trigger-discipline.yaml](./spec/trigger-discipline.yaml) | 到价后的复核纪律；自动告警命令尚未实现 |
+| [spec/schedule.yaml](./spec/schedule.yaml) | 季度运行日期规则 |
+| [spec/templates/](./spec/templates/) | 六类行业漏斗规则 |
 
-## CLI
+## 命令行工具
 
-Path: [`cli/`](./cli/). TypeScript package with `screener` binary (Commander + tsx).
+路径：[`cli/`](./cli/)。这是基于 Commander 和 `tsx` 的 TypeScript 命令行工具。
 
-### Install
+### 安装依赖
 
 ```bash
 cd skills/market-screener/cli
 npm install
 ```
 
-### Test
+### 运行测试
 
 ```bash
 npm test
 ```
 
-### Commands
+### 常用命令
 
-All commands run from `skills/market-screener/cli` via `npm run dev -- <command>` or `npx tsx bin/screener.ts <command>`.
+以下命令都在 `skills/market-screener/cli` 目录执行，可使用 `npm run dev -- <command>` 或 `npx tsx bin/screener.ts <command>`。
 
-**Validate spec**
+**校验规则文件**
 
 ```bash
 npm run validate
 # or: npx tsx bin/screener.ts validate ../spec
 ```
 
-**Run funnel** (`--adapter fixture` offline by default; `--adapter live` for CN East Money + US Yahoo)
+**运行定量漏斗**（`--adapter fixture` 为离线 fixture；`--adapter live` 使用东方财富、Yahoo、SEC 等在线数据源）
 
 ```bash
 # Offline (default)
@@ -71,13 +71,13 @@ npx tsx bin/screener.ts run \
   --adapter live
 ```
 
-Writes `{output}/{quarter}/{CN|US}/candidates.yaml`, `deferred.yaml`, `excluded.yaml`, `routing-diagnostics.yaml`, `funnel-diagnostics.yaml`, and (live, when non-empty) `prefilter-excluded.yaml`.
+写入 `{output}/{quarter}/{CN|US}/candidates.yaml`、`deferred.yaml`、`excluded.yaml`、`routing-diagnostics.yaml`、`funnel-diagnostics.yaml`，在线运行且有预筛剔除时还会写入 `prefilter-excluded.yaml`。
 
-**CN routing:** enriched A-share names route via `spec/cn-industry-map.yaml` (`routing_method: cn_industry_map`). Verify coverage before quarterly funnel: `npx tsx scripts/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec` (target `fallback_rate` < 5%).
+**A 股路由：** 补全后的 A 股标的通过 `spec/cn-industry-map.yaml` 路由（`routing_method: cn_industry_map`）。季度漏斗前可用 `npx tsx scripts/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec` 检查覆盖率，目标是 `fallback_rate` < 5%。
 
-**Live-only flags:** `--enrich-concurrency` (default 4), `--skip-cache`.
+**在线数据参数：** `--enrich-concurrency`（默认 4）、`--skip-cache`。
 
-**Explain one security** (routing + kill gates + template evaluation)
+**解释单个标的的路由和筛选结果**
 
 ```bash
 npx tsx bin/screener.ts explain 600519 \
@@ -86,7 +86,7 @@ npx tsx bin/screener.ts explain 600519 \
   --spec ../spec
 ```
 
-**Landmine prices** from Deep audit shortlist
+**根据 Deep 审计短名单生成限价观察价**
 
 ```bash
 npx tsx bin/screener.ts landmine \
@@ -95,7 +95,7 @@ npx tsx bin/screener.ts landmine \
   --quarter 2026-Q2
 ```
 
-**Filter breakdown** from funnel output
+**统计漏斗剔除原因**
 
 ```bash
 npm run dev -- filter-breakdown \
@@ -104,10 +104,10 @@ npm run dev -- filter-breakdown \
   --markets CN
 ```
 
-Writes `/tmp/screener-out/2026-Q2/CN/filter-breakdown.md` by default.
+默认写入 `/tmp/screener-out/2026-Q2/CN/filter-breakdown.md`。
 
-`--spec` defaults to `../spec` when omitted. Phase 2 placeholder: `screener alert` (not implemented).
+`run` 和 `explain` 需要显式传入 `--spec ../spec`。`landmine` 可通过 `--spec` 指定规则目录；省略时会使用命令内部的默认规则路径。`screener alert` 尚未实现，到价提醒仍由人工或券商 App 处理。
 
-## Related
+## 相关文档
 
 - [CONTEXT-MAP.md](../../CONTEXT-MAP.md)
