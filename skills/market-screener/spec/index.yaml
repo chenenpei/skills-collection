@@ -15,7 +15,6 @@ delivery:
     - screener explain TICKER --market CN|US
     - screener landmine --from audit-summary.yaml --output landmines.yaml
     - screener bank-indicators TICKER --year YYYY
-    - screener alert --from landmines.yaml --output alerts.yaml  # Phase 2 placeholder
 
 principles:
   kill_gate: prefer_false_positives_over_false_rejects
@@ -137,14 +136,4 @@ landmine:
 
 trigger_discipline:
   ref: trigger-discipline.yaml
-  mvp: human_broker_alerts_plus_agent_guide
-  phase_2_placeholder:
-    cli_command: screener alert
-    output_artifact: alerts.yaml
-
-implementation_order:
-  - spec_yaml
-  - cli_skeleton_validate
-  - data_adapters
-  - funnel_engine
-  - skill_md  # done
+  execution: human_broker_alerts_plus_agent_guide

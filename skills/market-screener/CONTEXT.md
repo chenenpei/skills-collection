@@ -52,7 +52,7 @@ slug: `investable_universe`
 
 **Fixed Sector Template Taxonomy** — Six templates: `financials`, `tech_saas`, `consumer`, `cyclicals`, `manufacturing`, `healthcare`. slug: `fixed_sector_template_taxonomy`
 
-**Sector Sub-Template** — Full alternate tracks inside one YAML (e.g. `financials.banks_proxy`). slug: `sector_sub_template`
+**Sector Sub-Template** — Alternate tracks inside one YAML, such as `financials.banks` and `financials.other_financials`. slug: `sector_sub_template`
 
 **Funnel Track** — `quality` and/or `mispricing` per template. slug: `funnel_track`
 
@@ -157,17 +157,11 @@ Slugs: `cn_bank_routing_proxy`, `cn_tech_saas_quality_skip`, `bank_regulatory_en
 
 **Scheduled Quarterly Run** / **Disclosure Anchor** / **Later Market Gate** — Quarterly timing after both markets' anchors. slugs: `scheduled_quarterly_run`, `disclosure_anchor`, `later_market_gate`
 
-**Tightening Profile Package M** — Current spec package: soft cap 20, seat allocation, supporting bars. slug: `tightening_profile_package_m`
-
 ---
 
-## Future (spec present; not CLI MVP)
+## Future planning
 
-**Trigger Discipline** / **Trigger Isolated Drop** / **Trigger Macro Panic** — Phase 3 landmine touch rules. slugs: `trigger_discipline`, `trigger_isolated_drop`, `trigger_macro_panic`
-
-**Screener Alert** — Live price vs landmines CLI (placeholder). slug: `screener_alert`
-
-**All-Sector Coverage Target** — Funnel covers all stock-analysis-audit sector blocks over time. slug: `all_sector_coverage_target`
+未实现能力和后续规划集中记录在 `docs/future-work.md`；本词汇表只保留当前运行和审计会用到的术语。
 
 ---
 

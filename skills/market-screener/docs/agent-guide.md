@@ -21,7 +21,7 @@
 - **每年 3 次季度定时运行**；美股 Q4/10-K（~2 月中旬）不单独跑批， freshness 并进下一轮 Q1 窗口。
 - **禁止**在 `later_anchor` 之前跑漏斗；若用户要求提前跑，警告数据未齐并说明 `data_confidence: low` 风险。
 
-未实现命令：`screener schedule --year YYYY` 未来可用于打印解析日期；当前不要承诺可执行。
+未实现命令和后续规划集中记录在 [future-work.md](./future-work.md)。当前不要承诺自动日期解析命令可执行。
 
 ---
 
@@ -192,7 +192,7 @@ MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
 | B — 宏观恐慌 | `trigger_macro_panic` | 24h 确认后 **40–50% 首批仓位**；剩余仓位等下一财报季 |
 | 不确定 | `trigger_ambiguous` | **默认按场景 A** |
 
-未实现命令：`screener alert --from landmines.yaml` → `alerts.yaml`。当前仍由券商提醒和人工复核处理。
+`screener alert` 尚未实现。当前仍由券商提醒和人工复核处理，后续规划见 [future-work.md](./future-work.md)。
 
 ---
 
@@ -226,7 +226,7 @@ MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
 ## Post-run quarterly gate (CN live)
 
 1. Run funnel + `filter-breakdown` for the quarter.
-2. Check `funnel-diagnostics.yaml` → `enrichment.cache_missing_count`. If > 3% of enriched survivors, run `repair-enrich-cache.ts` then re-run funnel or document residual tickers.
+2. Check `funnel-diagnostics.yaml` → `enrichment.cache_missing_count`. If > 3% of enriched survivors, run the cache repair script, then re-run funnel or document residual tickers.
 3. **Medical devices (医疗器械):** L2 routes to `manufacturing` only; strong names may appear in `deferred`, not top 20 — expected after P0 healthcare fix.
 4. **Healthcare pass rate ~15–20%:** monitor in diagnostics; do not tighten template without Deep false-positive review.
 5. **688617 class:** absent from candidates when `inventory_turnover_vs_industry` fails under full-universe benchmarks — sector_filtered, not YAML omission bug.
@@ -237,9 +237,7 @@ MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
 
 ## 7. 未实现命令（勿承诺可执行）
 
-- `screener schedule` — 解析季度运行日期
-- `screener alert` — landmine 触达告警
-- Cursor Automation — 定时提醒（非自动交易）
+未实现命令和后续规划集中记录在 [future-work.md](./future-work.md)。当前不要承诺自动到价提醒或自动日期解析命令可执行。
 
 ---
 

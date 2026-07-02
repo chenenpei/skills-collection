@@ -12,7 +12,7 @@ The 2026-06 CN quote field mapping bug showed that **HTTP 200 with wrong or empt
 
 ## Decision
 
-Add reliability guardrails **without new module directories**. Extend existing files only. Implement in phases: **Phase 1 (preflight + integrity + dynamic `ut` refresh)** is delivered; degraded fallback, bank-source reordering, and incremental enrich are accepted follow-up work tracked in this ADR.
+Add reliability guardrails **without new module directories**. Extend existing files only. The current implementation covers preflight probes, integrity checks, dynamic `ut` refresh, opt-in degraded quote fallback, official-first bank PDF discovery, and incremental CN enrich cache inheritance.
 
 | Concern | Location | Behavior |
 |---------|----------|----------|
@@ -54,7 +54,7 @@ Record `sourceTier` on `BankBulletinEntry`; Sina-only success logs a warning.
 
 - New quarter: always refresh quote metrics and `quoteHistory`.
 - Annual rows / dividend / industry: skip datacenter fetch when inherited cache is complete unless `--skip-cache` or `annualRowsNeedMetricRefresh`.
-- CLI: `--inherit-cache-from 2026-Q1` on `run` and `repair-enrich-cache`.
+- CLI: `--inherit-cache-from 2026-Q1` on `run`.
 
 ## Rejected
 

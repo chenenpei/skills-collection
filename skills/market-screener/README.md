@@ -11,6 +11,7 @@
 | [SKILL.md](./SKILL.md) | Agent 编排入口，仅在用户明确调用时使用 |
 | [cli/](./cli/) | TypeScript 命令行工具，包含 `validate`、`run`、`explain`、`landmine`、`filter-breakdown`、`bank-indicators` |
 | [docs/agent-guide.md](./docs/agent-guide.md) | 面向 Agent 的季度运行手册 |
+| [docs/future-work.md](./docs/future-work.md) | 中文后续工作清单；集中记录未实现能力和规划项 |
 | [CONTEXT.md](./CONTEXT.md) | 领域词汇表，仅保存术语和 slug |
 | [spec/index.yaml](./spec/index.yaml) | 规则索引、数据源和模板清单 |
 | [spec/kill-gates.yaml](./spec/kill-gates.yaml) | 行业模板前的共享剔除规则 |

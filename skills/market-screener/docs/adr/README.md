@@ -21,4 +21,4 @@ Permanent **why** for market-screener funnel and enrich policy. Executable truth
 | 0004 | CN tech_saas SBC/dilution skip + flag | `spec/templates/tech-saas.yaml`; `template-evaluator.ts` |
 | 0007 | North-star pool tie-break | `spec/conventions.yaml` → `pool_tie_break_north_star`; `ranker.test.ts` |
 
-**Open work:** US bank SEC enrich probe; insurance quant_too_hard; NIM/supporting coverage for `full` promote.
+后续规划集中记录在 [future-work.md](../future-work.md)。

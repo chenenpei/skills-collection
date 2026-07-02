@@ -83,8 +83,6 @@ date_resolution:
     2. later_anchor_date = max(cn_anchor_date, us_anchor_date).
     3. scheduled_run_date = first Saturday on or after later_anchor_date.
     4. If that Saturday is unsuitable, user may slip to Sunday same weekend or next weekend (manual).
-  cli_future: screener schedule --year YYYY  # Phase 2 optional; prints resolved dates
-
 same_day_execution:
   markets: CN,US
   order_suggestion:

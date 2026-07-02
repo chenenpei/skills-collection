@@ -90,7 +90,7 @@ live_quote_prefilter:
   applies_when: adapter_live
   phase: before_financial_enrichment
   shared_with: universe gates (status_excluded, market_cap_below_floor, listing_age_below_floor)
-  implementation: cli/src/engine/universe-profile.ts via cli/src/adapters/live-pipeline.ts
+  implementation: cli/src/data/quote-prefilter.ts via cli/src/data/live.ts
   output_artifact: prefilter-excluded.yaml
   note: >
     Skipped securities are not enriched (saves HTTP). They are excluded from the

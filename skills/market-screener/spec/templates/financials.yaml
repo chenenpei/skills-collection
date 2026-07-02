@@ -85,6 +85,8 @@ sub_templates:
         - { metric: dividend_yield, min: 0.04 }
         - { metric: price_vs_52w_high, max: 0.75 }
 
+  # Historical fallback documentation only. Current CN bank routing uses banks
+  # after ADR 0008 disclosure enrich; no current CN industry-map route points here.
   banks_proxy:
     funnel_flags:
       - bank_routed_via_other_financials_proxy

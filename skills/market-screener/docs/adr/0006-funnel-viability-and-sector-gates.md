@@ -33,9 +33,3 @@ Seventh generic template; required-only sector pass; runtime missing-rate viabil
 ## Delivered (2026-06-14)
 
 Router/run/diagnostics, template YAML cleanup, routing report, north-star tie-break (`pool_tie_break_north_star`), tests (153 pass).
-
-## Open
-
-- CN live/cache replay sign-off when operator cache present.
-- US bank SEC regulatory enrich probe.
-- CN bank coverage hardening for `full` viability, especially `npl_ratio_yoy_change`, NIM, and image-table ROA gaps.
