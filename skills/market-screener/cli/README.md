@@ -112,9 +112,9 @@ data/cache/{quarter}/{CN|US}/{ticker}.json
 | Fixture E2E | `npm run e2e:fixture` | 使用 fixture 跑完整 CN+US 漏斗；不访问网络 |
 | Live E2E | `npm run e2e:live` | 真实网络在线运行，默认 CN、`2026-Q1` |
 | Live E2E (full) | `npm run e2e:live:full` | CN+US 在线运行，并断言补全结果 |
-| CN quote smoke | `npx tsx scripts/test-cn-quote-snapshot.ts` | 检查 603195/600519/600919 的东方财富 PE/PB 映射 |
-| CN preflight smoke | `npx tsx scripts/test-cn-preflight.ts` | 检查东方财富报价锚点和 datacenter 年报行探针 |
-| US quote smoke | `npx tsx scripts/test-yahoo-universe.ts` | 检查 Yahoo 股票池抓取耗时和前 5 个样本 |
+| CN quote smoke | `npx tsx scripts/probes/cn-quote-snapshot.ts` | 检查 603195/600519/600919 的东方财富 PE/PB 映射 |
+| CN preflight smoke | `npx tsx scripts/probes/cn-preflight.ts` | 检查东方财富报价锚点和 datacenter 年报行探针 |
+| US quote smoke | `npx tsx scripts/probes/us-yahoo-universe.ts` | 检查 Yahoo 股票池抓取耗时和前 5 个样本 |
 
 向在线脚本传递额外参数：
 
@@ -122,7 +122,7 @@ data/cache/{quarter}/{CN|US}/{ticker}.json
 npm run e2e:live -- --markets CN,US --quarter 2026-Q2
 ```
 
-Live E2E 会断言补全后的候选结果（`candidates >= 1`、`metric_snapshot` 非空）、A 股股票池规模，以及空 YoY 不会误触发 `kill_revenue_decline_3y_consecutive`。该脚本需要网络；macOS 使用系统代理时需设置 `HTTPS_PROXY`（见 `scripts/e2e-live.ts`）。
+Live E2E 会断言补全后的候选结果（`candidates >= 1`、`metric_snapshot` 非空）、A 股股票池规模，以及空 YoY 不会误触发 `kill_revenue_decline_3y_consecutive`。该脚本需要网络；macOS 使用系统代理时需设置 `HTTPS_PROXY`（见 `scripts/e2e/live.ts`）。
 
 ### 输出文件
 
@@ -140,8 +140,8 @@ Live E2E 会断言补全后的候选结果（`candidates >= 1`、`metric_snapsho
 运行后可打印易读的 Markdown 漏斗回放，包括预筛和 kill 原因占比、路由分布、行业通过率：
 
 ```bash
-npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN
-npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN --write report.md
+npx tsx scripts/reports/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN
+npx tsx scripts/reports/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN --write report.md
 ```
 
 优先读取 `funnel-diagnostics.yaml`；如果不存在，则从 `prefilter-excluded.yaml`、`excluded.yaml` 和 `routing-diagnostics.yaml` 重建。
@@ -173,7 +173,7 @@ npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN --templ
 从补全缓存的 `industryProxy` 离线统计路由分布：
 
 ```bash
-npx tsx scripts/routing-report.ts --quarter 2026-Q1 --market CN --spec ../spec
+npx tsx scripts/reports/routing-report.ts --quarter 2026-Q1 --market CN --spec ../spec
 ```
 
 在线补全后、季度漏斗前使用，确认 A 股路由表覆盖率满足 `fallback_rate < 5%`。
@@ -183,7 +183,7 @@ npx tsx scripts/routing-report.ts --quarter 2026-Q1 --market CN --spec ../spec
 A 股在线运行后，如果 `funnel-diagnostics.yaml` 显示 `enrichment.cache_missing_count` 超过补全存活标的的 3%：
 
 ```bash
-npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
+npx tsx scripts/maintenance/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
 ```
 
 对缺少缓存文件或 `annualRows` 为空的报价预筛存活标的重新运行 `enrichCnRecord`。完成后重新运行漏斗，或记录剩余标的。
@@ -194,11 +194,11 @@ npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
 
 ```bash
 # 先 dry-run
-npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --dry-run
+npx tsx scripts/maintenance/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --dry-run
 
 # 带备份清理，然后强制重新补全全部存活标的
-npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --backup
-npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --force-all --concurrency 4
+npx tsx scripts/maintenance/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --backup
+npx tsx scripts/maintenance/repair-enrich-cache.ts --quarter 2026-Q2 --force-all --concurrency 4
 ```
 
 ## 测试

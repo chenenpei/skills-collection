@@ -75,7 +75,7 @@ Before using cache `quoteHistory.pe` / `pb` in valuation sections:
 - `CN/excluded.yaml` — 对 **已 enrichment** 宇宙应用 Kill Gate 后的排除（含 `enrichment_failure` 可选字段）
 - `CN/prefilter-excluded.yaml` — **仅 live**：quote prefilter 跳过、未 enrichment 的标的（status/市值/年限）
 - `CN/routing-diagnostics.yaml` — Kill Gate 存活标的的路由分布（`by_method`、`fallback_rate`）
-- `CN/funnel-diagnostics.yaml` — 全漏斗回放统计（prefilter/kill 原因占比、sector 通过率）；可用 `scripts/funnel-replay.ts` 打印可读报告
+- `CN/funnel-diagnostics.yaml` — 全漏斗回放统计（prefilter/kill 原因占比、sector 通过率）；可用 `scripts/reports/funnel-replay.ts` 打印可读报告
 - **按行业层级统计剔除原因**：`npm run dev -- filter-breakdown --output ./funnel-output/ --quarter {quarter} --markets CN`（默认写入同目录 `filter-breakdown.md`；需 enrichment cache）
 - `US/` 同上
 

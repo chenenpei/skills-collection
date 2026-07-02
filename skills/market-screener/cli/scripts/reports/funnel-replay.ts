@@ -2,8 +2,8 @@
  * Readable funnel replay report from funnel output artifacts.
  *
  * Usage:
- *   npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN
- *   npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN --write report.md
+ *   npx tsx scripts/reports/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN
+ *   npx tsx scripts/reports/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN --write report.md
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -12,8 +12,8 @@ import {
   buildFunnelDiagnosticsFromArtifacts,
   formatFunnelReplayReport,
   type FunnelDiagnosticsDoc,
-} from "../src/funnel/diagnostics.js";
-import type { Market } from "../src/funnel/types.js";
+} from "../../src/funnel/diagnostics.js";
+import type { Market } from "../../src/funnel/types.js";
 
 function parseArgs(argv: string[]): { fromOutput: string; write?: string } {
   let fromOutput = "";
@@ -24,7 +24,7 @@ function parseArgs(argv: string[]): { fromOutput: string; write?: string } {
   }
   if (!fromOutput) {
     throw new Error(
-      "Usage: npx tsx scripts/funnel-replay.ts --from-output <funnel-output/quarter/MARKET> [--write report.md]"
+      "Usage: npx tsx scripts/reports/funnel-replay.ts --from-output <funnel-output/quarter/MARKET> [--write report.md]"
     );
   }
   return { fromOutput: path.resolve(fromOutput), write };

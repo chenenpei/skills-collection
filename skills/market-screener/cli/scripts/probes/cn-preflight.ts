@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
-import { probeCnDatacenter } from "../src/data/cn/eastmoney.js";
-import { probeCnQuotes } from "../src/data/cn/quotes.js";
+import { probeCnDatacenter } from "../../src/data/cn/eastmoney.js";
+import { probeCnQuotes } from "../../src/data/cn/quotes.js";
 
 async function main(): Promise<void> {
   await probeCnDatacenter();

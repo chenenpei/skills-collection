@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import { loadCnQuotesByTickers } from "../src/data/cn/quotes.js";
+import { loadCnQuotesByTickers } from "../../src/data/cn/quotes.js";
 
 const CHECKS: Array<{
   ticker: string;

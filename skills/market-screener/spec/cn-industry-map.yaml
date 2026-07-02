@@ -2,7 +2,7 @@
 # Edit l1_defaults when East Money adds a new L1; use l2_overrides for exceptions.
 # After edits: cd cli && npm run validate && npm test -- test/funnel/router.test.ts
 # Quarterly: read funnel CN/funnel-diagnostics.yaml (or routing-diagnostics.yaml); if fallback_rate > 5%, extend this file.
-# Offline pre-check: npx tsx scripts/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec
+# Offline pre-check: npx tsx scripts/reports/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec
 
 version: "0.1.0"
 taxonomy: eastmoney_shenwan_hierarchy

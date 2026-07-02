@@ -8,12 +8,12 @@ import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CLI_ROOT = path.resolve(__dirname, "..");
+const CLI_ROOT = path.resolve(__dirname, "../..");
 const SPEC_DIR = path.resolve(CLI_ROOT, "../spec");
 
 async function main(): Promise<void> {
   const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "screener-fixture-e2e-"));
-  const { runCommand } = await import("../src/commands/run.js");
+  const { runCommand } = await import("../../src/commands/run.js");
 
   await runCommand({
     markets: "CN,US",

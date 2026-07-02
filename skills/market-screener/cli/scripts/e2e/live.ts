@@ -12,10 +12,10 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { resolveProxyUrl } from "../src/lib/http-fetch.js";
+import { resolveProxyUrl } from "../../src/lib/http-fetch.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CLI_ROOT = path.resolve(__dirname, "..");
+const CLI_ROOT = path.resolve(__dirname, "../..");
 const SPEC_DIR = path.resolve(CLI_ROOT, "../spec");
 
 function ensureProxyHint(): void {
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   console.log("proxy:", proxy ?? "(none — direct)");
   console.log("spec:", SPEC_DIR);
 
-  const { runCommand } = await import("../src/commands/run.js");
+  const { runCommand } = await import("../../src/commands/run.js");
   await runCommand({
     markets,
     quarter,

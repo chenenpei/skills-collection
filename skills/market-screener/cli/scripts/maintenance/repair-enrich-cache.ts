@@ -2,21 +2,21 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { enrichCnRecord } from "../src/data/cn/enrich.js";
-import type { EnrichCachePayload } from "../src/data/merge-enrichment.js";
-import { findEnrichCacheGapTickers, readCache, writeCache } from "../src/lib/cache.js";
-import { partitionQuotePrefilter } from "../src/data/quote-prefilter.js";
-import { createCnEastMoneyAdapter } from "../src/data/cn/quotes.js";
-import { mapPool } from "../src/lib/concurrency.js";
-import { DEFAULT_CACHE_DIR } from "../src/lib/paths.js";
-import { loadSpecBundle } from "../src/spec/loader.js";
+import { enrichCnRecord } from "../../src/data/cn/enrich.js";
+import type { EnrichCachePayload } from "../../src/data/merge-enrichment.js";
+import { findEnrichCacheGapTickers, readCache, writeCache } from "../../src/lib/cache.js";
+import { partitionQuotePrefilter } from "../../src/data/quote-prefilter.js";
+import { createCnEastMoneyAdapter } from "../../src/data/cn/quotes.js";
+import { mapPool } from "../../src/lib/concurrency.js";
+import { DEFAULT_CACHE_DIR } from "../../src/lib/paths.js";
+import { loadSpecBundle } from "../../src/spec/loader.js";
 
 const { values } = parseArgs({
   options: {
     quarter: { type: "string" },
     market: { type: "string", default: "CN" },
     "cache-dir": { type: "string", default: DEFAULT_CACHE_DIR },
-    spec: { type: "string", default: path.resolve(import.meta.dirname, "../../spec") },
+    spec: { type: "string", default: path.resolve(import.meta.dirname, "../../../spec") },
     concurrency: { type: "string", default: "4" },
     "force-all": { type: "boolean", default: false },
     "purge-quote-history": { type: "boolean", default: false },

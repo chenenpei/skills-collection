@@ -59,6 +59,6 @@ Record `sourceTier` on `BankBulletinEntry`; Sina-only success logs a warning.
 ## Rejected
 
 - New `src/data/health/` package (YAGNI; keep flat files).
-- New `screener probe` subcommand (preflight lives in `run` + optional `scripts/test-cn-preflight.ts`).
+- New `screener probe` subcommand (preflight lives in `run` + optional `scripts/probes/cn-preflight.ts`).
 - Auto-degrade on integrity hard fail.
 - Skipping preflight by default on live runs.

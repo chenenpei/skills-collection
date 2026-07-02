@@ -2,17 +2,17 @@
  * Offline routing distribution report from enrichment cache.
  *
  * Usage:
- *   npx tsx scripts/routing-report.ts --quarter 2026-Q1 --market CN --spec ../spec
- *   npx tsx scripts/routing-report.ts --quarter 2026-Q1 --market CN --write report.md
+ *   npx tsx scripts/reports/routing-report.ts --quarter 2026-Q1 --market CN --spec ../spec
+ *   npx tsx scripts/reports/routing-report.ts --quarter 2026-Q1 --market CN --write report.md
  */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { routeFromIndustryProxy } from "../src/funnel/router.js";
-import type { Market } from "../src/funnel/types.js";
-import { mapPool } from "../src/lib/concurrency.js";
-import { pct, sortedEntries } from "../src/lib/report-format.js";
-import { DEFAULT_CACHE_DIR, DEFAULT_SPEC_DIR } from "../src/lib/paths.js";
-import { loadSpecBundle } from "../src/spec/loader.js";
+import { routeFromIndustryProxy } from "../../src/funnel/router.js";
+import type { Market } from "../../src/funnel/types.js";
+import { mapPool } from "../../src/lib/concurrency.js";
+import { pct, sortedEntries } from "../../src/lib/report-format.js";
+import { DEFAULT_CACHE_DIR, DEFAULT_SPEC_DIR } from "../../src/lib/paths.js";
+import { loadSpecBundle } from "../../src/spec/loader.js";
 
 interface CachePayload {
   industryProxy?: string;
@@ -44,7 +44,7 @@ function parseArgs(argv: string[]): Args {
 
   if (!quarter || (market !== "CN" && market !== "US")) {
     throw new Error(
-      "Usage: npx tsx scripts/routing-report.ts --quarter YYYY-Qn --market CN|US [--spec ../spec] [--cache-dir ./data/cache] [--write report.md]"
+      "Usage: npx tsx scripts/reports/routing-report.ts --quarter YYYY-Qn --market CN|US [--spec ../spec] [--cache-dir ./data/cache] [--write report.md]"
     );
   }
 

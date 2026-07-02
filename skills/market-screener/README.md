@@ -74,7 +74,7 @@ npx tsx bin/screener.ts run \
 
 写入 `{output}/{quarter}/{CN|US}/candidates.yaml`、`deferred.yaml`、`excluded.yaml`、`routing-diagnostics.yaml`、`funnel-diagnostics.yaml`，在线运行且有预筛剔除时还会写入 `prefilter-excluded.yaml`。
 
-**A 股路由：** 补全后的 A 股标的通过 `spec/cn-industry-map.yaml` 路由（`routing_method: cn_industry_map`）。季度漏斗前可用 `npx tsx scripts/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec` 检查覆盖率，目标是 `fallback_rate` < 5%。
+**A 股路由：** 补全后的 A 股标的通过 `spec/cn-industry-map.yaml` 路由（`routing_method: cn_industry_map`）。季度漏斗前可用 `npx tsx scripts/reports/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec` 检查覆盖率，目标是 `fallback_rate` < 5%。
 
 **在线数据参数：** `--enrich-concurrency`（默认 4）、`--skip-cache`。
 
