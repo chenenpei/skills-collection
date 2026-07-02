@@ -1,8 +1,8 @@
 # market-screener CLI
 
-TypeScript `screener` binary (Commander + tsx). Runs the quantitative funnel from `../spec/` and writes `candidates.yaml`, `deferred.yaml`, `excluded.yaml`, and (live only) `prefilter-excluded.yaml` per market.
+基于 Commander 和 `tsx` 的 TypeScript 命令行工具。它读取 `../spec/` 中的规则，按市场输出 `candidates.yaml`、`deferred.yaml`、`excluded.yaml`，在线运行时还可能输出 `prefilter-excluded.yaml`。
 
-## Install
+## 安装依赖
 
 ```bash
 cd skills/market-screener/cli
@@ -10,7 +10,7 @@ npm install
 ```
 
 
-## Source layout
+## 源码结构
 
 ```
 src/
@@ -23,196 +23,196 @@ src/
   lib/          paths, cache, http, concurrency
 ```
 
-## Commands
+## 命令
 
-Run from this directory via `npm run dev -- <command>` or `npx tsx bin/screener.ts <command>`.
+在本目录使用 `npm run dev -- <command>` 或 `npx tsx bin/screener.ts <command>` 执行。
 
-| Command | Purpose |
+| 命令 | 用途 |
 |---------|---------|
-| `validate <specDir>` | Lint spec YAML (`npm run validate` → `../spec`) |
-| `run` | Quantitative funnel |
-| `explain <ticker>` | Single-ticker routing trace (fixture only) |
-| `landmine` | Landmine YAML from audit-summary |
-| `filter-breakdown` | Industry-grouped filter statistics from funnel output |
-| `bank-indicators <ticker>` | Debug CN bank disclosure scrape for one fiscal year |
+| `validate <specDir>` | 校验规则 YAML（`npm run validate` 默认校验 `../spec`） |
+| `run` | 运行定量漏斗 |
+| `explain <ticker>` | 解释单个标的的路由和模板筛选过程；当前使用 fixture 输入 |
+| `landmine` | 从 `audit-summary.yaml` 生成限价观察价 YAML |
+| `filter-breakdown` | 根据漏斗输出统计各行业剔除原因 |
+| `bank-indicators <ticker>` | 调试单个 A 股银行指定财年的披露抓取 |
 
-### `run` options
+### `run` 参数
 
-| Flag | Default | Description |
+| 参数 | 默认值 | 说明 |
 |------|---------|-------------|
-| `--markets` | — | `CN`, `US`, or `CN,US` |
-| `--quarter` | — | e.g. `2026-Q2` |
-| `--output` | — | Output root; writes `{output}/{quarter}/{market}/` |
-| `--spec` | — | Path to spec directory |
-| `--adapter` | `fixture` | `fixture` (offline) or `live` (network) |
-| `--enrich-concurrency` | `4` | Parallel enrichment tickers (live only; each may issue 2 HTTP calls) |
-| `--skip-cache` | off | Ignore enrichment disk cache — no read or write (live only) |
-| `--skip-preflight` | off | Live CN only; bypasses quote/datacenter preflight. Use only when diagnosing a known source outage. |
-| `--allow-degraded` | off | Live CN only; permits low-confidence quote fallback when the quote source is unavailable. Never use for quarterly sign-off. |
-| `--quote-fallback-quarter` | — | Prior quarter containing `data/cache/{quarter}/CN/cn-quote-universe.json` for degraded quote fallback |
-| `--quote-fallback-fixtures-dir` | — | Fixture directory used only when `--allow-degraded` is set and live CN quote loading fails |
-| `--inherit-cache-from` | — | CN live only; seed stable annual/dividend/industry enrichment from a prior quarter while refreshing current quotes |
+| `--markets` | 无 | `CN`、`US` 或 `CN,US` |
+| `--quarter` | 无 | 例如 `2026-Q2` |
+| `--output` | 无 | 输出根目录；写入 `{output}/{quarter}/{market}/` |
+| `--spec` | 无 | 规则目录路径；`run` 必须显式传入 |
+| `--adapter` | `fixture` | `fixture` 为离线数据，`live` 为在线数据 |
+| `--enrich-concurrency` | `4` | 在线补全的并发标的数；每个标的可能发起 2 次 HTTP 请求 |
+| `--skip-cache` | 关闭 | 在线运行时忽略补全缓存，不读也不写 |
+| `--skip-preflight` | 关闭 | 仅 A 股在线运行使用；跳过报价和数据中心预检，只用于诊断数据源异常 |
+| `--allow-degraded` | 关闭 | 仅 A 股在线运行使用；报价源不可用时允许低置信度回退，不可用于季度正式运行 |
+| `--quote-fallback-quarter` | 无 | 包含 `data/cache/{quarter}/CN/cn-quote-universe.json` 的历史季度 |
+| `--quote-fallback-fixtures-dir` | 无 | 设置 `--allow-degraded` 且 A 股在线报价失败时使用的 fixture 目录 |
+| `--inherit-cache-from` | 无 | A 股在线运行使用；从上一季度继承稳定的年报、分红、行业补全，同时刷新当前报价 |
 
-## Live adapter & enrichment (M3)
+## 在线数据适配与逐票补全
 
-`--adapter live` runs a two-stage pipeline:
+`--adapter live` 会运行三段流程：
 
-1. **Quote universe** — CN East Money list + US Yahoo quotes (market cap, price, basic fields).
-2. **Quote prefilter** — skip status/cap/age failures before HTTP (written to `prefilter-excluded.yaml`).
-3. **Enrichment** — per surviving security, fetch annual financials and industry proxy, derive metrics (including `operating_margin`), run disclosure scrape for CN banks, apply industry median overlays, merge into `SecurityRecord`.
+1. **报价股票池**：A 股东方财富列表 + 美股 Yahoo 报价，包含市值、价格和基础字段。
+2. **报价预筛**：在逐票 HTTP 补全前剔除状态、市值、上市年限不合格标的，结果写入 `prefilter-excluded.yaml`。
+3. **逐票补全**：对预筛后标的抓取年报财务、行业代理字段并派生指标；A 股银行额外跑披露抓取；最后合并行业中位数覆盖并写入 `SecurityRecord`。
 
-| Market | Enrichment sources |
+| 市场 | 补全来源 |
 |--------|-------------------|
-| CN | East Money datacenter annual (`RPT_*`) + orginfo industry proxy; CN banks add runtime annual-report discovery (cninfo → SSE/SZSE → Sina fallback) + disclosure PDF scrape |
-| US | SEC EDGAR `companyfacts` + `submissions` industry proxy (CIK resolved via SEC ticker map) |
+| CN | 东方财富 datacenter 年报（`RPT_*`）+ orginfo 行业代理；A 股银行额外使用运行时年报发现（cninfo → SSE/SZSE → Sina fallback）和披露 PDF 抓取 |
+| US | SEC EDGAR `companyfacts` + `submissions` 行业代理（CIK 通过 SEC ticker map 解析） |
 
-### CN bank disclosure debug
+### 调试 A 股银行披露抓取
 
 ```bash
 npm run dev -- bank-indicators 600919 --year 2025
 ```
 
-The command uses the same runtime disclosure discovery path as live CN bank enrichment (cninfo → exchange → Sina). It does not require `--spec`.
+该命令使用与 A 股银行在线补全相同的运行时披露发现路径（cninfo → exchange → Sina），不需要 `--spec`。
 
-Enrichment runs only with `--adapter live`. The fixture adapter ships pre-enriched JSON and skips network enrichment.
+逐票补全只在 `--adapter live` 下运行。fixture adapter 使用已补全 JSON，不访问网络补全。
 
-### Quarter cache
+### 季度缓存
 
-Responses are cached on disk to make repeat runs fast (especially CN, 4000+ tickers):
+响应会缓存在本地磁盘，加快重复运行，尤其是 A 股 4000+ 标的：
 
 ```
 data/cache/{quarter}/{CN|US}/{ticker}.json
 ```
 
-- First CN live run for a quarter: typically **30–60 min** (one request per ticker unless cached).
-- Subsequent runs in the same quarter read cache unless `--skip-cache` is set.
-- Empty financial responses are **not** cached (next run refetches).
-- Cache is keyed by quarter + market + ticker; safe to delete `data/cache/{quarter}/` to force a refresh.
-- Host in-flight caps: East Money datacenter 8, SEC 4 (in addition to `--enrich-concurrency`).
+- 每季度首次 A 股在线运行通常需要 **30–60 分钟**；未命中缓存时每个标的至少一次请求。
+- 同季度后续运行默认读取缓存，除非设置 `--skip-cache`。
+- 空财务响应 **不会** 缓存，下次运行会重新抓取。
+- 缓存键为 quarter + market + ticker；可删除 `data/cache/{quarter}/` 强制刷新。
+- 主机并发上限：East Money datacenter 8，SEC 4；该上限叠加在 `--enrich-concurrency` 之上。
 
-Use `--inherit-cache-from 2026-Q1` when opening a new quarter to reuse stable CN annual/dividend/industry enrichment from the prior quarter. Current quote metrics and `quoteHistory` are still refreshed for the target quarter. Do not use inheritance when the prior quarter cache was produced before a metric-source or schema correction.
+新季度可用 `--inherit-cache-from 2026-Q1` 复用上一季度稳定的 A 股年报、分红和行业补全；当前报价指标和 `quoteHistory` 仍会按目标季度刷新。如果上一季度缓存产生于指标来源或 schema 修正之前，不要继承。
 
-### Metric source hygiene (ADR 0005)
+### 指标来源纪律（ADR 0005）
 
-Enrichment must not invent missing metrics. Proxy fallbacks removed in favor of vendor fields or explicit derives; omitted metrics flow through templates as missing (required → fail, `missing: skip` → skip). See [`../docs/adr/0005-metric-source-hygiene.md`](../docs/adr/0005-metric-source-hygiene.md).
+补全层不能编造缺失指标。代理 fallback 已改为供应商字段或显式派生；缺失指标按 missing 进入模板（required → fail，`missing: skip` → skip）。见 [`../docs/adr/0005-metric-source-hygiene.md`](../docs/adr/0005-metric-source-hygiene.md)。
 
-| Market | Real sources (no silent proxies) |
+| 市场 | 真实来源（不做静默代理） |
 |--------|----------------------------------|
-| CN | East Money `ROIC` column; `debt_to_equity` from `TOTAL_LIABILITIES / TOTAL_EQUITY`; operating margin from operating profit / revenue; EV/EBITDA chain from balance sheet + operating profit only |
-| US | SEC `companyfacts` tags: equity-based ROE, `GrossProfit` / revenue − COGS, `OperatingIncomeLoss`, operating cash flow tag only; ROIC from NOPAT / invested capital when inputs exist |
+| CN | 东方财富 `ROIC` 字段；`debt_to_equity` 来自 `TOTAL_LIABILITIES / TOTAL_EQUITY`；operating margin 来自 operating profit / revenue；EV/EBITDA 只使用资产负债表和 operating profit 链条 |
+| US | SEC `companyfacts` 标签：基于 equity 的 ROE、`GrossProfit` / revenue - COGS、`OperatingIncomeLoss`、operating cash flow 标签；输入存在时用 NOPAT / invested capital 派生 ROIC |
 
-**Cache invalidation:** After metric-source changes, delete `data/cache/{quarter}/` or rerun live enrichment with `--skip-cache` for **both CN and US** on the sign-off quarter before funnel sign-off. Stale cache files can retain pre-hygiene proxy values. On cache hit, enrich automatically refetches annual rows when the latest cached year lacks `roic` or `totalEquity` (ADR 0005 fields).
+**缓存失效：** 指标来源变更后，在季度签名前删除 `data/cache/{quarter}/`，或对 **CN 和 US** 都用 `--skip-cache` 重新在线补全。旧缓存可能保留修正前的代理值。命中缓存时，如果最新缓存年份缺少 `roic` 或 `totalEquity`（ADR 0005 字段），补全会自动重新抓取年报行。
 
-## E2E scripts
+## 端到端脚本
 
-Offline and live end-to-end checks live in `scripts/` and are **not** part of `npm test`.
+离线和在线端到端检查位于 `scripts/`，**不属于** `npm test`。
 
-| Script | Command | What it checks |
+| 脚本 | 命令 | 检查内容 |
 |--------|---------|----------------|
-| Fixture E2E | `npm run e2e:fixture` | Full CN+US funnel on fixtures; no network |
-| Live E2E | `npm run e2e:live` | Real-network live run (default: CN, `2026-Q1`) |
-| Live E2E (full) | `npm run e2e:live:full` | CN+US live run with enrichment assertions |
-| CN quote smoke | `npx tsx scripts/test-cn-quote-snapshot.ts` | Live East Money PE/PB mapping for 603195/600519/600919 |
-| CN preflight smoke | `npx tsx scripts/test-cn-preflight.ts` | Live East Money quote anchors + datacenter annual-row probe |
-| US quote smoke | `npx tsx scripts/test-yahoo-universe.ts` | Live Yahoo universe fetch timing + top-5 sample |
+| Fixture E2E | `npm run e2e:fixture` | 使用 fixture 跑完整 CN+US 漏斗；不访问网络 |
+| Live E2E | `npm run e2e:live` | 真实网络在线运行，默认 CN、`2026-Q1` |
+| Live E2E (full) | `npm run e2e:live:full` | CN+US 在线运行，并断言补全结果 |
+| CN quote smoke | `npx tsx scripts/test-cn-quote-snapshot.ts` | 检查 603195/600519/600919 的东方财富 PE/PB 映射 |
+| CN preflight smoke | `npx tsx scripts/test-cn-preflight.ts` | 检查东方财富报价锚点和 datacenter 年报行探针 |
+| US quote smoke | `npx tsx scripts/test-yahoo-universe.ts` | 检查 Yahoo 股票池抓取耗时和前 5 个样本 |
 
-Pass extra args through to the live script:
+向在线脚本传递额外参数：
 
 ```bash
 npm run e2e:live -- --markets CN,US --quarter 2026-Q2
 ```
 
-Live E2E asserts enriched candidates (`candidates >= 1`, non-empty `metric_snapshot`), CN universe scale, and no false `kill_revenue_decline_3y_consecutive` on empty YoY. Requires network; on macOS with a system proxy, set `HTTPS_PROXY` (see `scripts/e2e-live.ts`).
+Live E2E 会断言补全后的候选结果（`candidates >= 1`、`metric_snapshot` 非空）、A 股股票池规模，以及空 YoY 不会误触发 `kill_revenue_decline_3y_consecutive`。该脚本需要网络；macOS 使用系统代理时需设置 `HTTPS_PROXY`（见 `scripts/e2e-live.ts`）。
 
-### Output artifacts (per market)
+### 输出文件
 
-| File | When |
+| 文件 | 写入时机 |
 |------|------|
-| `candidates.yaml` | Always |
-| `deferred.yaml` | Always (may be empty) |
-| `excluded.yaml` | Kill gates on **enriched** universe |
-| `prefilter-excluded.yaml` | Live only, when quote prefilter skips exist |
-| `routing-diagnostics.yaml` | Always (routing summary for Kill survivors) |
-| `funnel-diagnostics.yaml` | Always (full funnel stage counts + reason breakdown) |
+| `candidates.yaml` | 始终写入 |
+| `deferred.yaml` | 始终写入，可能为空 |
+| `excluded.yaml` | 对 **补全后** 股票池应用 kill gates |
+| `prefilter-excluded.yaml` | 仅在线运行且报价预筛有剔除项时写入 |
+| `routing-diagnostics.yaml` | 始终写入，记录 kill 后存活标的的路由摘要 |
+| `funnel-diagnostics.yaml` | 始终写入，记录完整漏斗阶段计数和原因拆解 |
 
-### Funnel replay report
+### 漏斗回放报告
 
-After a run, print a readable Markdown funnel replay (prefilter/kill reason shares, routing distribution, sector pass rates):
+运行后可打印易读的 Markdown 漏斗回放，包括预筛和 kill 原因占比、路由分布、行业通过率：
 
 ```bash
 npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN
 npx tsx scripts/funnel-replay.ts --from-output ./funnel-output/2026-Q1/CN --write report.md
 ```
 
-Works from `funnel-diagnostics.yaml` when present; otherwise reconstructs from `prefilter-excluded.yaml`, `excluded.yaml`, and `routing-diagnostics.yaml`.
+优先读取 `funnel-diagnostics.yaml`；如果不存在，则从 `prefilter-excluded.yaml`、`excluded.yaml` 和 `routing-diagnostics.yaml` 重建。
 
-### Filter breakdown (industry hierarchy)
+### 按行业层级统计剔除原因
 
-Industry-grouped exit stats: prefilter / kill / sector filter / deferred / candidate, with L1–L3 Shenwan tables and per-L1 reason ranking. **Default writes** `{output}/{quarter}/{market}/filter-breakdown.md` next to `candidates.yaml`.
+按行业分组统计退出阶段：prefilter / kill / sector filter / deferred / candidate，并输出申万 L1-L3 表和各 L1 的原因排名。**默认写入** `{output}/{quarter}/{market}/filter-breakdown.md`，与 `candidates.yaml` 同目录。
 
 ```bash
-# Same --output root as screener run (recommended)
+# 使用与 screener run 相同的 --output 根目录（推荐）
 npm run dev -- filter-breakdown --output ./funnel-output/ --quarter 2026-Q1 --markets CN
 
-# Or explicit market dir
+# 或显式指定市场目录
 npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN
 
-# Custom report path / stdout
+# 自定义报告路径 / stdout
 npm run dev -- filter-breakdown --output ./funnel-output/ --quarter 2026-Q1 --markets CN --report ./reports/cn-filters.md
 npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN --stdout
 
-# Append template-track rule failures (required vs supporting metrics):
+# 附加 template-track 规则失败明细（required vs supporting metrics）：
 npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN --template-tracks
 npm run dev -- filter-breakdown --from-output ./funnel-output/2026-Q1/CN --template-tracks --template manufacturing --track quality --industry-l1 机械设备
 ```
 
-`--template-tracks` replays spec evaluation from enrichment cache. Filters: `--stage`, `--template`, `--track`, `--industry-l1|l2|l3`, `--track-top`. Appends a section to `filter-breakdown.md`.
+`--template-tracks` 会基于补全缓存回放 spec 评估。过滤参数包括 `--stage`、`--template`、`--track`、`--industry-l1|l2|l3`、`--track-top`，并向 `filter-breakdown.md` 追加一个章节。
 
-### Routing report (cache)
+### 路由覆盖报告
 
-Offline routing distribution from enrichment cache (`industryProxy` per ticker):
+从补全缓存的 `industryProxy` 离线统计路由分布：
 
 ```bash
 npx tsx scripts/routing-report.ts --quarter 2026-Q1 --market CN --spec ../spec
 ```
 
-Use after a live enrichment run to verify CN map coverage (`fallback_rate < 5%`) before quarterly funnel.
+在线补全后、季度漏斗前使用，确认 A 股路由表覆盖率满足 `fallback_rate < 5%`。
 
-### Repair enrichment cache gaps
+### 修复补全缓存缺口
 
-After a live CN run, if `funnel-diagnostics.yaml` shows `enrichment.cache_missing_count` above 3% of enriched survivors:
+A 股在线运行后，如果 `funnel-diagnostics.yaml` 显示 `enrichment.cache_missing_count` 超过补全存活标的的 3%：
 
 ```bash
 npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
 ```
 
-Re-runs `enrichCnRecord` for quote-prefilter survivors missing cache files or empty `annualRows`. Then re-run funnel or document residual tickers.
+对缺少缓存文件或 `annualRows` 为空的报价预筛存活标的重新运行 `enrichCnRecord`。完成后重新运行漏斗，或记录剩余标的。
 
-`repair-enrich-cache.ts --inherit-cache-from 2026-Q1` seeds missing target-quarter CN cache entries from a prior quarter before falling back to live datacenter fetches.
+`repair-enrich-cache.ts --inherit-cache-from 2026-Q1` 会先用上一季度缓存填充目标季度缺失的 A 股缓存，再回退到在线 datacenter 抓取。
 
-To purge polluted `quoteHistory` before a full re-enrich (e.g. after a quote-field mapping fix):
+完整重新补全前如需清理受污染的 `quoteHistory`，例如修复报价字段映射后：
 
 ```bash
-# Dry-run first
+# 先 dry-run
 npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --dry-run
 
-# Purge with backup, then force re-enrich all survivors
+# 带备份清理，然后强制重新补全全部存活标的
 npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --backup
 npx tsx scripts/repair-enrich-cache.ts --quarter 2026-Q2 --force-all --concurrency 4
 ```
 
-## Tests
+## 测试
 
 ```bash
 npm test
 ```
 
-Unit and integration tests cover data adapters, cache, enrichment merge, and funnel. Tests that exercise provider adapters mock `httpFetch`; real-network checks are gated behind `e2e:live` / `e2e:live:full`.
+单元测试和集成测试覆盖数据适配、缓存、补全合并和漏斗逻辑。涉及数据源适配器的测试会 mock `httpFetch`；真实联网检查只通过 `e2e:live` / `e2e:live:full` 运行。
 
-`npm audit --omit=dev --audit-level=high` should stay clean for runtime dependencies. A full `npm audit --audit-level=high` may report dev-only `vitest` / `vite` / `esbuild` advisories; do not apply `npm audit fix --force` during normal screener runs because it can introduce a breaking Vitest upgrade.
+`npm audit --omit=dev --audit-level=high` 应保持干净。完整的 `npm audit --audit-level=high` 可能报告仅开发依赖相关的 `vitest` / `vite` / `esbuild` advisory；常规筛选运行中不要执行 `npm audit fix --force`，因为它可能引入破坏性的 Vitest 升级。
 
-## Related
+## 相关文档
 
-- Skill orchestration: [`../SKILL.md`](../SKILL.md)
-- Agent quarterly runbook: [`../docs/agent-guide.md`](../docs/agent-guide.md)
-- Spec manifest: [`../spec/index.yaml`](../spec/index.yaml)
+- Skill 编排：[`../SKILL.md`](../SKILL.md)
+- Agent 季度运行手册：[`../docs/agent-guide.md`](../docs/agent-guide.md)
+- Spec 索引：[`../spec/index.yaml`](../spec/index.yaml)
