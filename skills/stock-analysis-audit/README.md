@@ -1,6 +1,6 @@
 # stock-analysis-audit
 
-证据优先的证券分析审计 Skill，覆盖单一公司股票、ETF、指数基金、主动基金和其他 pooled fund vehicles。
+证据优先的证券分析审计技能，覆盖单一公司股票、ETF、指数基金、主动基金和其他集合投资工具。
 
 目标不是证明某个标的值得买，而是判断：
 
@@ -16,7 +16,7 @@
 | `SKILL.md` | Agent 加载入口 |
 | `CONTEXT.md` | 概念词典：裁决、投资类型、生命周期、商业原型、审计术语 |
 | `spec/` | Agent 运行时规范，英文维护 |
-| `chatbot/` | 无工具 Chatbot 分阶段 prompt，英文维护 |
+| `chatbot/` | 无工具 Chatbot 分阶段提示词，英文维护 |
 | `docs/` | 中文使用手册和示例 |
 
 `spec/` 文件职责：
@@ -26,8 +26,8 @@
 | `index.md` | 维护索引和运行时加载地图 |
 | `gates.md` | 停止、降级、防跳步与共享审计流程 |
 | `data.md` | 数据口径、来源优先级、交叉验证和计算公式 |
-| `workflow-company.md` | 个股 Lite / Deep workflow |
-| `workflow-fund.md` | ETF / 基金 Lite / Deep workflow |
+| `workflow-company.md` | 个股 Lite（轻量审计）/ Deep（深度审计）流程 |
+| `workflow-fund.md` | ETF / 基金 Lite（轻量审计）/ Deep（深度审计）流程 |
 | `classification.md` | 个股 Deep M/N 投资类型判定 |
 | `templates-company.md` | 个股输出模板 |
 | `templates-fund.md` | ETF / 基金输出模板 |
@@ -37,19 +37,13 @@
 在目标项目目录：
 
 ```bash
-npx skills add https://github.com/chenenpei/skiils-collection --skill stock-analysis-audit -y
+npx skills add https://github.com/chenenpei/skills-collection --skill stock-analysis-audit -y
 ```
 
 已克隆 `skills-collection` 时：
 
 ```bash
 npx skills add . --skill stock-analysis-audit -y
-```
-
-Cursor 个人 skill 目录（可选）：
-
-```bash
-cp -R skills/stock-analysis-audit ~/.cursor/skills/stock-analysis-audit
 ```
 
 ## 触发示例
