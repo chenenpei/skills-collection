@@ -177,7 +177,7 @@ orchestrator:
   deep_limit:
     default_per_market: 20
     applies_to: candidates.yaml_by_rank
-    deep_all_flag: --deep-all
+    deep_all_control: orchestrator_explicit_user_request
     deep_all_requires_explicit_user_request: true
   report_output:
     path: "{output}/{quarter}/audit/{market}/{ticker}.md"

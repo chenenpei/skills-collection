@@ -1,6 +1,6 @@
 # Agent 使用指南 — Market Screener
 
-本指南面向编排 **季度批量漏斗 → Deep 审计 → landmine 限价 → 到价纪律** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
+本指南面向编排 **季度批量漏斗 → Deep 审计 → landmine 限价 → 到价纪律** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
 
 **CLI 状态：** `screener` CLI 已在 `cli/` 落地（validate / run / explain / landmine）；**M3** 已完成 live adapter 全量 enrichment 管线（quote universe → 逐票财务/行业补全 → 漏斗）。Agent **必须优先调用 CLI** 执行定量漏斗与 landmine；`screener` 不在 `$PATH`，需在 `cli/` 目录通过 `npm run dev -- <command>` 运行（见 §2）。仅当 CLI 安装或执行真实失败时，才回退到 `spec/` 手工编排并标注 `N/A`。
 
@@ -21,7 +21,7 @@
 - **每年 3 次季度定时运行**；美股 Q4/10-K（~2 月中旬）不单独跑批， freshness 并进下一轮 Q1 窗口。
 - **禁止**在 `later_anchor` 之前跑漏斗；若用户要求提前跑，警告数据未齐并说明 `data_confidence: low` 风险。
 
-Phase 2 占位：`screener schedule --year YYYY` 打印解析日期。
+未实现命令：`screener schedule --year YYYY` 未来可用于打印解析日期；当前不要承诺可执行。
 
 ---
 
@@ -83,8 +83,8 @@ Before using cache `quoteHistory.pe` / `pb` in valuation sections:
 
 ### Step 2 — Deep 审计（stock-analysis-audit）
 
-- **范围：** 每市场 `candidates.yaml` 的 **rank 1–20**（默认 `--deep-limit 20`）
-- **全量 Deep：** 仅当用户明确要求 `--deep-all`
+- **范围：** 每市场 `candidates.yaml` 的 **rank 1–20**；这是 Agent 编排默认值，不是 `screener run` 参数
+- **全量 Deep：** 仅当用户明确要求全量 Deep；这是 Agent 编排选择，不是 `screener run` 参数
 - **执行：** **parallel_by_market** — CN 与 US 各开一个 session 并行
 - **报告路径：** `funnel-output/{quarter}/audit/{market}/{ticker}.md`
 - **禁止跨季复用正文：** 每个 `quarter` 的 candidates Deep 必须 **全量重跑**（默认 20/20）。不得将上一季 `.md` 仅改日期标签当作本季结论。仅当用户明确要求「引用上季 Deep」且 enrichment cache 与 funnel `metric_snapshot`、**当前股价/估值** 无实质变化时，才可标注 `carried_forward_from` 并跳过；**dividend_yield / bankScrape / rank 变化一律重审**。
@@ -114,7 +114,7 @@ Before using cache `quoteHistory.pe` / `pb` in valuation sections:
 - **模式：** **stock-analysis-audit Lite**（非 Deep）；产出 `preliminary_verdict`，不得直接写入 landmine
 - **报告路径：** `funnel-output/{quarter}/audit/{market}/{ticker}.lite.md`
 - **执行：** 可与 Step 2 同市场 session 串行，或 CN/US 各开 Lite 子任务；**不得**用 Lite 替代 candidates 的 Deep
-- **跳过条件：** 用户明确要求 `--deep-all`；或该市场 `deferred.yaml` 为空
+- **跳过条件：** 用户明确要求全量 Deep；或该市场 `deferred.yaml` 为空
 
 对每只 deferred Lite 标的，调用 **stock-analysis-audit Lite**，并在 prompt 中附加：
 
@@ -167,8 +167,8 @@ Deep / Lite 合格输出标准见 stock-analysis-audit `docs/agent-guide.md` 与
 ```bash
 cd cli
 npm run dev -- landmine \
-  --from ../funnel-output/2026-Q2/audit-summary.yaml \
-  --output ../funnel-output/2026-Q2/landmines.yaml \
+  --from ./funnel-output/2026-Q2/audit-summary.yaml \
+  --output ./funnel-output/2026-Q2/landmines.yaml \
   --quarter 2026-Q2
 ```
 
@@ -192,7 +192,7 @@ MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
 | B — 宏观恐慌 | `trigger_macro_panic` | 24h 确认后 **40–50% 首批仓位**；剩余仓位等下一财报季 |
 | 不确定 | `trigger_ambiguous` | **默认按场景 A** |
 
-Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自动比价，仍不自动买）。
+未实现命令：`screener alert --from landmines.yaml` → `alerts.yaml`。当前仍由券商提醒和人工复核处理。
 
 ---
 
@@ -235,7 +235,7 @@ Phase 2 占位：`screener alert --from landmines.yaml` → `alerts.yaml`（自�
 
 ---
 
-## 7. Phase 2 占位（勿在 MVP 承诺）
+## 7. 未实现命令（勿承诺可执行）
 
 - `screener schedule` — 解析季度运行日期
 - `screener alert` — landmine 触达告警

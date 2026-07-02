@@ -1,6 +1,6 @@
 # Market Screener — spec manifest
 # Domain terms: ../CONTEXT.md
-# Downstream audit: ../../stock-analysis-audit/
+# Downstream audit: stock-analysis-audit
 
 version: "0.1.0"
 status: cli_m3_live_funnel_done  # validate, run (fixture + live enriched), explain, landmine
@@ -114,8 +114,8 @@ integration:
   orchestrator_passes: [ticker, market, audit_hints, metric_snapshot]
   deep_audit:
     default_limit_per_market: 20
-    limit_flag: --deep-limit N
-    deep_all_flag: --deep-all
+    limit_control: orchestrator_default_top_n
+    deep_all_control: orchestrator_explicit_user_request
     deep_all_requires_explicit: true
     execution: parallel_by_market
     report_path: "{output}/{quarter}/audit/{market}/{ticker}.md"

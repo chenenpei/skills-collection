@@ -111,7 +111,7 @@ npm install   # first time only
 npm run validate
 npm run dev -- run --markets CN,US --quarter YYYY-QN --output ./funnel-output/ --spec ../spec --adapter fixture
 npm run dev -- explain 600519 --market CN --spec ../spec --fixture test/fixtures/universe-cn.json
-npm run dev -- landmine --from ../funnel-output/YYYY-QN/audit-summary.yaml --output ../funnel-output/YYYY-QN/landmines.yaml --quarter YYYY-QN
+npm run dev -- landmine --from ./funnel-output/YYYY-QN/audit-summary.yaml --output ./funnel-output/YYYY-QN/landmines.yaml --quarter YYYY-QN
 ```
 
 **Always prefer the CLI** for funnel, explain, validate, filter-breakdown, and landmine steps. Do **not** re-implement funnel logic by calling East Money/Yahoo APIs directly unless the CLI command fails after a genuine install/`npm install` attempt — then report the error and fall back to `spec/` rules with explicit `N/A` fields.
