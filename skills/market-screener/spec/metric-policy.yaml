@@ -79,7 +79,7 @@ derived_metrics:
 
 live_enrichment:
   prefilter:
-    ref: kill-gates.yaml#live_quote_prefilter
+    ref: exclusion-rules.yaml#live_quote_prefilter
     applies: before per-ticker HTTP enrichment (--adapter live only)
   cache:
     path: cli/data/cache/{quarter}/{market}/{ticker}.json

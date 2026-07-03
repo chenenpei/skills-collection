@@ -14,7 +14,7 @@ Original decision: CN 申万 L1 **银行** could not pass `financials.banks` wit
 
 - Flag: `bank_routed_via_other_financials_proxy` on every proxied record.
 - Template overrides on `banks_proxy`: `net_debt_to_equity` and `revenue_3y_cagr` → `missing: skip`; quality `roe_ttm` CN min **0.10**.
-- Credit quality (NPL, capital, TBV) is **Deep/manual**; `financial_kill_gates` in spec are not in CLI yet.
+- Credit quality (NPL, capital, TBV) remains outside the current CLI funnel until stable data coverage is available.
 
 ## Rejected
 

@@ -215,7 +215,7 @@ describe("resolveEastMoneyUt", () => {
   });
 });
 
-describe("CN quote universe snapshot", () => {
+describe("CN quote sample snapshot", () => {
   it("writes and reads a quote-universe snapshot", async () => {
     const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "cn-quote-snapshot-"));
     const record = {
