@@ -1,27 +1,26 @@
-# Market Screener Agent 输出指南
+# Market Screener 结果转述指南
 
-本文件约束 Agent 如何转述 `screener run`、Deep/Lite 审计、`audit-summary.yaml` 和 `landmines.yaml` 的结果。它不是 CLI spec；CLI 的实际写入逻辑以 `cli/src/io/artifacts.ts`、`cli/src/funnel/run.ts` 和相关命令实现为准。
+本文件约束 Agent 如何转述 `screener run`、Deep/Lite 审计、`audit-summary.yaml` 和 `landmines.yaml` 的结果。它不是 CLI 规则；CLI 的实际写入逻辑以源码和相关命令实现为准。
 
 ## 输出原则
 
-- 先说明运行上下文：`quarter`、`markets`、adapter、输出目录、数据时间或缓存来源。
-- 区分 CLI 事实、Deep/Lite 审计判断和 Agent 解释。
-- 不补造 CLI artifact 没有的字段。
+- 先说明运行输入：`quarter`、`markets`、`adapter`、输出目录、数据时间或缓存来源。
+- 区分 CLI 输出、Deep/Lite 审计判断和 Agent 解释。
+- 不补造 CLI 输出文件没有的字段。
 - 不把 Lite 结果直接写成 landmine 候选，除非用户同季追加 Deep。
-- 不承诺自动提醒、自动下单或自动调度。
 - 如果数据缺失、adapter 降级、缓存继承或 `data_confidence` 较低，必须明确说明。
 
 ## 推荐回答结构
 
-1. 运行摘要：说明本次读取或生成了哪些市场、季度和 artifact。
+1. 运行摘要：说明本次读取或生成了哪些市场、季度和输出文件。
 2. 候选概览：按市场列出候选数量、deferred 数量、主要通过模板和明显异常。
 3. Deep / Lite 进展：说明 Deep 报告、Lite 报告和 `audit-summary.yaml` 的状态。
 4. Landmine 状态：如果存在 `landmines.yaml`，说明它只是研究参考和手工决策输入。
 5. 风险和缺口：列出数据质量、路由不确定、fallback、缺失字段和需要人工复核的地方。
 
-## CLI artifacts
+## CLI 输出文件
 
-| Artifact | Filename | Agent 转述方式 |
+| 输出文件 | 文件名 | Agent 转述方式 |
 |----------|----------|----------------|
 | candidates | `candidates.yaml` | 每市场 Deep 主队列，最多 20 个；不要称为“最值得买” |
 | deferred | `deferred.yaml` | 通过漏斗但未进入主队列；可作为观察名单 |
@@ -89,9 +88,7 @@ Agent 转述 `landmines.yaml` 时必须包含：
 
 ## 禁止输出
 
-- 不写“已设置提醒”。
 - 不写“已挂单”。
-- 不写“将在某日自动运行”。
 - 不把 `candidates.yaml` 描述为买入清单。
 - 不把 `landmines.yaml` 描述为交易建议。
 - 不隐藏 `routing_confidence: low`、fallback 或低置信度数据。
