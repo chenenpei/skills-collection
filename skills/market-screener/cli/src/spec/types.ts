@@ -16,6 +16,21 @@ export const IndexSchema = z.object({
       funnel_soft_cap_per_market: z.number().optional(),
     })
     .optional(),
+  machine_rules: z
+    .object({
+      universe: z.string().optional(),
+      conventions: z.string().optional(),
+      routing: z
+        .object({
+          us: z.string().optional(),
+          cn: z.string().optional(),
+          gics_and_proxy: z.string().optional(),
+          cn_primary: z.string().optional(),
+        })
+        .optional(),
+      landmine: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const KillGatesSchema = z.object({
@@ -60,8 +75,10 @@ export interface SpecBundle {
   specDir: string;
   index: IndexSpec;
   killGates: KillGatesSpec;
-  routingMap: RoutingMapSpec;
-  cnIndustryMap?: CnIndustryMapSpec;
+  routing: {
+    us: RoutingMapSpec;
+    cn?: CnIndustryMapSpec;
+  };
   conventions: Record<string, unknown>;
   landmineRules: Record<string, unknown>;
   templates: Record<string, SectorTemplateSpec>;

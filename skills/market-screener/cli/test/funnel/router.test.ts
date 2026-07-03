@@ -16,7 +16,7 @@ describe("routeSecurity", () => {
   });
 
   it("routes GICS 4010 to financials/banks", () => {
-    expect(routeSecurity(bundle.routingMap, bundle.cnIndustryMap, { gicsCode: "401010" })).toMatchObject({
+    expect(routeSecurity(bundle.routing.us, bundle.routing.cn, { gicsCode: "401010" })).toMatchObject({
       templates: [{ id: "financials", subTemplate: "banks" }],
       routingConfidence: "high",
       routingMethod: "gics",
@@ -25,7 +25,7 @@ describe("routeSecurity", () => {
   });
 
   it("runs ambiguous union for GICS 4520", () => {
-    const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, { gicsCode: "452020" });
+    const result = routeSecurity(bundle.routing.us, bundle.routing.cn, { gicsCode: "452020" });
     expect(result.routingConfidence).toBe("ambiguous_union");
     expect(result.routingMethod).toBe("gics");
     expect(result.templates.map((t) => t.id).sort()).toEqual(["manufacturing", "tech_saas"]);
@@ -33,7 +33,7 @@ describe("routeSecurity", () => {
 
   it("falls back to industry proxy keywords", () => {
     expect(
-      routeSecurity(bundle.routingMap, bundle.cnIndustryMap, { industryProxy: "Commercial Bank" })
+      routeSecurity(bundle.routing.us, bundle.routing.cn, { industryProxy: "Commercial Bank" })
         .templates[0]
     ).toEqual({
       id: "financials",
@@ -43,7 +43,7 @@ describe("routeSecurity", () => {
 
   it("returns routing_too_hard with no templates when unmatched", () => {
     expect(
-      routeSecurity(bundle.routingMap, bundle.cnIndustryMap, { industryProxy: "Unknown Widget Corp" })
+      routeSecurity(bundle.routing.us, bundle.routing.cn, { industryProxy: "Unknown Widget Corp" })
     ).toMatchObject({
       templates: [],
       routingConfidence: "low",
@@ -54,7 +54,7 @@ describe("routeSecurity", () => {
 
   describe("CN sector routing", () => {
     it("routes 电子-消费电子-品牌消费电子 to consumer", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "电子-消费电子-品牌消费电子",
       });
@@ -65,7 +65,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes 电子-消费电子-零部件及组装 to manufacturing only", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "电子-消费电子-消费电子零部件及组装",
       });
@@ -77,7 +77,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes 食品饮料 to consumer", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "食品饮料-白酒Ⅱ-白酒Ⅲ",
       });
@@ -86,7 +86,7 @@ describe("routeSecurity", () => {
     });
 
     it("fallback unmapped CN industry with low confidence", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "未来行业-未知-子类",
       });
@@ -96,7 +96,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes 医药生物 L1 to healthcare without also_run union", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "医药生物-化学制药-化学制剂",
       });
@@ -108,7 +108,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes 医药生物-中药Ⅱ to consumer", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "医药生物-中药Ⅱ-中药Ⅲ",
       });
@@ -116,7 +116,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes 医药生物-医疗器械 to manufacturing", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "医药生物-医疗器械-医疗耗材",
       });
@@ -124,7 +124,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes 电子 L1 to manufacturing high without tech_saas", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "电子-元件-被动元件",
       });
@@ -134,7 +134,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes 电子-半导体 to manufacturing + cyclicals only", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         industryProxy: "电子-半导体-集成电路",
       });
@@ -144,7 +144,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes CN 银行 to financials/banks via cn_industry_map before GICS", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         gicsCode: "401010",
         industryProxy: "银行-国有大型银行Ⅱ-国有大型银行Ⅲ",
@@ -155,7 +155,7 @@ describe("routeSecurity", () => {
     });
 
     it("routes CN 银行 industry to financials.banks not banks_proxy", () => {
-      const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+      const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
         market: "CN",
         gicsCode: undefined,
         industryProxy: "银行",
@@ -165,7 +165,7 @@ describe("routeSecurity", () => {
   });
 
   it("routes GICS 3520 to healthcare", () => {
-    const result = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+    const result = routeSecurity(bundle.routing.us, bundle.routing.cn, {
       gicsCode: "352010",
     });
     expect(result.templates).toEqual([{ id: "healthcare" }]);
@@ -174,7 +174,7 @@ describe("routeSecurity", () => {
 
   it("skips quant_too_hard insurance template evaluation", () => {
     expect(templateLiveViability(bundle, "financials", "insurance")).toBe("quant_too_hard");
-    const route = routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+    const route = routeSecurity(bundle.routing.us, bundle.routing.cn, {
       market: "US",
       gicsCode: "403010",
     });

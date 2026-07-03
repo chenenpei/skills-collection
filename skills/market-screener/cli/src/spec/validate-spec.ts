@@ -120,13 +120,13 @@ function validateCnIndustryTemplateRef(
 }
 
 function validateCnIndustryMap(bundle: SpecBundle, errors: string[]): void {
-  const map = bundle.cnIndustryMap;
+  const map = bundle.routing.cn;
   if (!map?.l1_defaults) return;
 
   for (const [l1, rule] of Object.entries(map.l1_defaults)) {
     if (!isRecord(rule)) continue;
     validateCnIndustryTemplateRef(
-      `cn-industry-map l1_defaults.${l1}`,
+      `routing-cn.yaml l1_defaults.${l1}`,
       rule.template,
       rule.also_run,
       bundle,
@@ -137,7 +137,7 @@ function validateCnIndustryMap(bundle: SpecBundle, errors: string[]): void {
   for (const [index, override] of (map.l2_overrides ?? []).entries()) {
     if (!isRecord(override)) continue;
     validateCnIndustryTemplateRef(
-      `cn-industry-map l2_overrides[${index}]`,
+      `routing-cn.yaml l2_overrides[${index}]`,
       override.template,
       override.also_run,
       bundle,
@@ -148,7 +148,7 @@ function validateCnIndustryMap(bundle: SpecBundle, errors: string[]): void {
   for (const [index, entry] of (map.proxy_keyword_additions ?? []).entries()) {
     if (!isRecord(entry)) continue;
     validateCnIndustryTemplateRef(
-      `cn-industry-map proxy_keyword_additions[${index}]`,
+      `routing-cn.yaml proxy_keyword_additions[${index}]`,
       entry.template,
       entry.also_run,
       bundle,
@@ -203,19 +203,19 @@ export function validateSpecBundle(bundle: SpecBundle): ValidateResult {
     errors.push(`funnel soft cap must be ${FUNNEL_SOFT_CAP} (got ${cap})`);
   }
 
-  for (const mapping of bundle.routingMap.mappings) {
+  for (const mapping of bundle.routing.us.mappings) {
     const template = mapping.template;
     if (typeof template === "string" && !bundle.templates[template]) {
-      errors.push(`routing-map references unknown template: ${template}`);
+      errors.push(`routing-us.yaml references unknown template: ${template}`);
     }
 
     const alsoRun = mapping.also_run;
     if (typeof alsoRun === "string" && !bundle.templates[alsoRun]) {
-      errors.push(`routing-map also_run references unknown template: ${alsoRun}`);
+      errors.push(`routing-us.yaml also_run references unknown template: ${alsoRun}`);
     }
   }
 
-  if (bundle.cnIndustryMap) {
+  if (bundle.routing.cn) {
     validateCnIndustryMap(bundle, errors);
   }
 

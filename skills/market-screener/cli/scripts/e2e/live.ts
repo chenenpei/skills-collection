@@ -120,7 +120,7 @@ async function main(): Promise<void> {
       console.log("routing fallback_rate:", (fallbackRate * 100).toFixed(1) + "%");
       if (market === "CN" && fallbackRate > 0.05) {
         console.warn(
-          `Warning: ${market} routing fallback_rate ${(fallbackRate * 100).toFixed(1)}% exceeds 5% — review cn-industry-map.yaml`
+          `Warning: ${market} routing fallback_rate ${(fallbackRate * 100).toFixed(1)}% exceeds 5% - review spec/routing-cn.yaml`
         );
       }
     }

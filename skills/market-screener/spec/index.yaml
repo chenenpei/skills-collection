@@ -27,8 +27,8 @@ machine_rules:
   universe: kill-gates.yaml#universe
   conventions: conventions.yaml
   routing:
-    gics_and_proxy: routing-map.yaml
-    cn_primary: cn-industry-map.yaml
+    us: routing-us.yaml
+    cn: routing-cn.yaml
   landmine: landmine-rules.yaml
 
 data_sources:

@@ -65,7 +65,7 @@ export interface PassingCandidate {
 }
 
 export function routeSecurityRecord(bundle: SpecBundle, record: SecurityRecord): RouteResult {
-  return routeSecurity(bundle.routingMap, bundle.cnIndustryMap, {
+  return routeSecurity(bundle.routing.us, bundle.routing.cn, {
     market: record.market,
     gicsCode: record.gicsCode,
     industryProxy: record.industryProxy,
@@ -329,7 +329,7 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
     if (fallbackRate !== undefined && fallbackRate >= 0.5) {
       opts.progress?.warn(
         `${market} routing fallback_rate=${(fallbackRate * 100).toFixed(1)}% — ` +
-          "check industry enrichment and cn-industry-map coverage"
+          "check industry enrichment and CN routing coverage"
       );
     }
 

@@ -137,8 +137,8 @@ async function main(): Promise<void> {
     const payload = JSON.parse(raw) as CachePayload;
     const industryProxy = payload.industryProxy?.trim();
     const route = routeFromIndustryProxy(
-      bundle.routingMap,
-      bundle.cnIndustryMap,
+      bundle.routing.us,
+      bundle.routing.cn,
       args.market,
       industryProxy
     );

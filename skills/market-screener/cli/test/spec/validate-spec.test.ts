@@ -14,6 +14,16 @@ describe("validateSpecBundle", () => {
     expect(result.errors).toEqual([]);
   });
 
+  it("loads semantic routing spec files from index", async () => {
+    const bundle = await loadSpecBundle(SPEC_DIR);
+    expect(bundle.index.machine_rules?.routing).toEqual({
+      us: "routing-us.yaml",
+      cn: "routing-cn.yaml",
+    });
+    expect(bundle.routing.us.mappings.length).toBeGreaterThan(0);
+    expect(bundle.routing.cn?.l1_defaults?.银行?.template).toBe("financials");
+  });
+
   it("financials.banks quality required includes roe_ttm not rotce", async () => {
     const bundle = await loadSpecBundle(SPEC_DIR);
     const banks = bundle.templates.financials.sub_templates.banks;

@@ -84,14 +84,14 @@ function buildRouteFromRule(
 }
 
 function routeViaCnIndustryMap(
-  cnIndustryMap: CnIndustryMapSpec,
+  cnRouting: CnIndustryMapSpec,
   industryProxy?: string
 ): RouteResult | undefined {
   const parts = parseCnIndustry(industryProxy);
-  const l1 = normalizeCnL1(parts.l1, cnIndustryMap.legacy_l1_aliases);
+  const l1 = normalizeCnL1(parts.l1, cnRouting.legacy_l1_aliases);
   if (!l1) return undefined;
 
-  for (const override of cnIndustryMap.l2_overrides ?? []) {
+  for (const override of cnRouting.l2_overrides ?? []) {
     const match = override.match as { l1?: string; l2?: string; l3?: string } | undefined;
     if (!match?.l1 || match.l1 !== l1) continue;
     if (match.l2 && match.l2 !== parts.l2) continue;
@@ -102,7 +102,7 @@ function routeViaCnIndustryMap(
     return buildRouteFromRule(override as unknown as TemplateRule, ruleLabel, "cn_industry_map");
   }
 
-  const l1Rule = cnIndustryMap.l1_defaults?.[l1] as TemplateRule | undefined;
+  const l1Rule = cnRouting.l1_defaults?.[l1] as TemplateRule | undefined;
   if (!l1Rule) return undefined;
   return buildRouteFromRule(l1Rule, `l1:${l1}`, "cn_industry_map");
 }
@@ -123,21 +123,21 @@ function keywordBlocked(
 }
 
 function routeViaIndustryProxy(
-  routingMap: RoutingMapSpec,
-  cnIndustryMap: CnIndustryMapSpec | undefined,
+  usRouting: RoutingMapSpec,
+  cnRouting: CnIndustryMapSpec | undefined,
   industryProxy?: string
 ): RouteResult | undefined {
   const proxy = (industryProxy ?? "").toLowerCase();
   if (!proxy) return undefined;
 
   const entries = [
-    ...(routingMap.industry_proxy_map ?? []),
-    ...(cnIndustryMap?.proxy_keyword_additions ?? []),
+    ...(usRouting.industry_proxy_map ?? []),
+    ...(cnRouting?.proxy_keyword_additions ?? []),
   ];
 
   for (const entry of entries) {
     const keywords = (entry.keywords as string[]).map((k) => k.toLowerCase());
-    const matched = keywords.some((k) => !keywordBlocked(proxy, k, cnIndustryMap?.proxy_keyword_excludes) && proxy.includes(k));
+    const matched = keywords.some((k) => !keywordBlocked(proxy, k, cnRouting?.proxy_keyword_excludes) && proxy.includes(k));
     if (!matched) continue;
 
     const rule: TemplateRule = {
@@ -163,17 +163,17 @@ function fallbackRoute(): RouteResult {
 }
 
 export function routeSecurity(
-  routingMap: RoutingMapSpec,
-  cnIndustryMap: CnIndustryMapSpec | undefined,
+  usRouting: RoutingMapSpec,
+  cnRouting: CnIndustryMapSpec | undefined,
   input: RouteInput
 ): RouteResult {
-  if (input.market === "CN" && cnIndustryMap) {
-    const cnRoute = routeViaCnIndustryMap(cnIndustryMap, input.industryProxy);
+  if (input.market === "CN" && cnRouting) {
+    const cnRoute = routeViaCnIndustryMap(cnRouting, input.industryProxy);
     if (cnRoute) return cnRoute;
   }
 
   if (input.gicsCode) {
-    for (const mapping of routingMap.mappings) {
+    for (const mapping of usRouting.mappings) {
       const prefix = mapping.gics_prefix as string;
       if (!matchGicsPrefix(input.gicsCode, prefix)) continue;
 
@@ -187,17 +187,17 @@ export function routeSecurity(
     }
   }
 
-  const proxyRoute = routeViaIndustryProxy(routingMap, cnIndustryMap, input.industryProxy);
+  const proxyRoute = routeViaIndustryProxy(usRouting, cnRouting, input.industryProxy);
   if (proxyRoute) return proxyRoute;
 
   return fallbackRoute();
 }
 
 export function routeFromIndustryProxy(
-  routingMap: RoutingMapSpec,
-  cnIndustryMap: CnIndustryMapSpec | undefined,
+  usRouting: RoutingMapSpec,
+  cnRouting: CnIndustryMapSpec | undefined,
   market: Market,
   industryProxy?: string
 ): RouteResult {
-  return routeSecurity(routingMap, cnIndustryMap, { market, industryProxy });
+  return routeSecurity(usRouting, cnRouting, { market, industryProxy });
 }

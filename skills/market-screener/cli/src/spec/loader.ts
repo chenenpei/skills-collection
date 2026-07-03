@@ -22,13 +22,15 @@ export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
   const killGates = KillGatesSchema.parse(
     await readYamlFile(path.join(specDir, "kill-gates.yaml"))
   );
-  const routingMap = RoutingMapSchema.parse(
-    await readYamlFile(path.join(specDir, "routing-map.yaml"))
+  const routingRefs = index.machine_rules?.routing;
+  const usRoutingPath = routingRefs?.us ?? routingRefs?.gics_and_proxy ?? "routing-us.yaml";
+  const cnRoutingPath = routingRefs?.cn ?? routingRefs?.cn_primary ?? "routing-cn.yaml";
+
+  const usRouting = RoutingMapSchema.parse(
+    await readYamlFile(path.join(specDir, usRoutingPath))
   );
-  const cnMapRef = (routingMap.classifier as { cn_industry_map_ref?: string } | undefined)
-    ?.cn_industry_map_ref;
-  const cnIndustryMap = cnMapRef
-    ? CnIndustryMapSchema.parse(await readYamlFile(path.join(specDir, cnMapRef)))
+  const cnRouting = cnRoutingPath
+    ? CnIndustryMapSchema.parse(await readYamlFile(path.join(specDir, cnRoutingPath)))
     : undefined;
   const conventions = (await readYamlFile(
     path.join(specDir, "conventions.yaml")
@@ -47,8 +49,10 @@ export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
     specDir,
     index,
     killGates,
-    routingMap,
-    cnIndustryMap,
+    routing: {
+      us: usRouting,
+      cn: cnRouting,
+    },
     conventions,
     landmineRules,
     templates,
