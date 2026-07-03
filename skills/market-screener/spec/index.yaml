@@ -1,10 +1,9 @@
-# Market Screener — spec manifest
-# Domain terms: ../CONTEXT.md
-# Downstream audit: stock-analysis-audit
+# Market Screener - machine spec manifest
+# Human and Agent runbooks live in ../docs/
 
 version: "0.1.0"
-status: cli_m3_live_funnel_done  # validate, run (fixture + live enriched), explain, landmine
-tightening_profile: package_m  # 2026 grill: sector templates tightened; soft cap 20 per market
+status: cli_m3_live_funnel_done
+tightening_profile: package_m
 
 delivery:
   form: cli_plus_skill
@@ -14,6 +13,7 @@ delivery:
     - screener validate spec/
     - screener explain TICKER --market CN|US
     - screener landmine --from audit-summary.yaml --output landmines.yaml
+    - screener filter-breakdown --from-output PATH
     - screener bank-indicators TICKER --year YYYY
 
 principles:
@@ -23,11 +23,13 @@ principles:
   funnel_soft_cap_per_market: 20
   audit_hints: optional_extension_for_orchestrator
 
-universe:
-  security_type: security_single_company
-  markets: [CN, US]
-  market_cap_profile: profile_b
-  ref: kill-gates.yaml#universe
+machine_rules:
+  universe: kill-gates.yaml#universe
+  conventions: conventions.yaml
+  routing:
+    gics_and_proxy: routing-map.yaml
+    cn_primary: cn-industry-map.yaml
+  landmine: landmine-rules.yaml
 
 data_sources:
   profile: scheme_f
@@ -37,33 +39,15 @@ data_sources:
   us:
     providers: [sec_edgar, yahoo_finance]
     uses: [financials_bulk, quotes, industry_proxy]
-  industry_routing: yahoo_industry_to_gics_proxy
-  enrichment:
-    cn: eastmoney_datacenter_annual + cashflow + balance + orginfo + datacenter_dividend + sina_disclosure_scrape_for_banks
-    us: sec_companyfacts + sec_submissions + yahoo_dividend_yield
-    cache: data/cache/{quarter}/
-    prefilter: quote-only universe gates before HTTP (status, cap, age)
-    host_limits: { eastmoney_datacenter: 8, sec_edgar: 4 }
-    default_enrich_concurrency: 4
-  ref: ../CONTEXT.md#output--cli
-
-routing:
-  classifier: gics_level_2_or_3
-  cn_primary: cn-industry-map.yaml   # A-share enriched universe; routing_method cn_industry_map
-  industry_proxy: true
-  ambiguous_union: true
-  diagnostics: [routing-diagnostics.yaml, funnel-diagnostics.yaml]
-  ref: routing-map.yaml
+  enrichment_cache: data/cache/{quarter}/
 
 templates:
   - id: financials
     file: templates/financials.yaml
     tracks: [quality, mispricing]
-    sub_templates: [banks, banks_proxy, insurance, other_financials]
   - id: tech_saas
     file: templates/tech-saas.yaml
     tracks: [quality, mispricing]
-    notes: AI applications merge here with audit flag
   - id: consumer
     file: templates/consumer.yaml
     tracks: [quality, mispricing]
@@ -76,30 +60,3 @@ templates:
   - id: healthcare
     file: templates/healthcare.yaml
     tracks: [quality, mispricing]
-
-integration:
-  downstream_skill: stock-analysis-audit
-  downstream_mode: deep
-  orchestrator_passes: [ticker, market, audit_hints, metric_snapshot]
-  deep_audit:
-    default_limit_per_market: 20
-    limit_control: orchestrator_default_top_n
-    deep_all_control: orchestrator_explicit_user_request
-    deep_all_requires_explicit: true
-    execution: parallel_by_market
-    report_path: "{output}/{quarter}/audit/{market}/{ticker}.md"
-    summary_artifact: audit-summary.yaml
-  deferred_lite_sweep:
-    ref: conventions.yaml#deferred_lite_sweep
-    downstream_mode: lite
-    default_top_n: 8
-    report_path: "{output}/{quarter}/audit/{market}/{ticker}.lite.md"
-    runs_after: deep_audit
-    runs_before: audit_summary
-
-landmine:
-  ref: landmine-rules.yaml
-  cli_command: screener landmine
-  input: audit-summary.yaml#shortlist_for_landmine
-  output_artifact: landmines.yaml
-  execution: human_broker_order_only
