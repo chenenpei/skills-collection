@@ -10,6 +10,7 @@
 - 保险模板量化：评估 combined ratio、solvency ratio / RBC、embedded value、loss ratio volatility、investment yield 等指标是否有稳定免费数据源；在数据源不足前保持 `quant_too_hard`。
 - A 股银行 `full` viability：补强 `npl_ratio_yoy_change`、NIM、图像表 ROA 等覆盖率；覆盖率足够前继续保持 proxy viability。
 - 全行业覆盖目标：长期让 `market-screener` 覆盖 `stock-analysis-audit` 的主要行业块；新增行业前必须先有可执行数据源和可解释的模板规则。
+- 行业专属剔除规则：未来可以实现 `sector_kill_gates`，但需要先补齐可稳定获取的行业数据、明确各行业触发条件，并用历史样本验证误杀率。当前 CLI 只执行全局剔除规则和模板阈值筛选，不把模板中的行业专属剔除规则作为机器规则。
 
 ## 维护规则
 

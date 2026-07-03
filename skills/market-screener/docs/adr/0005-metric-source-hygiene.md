@@ -21,4 +21,4 @@ Documented simplifications (not invention): static `risk_free_rate` 0.04; `ev_eb
 
 CN sector passes dropped post-cleanup (proxy-inflated mfg mispricing collapsed). **Invalidate enrich cache** after deploy (`--skip-cache` on sign-off quarter).
 
-**Where it lives:** `cli/src/data/metrics.ts`, `cn/eastmoney.ts`, `us/sec.ts`, `spec/conventions.yaml` (`metric_source_hygiene` ref).
+**Where it lives:** `cli/src/data/metrics.ts`, `cn/eastmoney.ts`, `us/sec.ts`, `spec/metric-policy.yaml` (`metric_source_hygiene` ref).

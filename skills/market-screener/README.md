@@ -1,8 +1,8 @@
 # market-screener
 
-面向 A 股和美股个股的季度定量筛选技能。它先用 `cli/` 中的 `screener` 命令生成 `candidates.yaml`、`deferred.yaml`、`excluded.yaml` 等结果，再把候选标的交给 [stock-analysis-audit](../stock-analysis-audit/) 做 Deep（深度审计）。
+面向 A 股和美股个股的全市场定量筛选技能。`cli/` 中的 `screener` 命令读取 `spec/` 规则，生成 `candidates.yaml`、`deferred.yaml`、`excluded.yaml`、`routing-diagnostics.yaml`、`funnel-diagnostics.yaml` 等结果。
 
-本目录包含两部分：`spec/` 保存规则，`cli/` 执行定量漏斗。投资结论仅用于研究辅助，不构成投资建议。
+本目录包含两部分：`spec/` 保存机器规则，`cli/` 执行定量漏斗。后续单票审计可以由使用者自行接入其他 skill；这不是 `market-screener` 完成筛选任务的前提。
 
 ## 目录结构
 
@@ -16,11 +16,12 @@
 | [CONTEXT.md](./CONTEXT.md) | 领域词汇表，仅保存术语和 slug |
 | [spec/README.md](./spec/README.md) | CLI 机器规则目录说明 |
 | [spec/index.yaml](./spec/index.yaml) | CLI 规则清单 |
-| [spec/kill-gates.yaml](./spec/kill-gates.yaml) | 行业模板前的共享剔除规则 |
-| [spec/routing-map.yaml](./spec/routing-map.yaml) | GICS / 行业代理到模板的路由规则 |
-| [spec/cn-industry-map.yaml](./spec/cn-industry-map.yaml) | A 股申万行业到模板的主要路由规则 |
-| [spec/conventions.yaml](./spec/conventions.yaml) | 阈值语法和通过规则约定 |
-| [spec/landmine-rules.yaml](./spec/landmine-rules.yaml) | 限价观察价计算规则 |
+| [spec/exclusion-rules.yaml](./spec/exclusion-rules.yaml) | 投资范围、预筛和共享剔除规则 |
+| [spec/routing-cn.yaml](./spec/routing-cn.yaml) | A 股申万行业到模板的路由规则 |
+| [spec/routing-us.yaml](./spec/routing-us.yaml) | 美股 GICS 和行业代理到模板的路由规则 |
+| [spec/metric-policy.yaml](./spec/metric-policy.yaml) | 指标阈值、衍生指标和数据补全策略 |
+| [spec/selection-policy.yaml](./spec/selection-policy.yaml) | 候选上限、延后名单和席位分配规则 |
+| [spec/landmine-pricing.yaml](./spec/landmine-pricing.yaml) | 价格观察计算规则 |
 | [spec/templates/](./spec/templates/) | 六类行业漏斗规则 |
 
 ## 命令行工具
@@ -73,7 +74,7 @@ npx tsx bin/screener.ts run \
 
 写入 `{output}/{quarter}/{CN|US}/candidates.yaml`、`deferred.yaml`、`excluded.yaml`、`routing-diagnostics.yaml`、`funnel-diagnostics.yaml`，在线运行且有预筛剔除时还会写入 `prefilter-excluded.yaml`。
 
-**A 股路由：** 补全后的 A 股标的通过 `spec/cn-industry-map.yaml` 路由（`routing_method: cn_industry_map`）。季度漏斗前可用 `npx tsx scripts/reports/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec` 检查覆盖率，目标是 `fallback_rate` < 5%。
+**A 股路由：** 补全后的 A 股标的通过 `spec/routing-cn.yaml` 路由（`routing_method: cn_industry_map`）。季度漏斗前可用 `npx tsx scripts/reports/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec` 检查覆盖率，目标是 `fallback_rate` < 5%。
 
 **在线数据参数：** `--enrich-concurrency`（默认 4）、`--skip-cache`。
 

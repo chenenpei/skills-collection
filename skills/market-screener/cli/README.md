@@ -16,7 +16,7 @@ npm install
 src/
   cli.ts
   commands/     run | explain | validate | landmine | filter-breakdown | bank-indicators
-  funnel/       run, router, kill-gates, template-evaluator, ranker, threshold, universe, diagnostics, types
+  funnel/       run, router, exclusions, template-evaluator, ranker, threshold, universe, diagnostics, types
   data/         registry, fixture, live, quote-prefilter, metrics, types; cn/ and us/ market adapters
   io/           artifacts (YAML output helpers)
   spec/         YAML loader and validation
@@ -87,7 +87,7 @@ data/cache/{quarter}/{CN|US}/{ticker}.json
 - 每季度首次 A 股在线运行通常需要 **30–60 分钟**；未命中缓存时每个标的至少一次请求。
 - 同季度后续运行默认读取缓存，除非设置 `--skip-cache`。
 - 空财务响应 **不会** 缓存，下次运行会重新抓取。
-- 缓存键为 quarter + market + ticker；可删除 `data/cache/{quarter}/` 强制刷新。
+- 缓存键为 quarter + market + ticker；可删除 `data/cache/{quarter}/` 重新刷新。
 - 主机并发上限：East Money datacenter 8，SEC 4；该上限叠加在 `--enrich-concurrency` 之上。
 
 新季度可用 `--inherit-cache-from 2026-Q1` 复用上一季度稳定的 A 股年报、分红和行业补全；当前报价指标和 `quoteHistory` 仍会按目标季度刷新。如果上一季度缓存产生于指标来源或 schema 修正之前，不要继承。
@@ -196,7 +196,7 @@ npx tsx scripts/maintenance/repair-enrich-cache.ts --quarter 2026-Q1 --market CN
 # 先 dry-run
 npx tsx scripts/maintenance/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --dry-run
 
-# 带备份清理，然后强制重新补全全部存活标的
+# 带备份清理，然后重新补全全部存活标的
 npx tsx scripts/maintenance/repair-enrich-cache.ts --quarter 2026-Q2 --purge-quote-history --backup
 npx tsx scripts/maintenance/repair-enrich-cache.ts --quarter 2026-Q2 --force-all --concurrency 4
 ```

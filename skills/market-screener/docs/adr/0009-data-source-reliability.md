@@ -23,7 +23,7 @@ Add reliability guardrails **without new module directories**. Extend existing f
 | Bank PDF sources | `cn/bank-indicators/discover.ts` | cninfo/sse/szse first; Sina ndbg last |
 | Incremental enrich | `lib/cache.ts`, `cn/enrich.ts` | `--inherit-cache-from {quarter}` copies annual/dividend/industry; always refresh quote fields |
 
-## Integrity thresholds (CN quote universe)
+## Integrity thresholds (CN quote sample)
 
 Hard fail (exit 1) when any bound is violated after full quote load:
 

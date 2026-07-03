@@ -10,9 +10,9 @@ Distinguish three outcomes: **unmapped routing** (`routing_too_hard`), **data-po
 
 ## Decisions
 
-**Routing:** `fallback` → empty templates + `routing_too_hard` exit (no manufacturing default). Target `fallback_rate` < 5%; extend `cn-industry-map.yaml` from diagnostics.
+**Routing:** `fallback` -> empty templates + `routing_too_hard` exit (no manufacturing default). Target `fallback_rate` < 5%; extend `routing-cn.yaml` from diagnostics.
 
-**Template live viability** (`spec/conventions.yaml`):
+**Template live viability** (`spec/metric-policy.yaml`):
 
 | Viability | Behavior |
 |-----------|----------|
