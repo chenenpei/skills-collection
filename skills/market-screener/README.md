@@ -10,18 +10,17 @@
 |------|------|
 | [SKILL.md](./SKILL.md) | Agent 编排入口，仅在用户明确调用时使用 |
 | [cli/](./cli/) | TypeScript 命令行工具，包含 `validate`、`run`、`explain`、`landmine`、`filter-breakdown`、`bank-indicators` |
-| [docs/agent-guide.md](./docs/agent-guide.md) | 面向 Agent 的季度运行手册 |
+| [docs/agent-guide.md](./docs/agent-guide.md) | 面向 Agent 的运行手册 |
+| [docs/agent-output.md](./docs/agent-output.md) | 面向 Agent 的输出风格和 artifact 转述指南 |
 | [docs/future-work.md](./docs/future-work.md) | 中文后续工作清单；集中记录未实现能力和规划项 |
 | [CONTEXT.md](./CONTEXT.md) | 领域词汇表，仅保存术语和 slug |
-| [spec/index.yaml](./spec/index.yaml) | 规则索引、数据源和模板清单 |
+| [spec/README.md](./spec/README.md) | CLI 机器规则目录说明 |
+| [spec/index.yaml](./spec/index.yaml) | CLI 规则 manifest |
 | [spec/kill-gates.yaml](./spec/kill-gates.yaml) | 行业模板前的共享剔除规则 |
 | [spec/routing-map.yaml](./spec/routing-map.yaml) | GICS / 行业代理到模板的路由规则 |
 | [spec/cn-industry-map.yaml](./spec/cn-industry-map.yaml) | A 股申万行业到模板的主要路由规则 |
-| [spec/output-schema.yaml](./spec/output-schema.yaml) | 输出文件结构约定 |
 | [spec/conventions.yaml](./spec/conventions.yaml) | 阈值语法和通过规则约定 |
 | [spec/landmine-rules.yaml](./spec/landmine-rules.yaml) | 限价观察价计算规则 |
-| [spec/trigger-discipline.yaml](./spec/trigger-discipline.yaml) | 到价后的复核纪律；自动告警命令尚未实现 |
-| [spec/schedule.yaml](./spec/schedule.yaml) | 季度运行日期规则 |
 | [spec/templates/](./spec/templates/) | 六类行业漏斗规则 |
 
 ## 命令行工具
@@ -107,7 +106,7 @@ npm run dev -- filter-breakdown \
 
 默认写入 `/tmp/screener-out/2026-Q2/CN/filter-breakdown.md`。
 
-`run` 和 `explain` 需要显式传入 `--spec ../spec`。`landmine` 可通过 `--spec` 指定规则目录；省略时会使用命令内部的默认规则路径。`screener alert` 尚未实现，到价提醒仍由人工或券商 App 处理。
+`run` 和 `explain` 需要显式传入 `--spec ../spec`。`landmine` 可通过 `--spec` 指定规则目录；省略时会使用命令内部的默认规则路径。到价提醒、条件单和定时运行由用户、券商工具或 Agent 外部编排处理，不作为 CLI 命令实现。
 
 ## 相关文档
 

@@ -155,7 +155,7 @@ Slugs: `cn_bank_routing_proxy`, `cn_tech_saas_quality_skip`, `bank_regulatory_en
 
 **Human Broker Execution** — No automated trading. slug: `human_broker_execution`
 
-**Scheduled Quarterly Run** / **Disclosure Anchor** / **Later Market Gate** — Quarterly timing after both markets' anchors. slugs: `scheduled_quarterly_run`, `disclosure_anchor`, `later_market_gate`
+**Run Context** — User-supplied or automation-supplied quarter, market scope, adapter, and output path for a batch funnel run. slug: `run_context`
 
 ---
 

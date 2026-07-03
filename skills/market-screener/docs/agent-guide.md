@@ -1,27 +1,22 @@
 # Agent 使用指南 — Market Screener
 
-本指南面向编排 **季度批量漏斗 → Deep 审计 → landmine 限价 → 到价纪律** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
+本指南面向编排 **批量漏斗 → Deep 审计 → landmine 限价 → Agent 输出总结** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
 
 **CLI 状态：** `screener` CLI 已在 `cli/` 落地（validate / run / explain / landmine）；**M3** 已完成 live adapter 全量 enrichment 管线（quote universe → 逐票财务/行业补全 → 漏斗）。Agent **必须优先调用 CLI** 执行定量漏斗与 landmine；`screener` 不在 `$PATH`，需在 `cli/` 目录通过 `npm run dev -- <command>` 运行（见 §2）。仅当 CLI 安装或执行真实失败时，才回退到 `spec/` 手工编排并标注 `N/A`。
 
 ---
 
-## 1. 何时跑（季度调度）
+## 1. 运行前提
 
-**原则：** CN 与 US **同一天**跑 `--markets CN,US`，但必须在 **两市场该期披露 substantially complete** 之后；以 **较晚的 anchor** 为准，再取 **该日之后的第一个周末**。
+本 skill 和 CLI 不决定什么时候运行。季度、市场范围和运行时间应来自用户、Agent 定时任务或外部自动化。
 
-详见 `spec/schedule.yaml`（status: confirmed）。
+Agent 只负责在收到明确运行请求后校验输入是否足够：
 
-| 周期 | CN anchor | US anchor（季末 +45 天） | 通常更晚 | 大约执行窗口 |
-|------|-----------|-------------------------|----------|--------------|
-| Q1 + A股年报/一季报 | 4/30 | ~5/15 | US | 5 月中下旬第一个周末 |
-| Q2 + A股半年报 | 8/31 | ~8/15 | CN | 9 月初第一个周末 |
-| Q3 + A股三季报 | 10/31 | ~11/15 | US | 11 月中下旬第一个周末 |
+- `quarter` 明确，例如 `2026-Q2`
+- `markets` 明确，例如 `CN`、`US` 或 `CN,US`
+- adapter 明确，或接受默认 `fixture`
 
-- **每年 3 次季度定时运行**；美股 Q4/10-K（~2 月中旬）不单独跑批， freshness 并进下一轮 Q1 窗口。
-- **禁止**在 `later_anchor` 之前跑漏斗；若用户要求提前跑，警告数据未齐并说明 `data_confidence: low` 风险。
-
-未实现命令和后续规划集中记录在 [future-work.md](./future-work.md)。当前不要承诺自动日期解析命令可执行。
+不要承诺存在自动排期命令；不要根据本仓库文档替用户制定年度运行日期。
 
 ---
 
@@ -182,17 +177,11 @@ npm run dev -- landmine \
 
 ---
 
-## 4. 到价纪律（Phase 3）
+## 4. 到价与交易边界
 
-MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
+`screener landmine` 只生成 `landmines.yaml`，供用户研究和手工决策。CLI 不监控实时价格、不提交交易、不生成券商订单。
 
-| 场景 | slug | 纪律 |
-|------|------|------|
-| A — 个股独立下跌 | `trigger_isolated_drop` | **禁止立刻买**；24h 定性复核；宁可等一季财报 |
-| B — 宏观恐慌 | `trigger_macro_panic` | 24h 确认后 **40–50% 首批仓位**；剩余仓位等下一财报季 |
-| 不确定 | `trigger_ambiguous` | **默认按场景 A** |
-
-`screener alert` 尚未实现。当前仍由券商提醒和人工复核处理，后续规划见 [future-work.md](./future-work.md)。
+到价提醒、券商条件单、仓位节奏和复核纪律由用户、券商工具或上层 Agent 自行决定。当前不要承诺存在自动提醒命令。
 
 ---
 
@@ -203,7 +192,7 @@ MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
 | 全市场定量 | `cli/` → `npm run dev -- run` + `spec/templates/` | 不参与 |
 | 单票 Deep | 编排 + audit_hints | Deep workflow |
 | 单票 Deferred Lite | 编排 + deferred 上下文 | Lite workflow |
-| 到价后复核 | trigger-discipline | 可选再 Deep |
+| 到价后复核 | 不属于本 skill | 可选再 Deep |
 
 ---
 
@@ -218,7 +207,7 @@ MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
 - [ ] `audit/{market}/*.lite.md`（Deferred Lite，每市场 ≤8，除非跳过 Step 2b）
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml`（若有 shortlist）
-- [ ] 未在 anchor 前跑漏斗
+- [ ] quarter、markets 和 adapter 来源明确
 - [ ] 未自动下单
 
 ---
@@ -235,9 +224,13 @@ MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
 
 ---
 
-## 7. 未实现命令（勿承诺可执行）
+## 7. 不属于本 skill 的职责
 
-未实现命令和后续规划集中记录在 [future-work.md](./future-work.md)。当前不要承诺自动到价提醒或自动日期解析命令可执行。
+- 不决定 CLI 运行日期或年度计划。
+- 不监控实时价格。
+- 不自动下单。
+- 不承诺自动提醒或自动排期命令可执行。
+- 不把 Lite 结果直接送入 landmine，除非用户同季追加 Deep。
 
 ---
 
@@ -245,13 +238,12 @@ MVP：券商提醒 + 用户/Agent 对照 `spec/trigger-discipline.yaml`。
 
 | 文件 | 内容 |
 |------|------|
-| `spec/index.yaml` | Manifest |
-| `spec/schedule.yaml` | 何时跑 |
+| `docs/agent-output.md` | Agent 输出风格和 artifact 转述指南 |
+| `spec/README.md` | CLI 机器规则目录说明 |
+| `spec/index.yaml` | CLI 规则 manifest |
 | `spec/kill-gates.yaml` | 共享 Kill Gate |
 | `spec/routing-map.yaml` | GICS / keyword fallback → sector templates |
 | `spec/cn-industry-map.yaml` | A-share Shenwan L1/L2 → sector templates（CN 主路径） |
 | `spec/conventions.yaml` | 阈值语法、`routing_method` |
 | `spec/templates/*.yaml` | Sector 漏斗（Package M） |
 | `spec/landmine-rules.yaml` | landmine 限价公式 |
-| `spec/trigger-discipline.yaml` | 场景 A/B |
-| `spec/output-schema.yaml` | YAML 契约 |

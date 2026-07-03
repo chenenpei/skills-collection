@@ -1,11 +1,8 @@
 # market-screener 后续工作
 
-本文件只记录未实现、未排期或需要项目管理者后续规划的工作。当前可执行事实以 `cli/`、`spec/`、`SKILL.md` 和 ADR 当前状态为准。
+本文件只记录未实现、未排期或需要项目管理者后续规划的工作。当前可执行事实以 `cli/`、`spec/`、`SKILL.md`、`docs/agent-guide.md` 和 ADR 当前状态为准。
 
-## 未实现命令
-
-- `screener alert`：基于 `landmines.yaml` 和实时价格生成到价提醒文件。当前仍使用券商提醒和人工复核，不生成 `alerts.yaml`，也不会自动下单。
-- `screener schedule --year YYYY`：按 `spec/schedule.yaml` 打印年度季度运行日期。当前日期规则由 Agent 按 `schedule.yaml` 人工解析。
+已决定不做且没有防误导价值的命令不进入本文件：到价提醒由券商提醒、券商条件单或 Agent 定时任务处理；CLI 执行时机由用户、Agent 定时任务或外部自动化决定。
 
 ## 数据源与指标覆盖
 
