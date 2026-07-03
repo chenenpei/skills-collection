@@ -65,7 +65,6 @@ export interface SpecBundle {
   cnIndustryMap?: CnIndustryMapSpec;
   conventions: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
-  schedule: Record<string, unknown>;
   landmineRules: Record<string, unknown>;
   templates: Record<string, SectorTemplateSpec>;
 }

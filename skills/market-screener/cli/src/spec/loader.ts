@@ -36,9 +36,6 @@ export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
   const outputSchema = (await readYamlFile(
     path.join(specDir, "output-schema.yaml")
   )) as Record<string, unknown>;
-  const schedule = (await readYamlFile(
-    path.join(specDir, "schedule.yaml")
-  )) as Record<string, unknown>;
   const landmineRules = (await readYamlFile(
     path.join(specDir, "landmine-rules.yaml")
   )) as Record<string, unknown>;
@@ -57,7 +54,6 @@ export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
     cnIndustryMap,
     conventions,
     outputSchema,
-    schedule,
     landmineRules,
     templates,
   };

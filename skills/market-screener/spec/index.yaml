@@ -29,11 +29,6 @@ universe:
   market_cap_profile: profile_b
   ref: kill-gates.yaml#universe
 
-schedule:
-  ref: schedule.yaml
-  principle: unified_cn_us_same_day_after_later_market_disclosure
-  cycles_per_year: 3_runs  # Q1, Q2, Q3; Q4 US rolls into next Q1 gate
-
 data_sources:
   profile: scheme_f
   cn:
@@ -133,7 +128,3 @@ landmine:
   input: audit-summary.yaml#shortlist_for_landmine
   output_artifact: landmines.yaml
   execution: human_broker_order_only
-
-trigger_discipline:
-  ref: trigger-discipline.yaml
-  execution: human_broker_alerts_plus_agent_guide
