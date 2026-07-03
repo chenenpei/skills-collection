@@ -93,7 +93,7 @@ async function main(): Promise<void> {
   const bundle = await loadSpecBundle(path.resolve(values.spec!));
   const adapter = createCnEastMoneyAdapter({ cacheDir });
   const records = await adapter.loadUniverse(["CN"]);
-  const { survivors } = partitionQuotePrefilter(bundle.killGates, records);
+  const { survivors } = partitionQuotePrefilter(bundle.exclusionRules, records);
 
   const gapTickers = new Set(
     await findEnrichCacheGapTickers(
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
     cacheDir,
     concurrency,
     skipCache: false,
-    killGates: bundle.killGates,
+    exclusionRules: bundle.exclusionRules,
     specDir: path.resolve(values.spec!),
     inheritCacheFrom,
   };

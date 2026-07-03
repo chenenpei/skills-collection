@@ -1,8 +1,8 @@
-import type { KillGatesSpec } from "../spec/types.js";
+import type { ExclusionRulesSpec } from "../spec/types.js";
 import { BLOCKED_STATUSES, getUniverseFloors } from "./universe.js";
 import type { DataConfidence, MetricValue, SecurityRecord } from "../domain/types.js";
 
-export interface KillGateResult {
+export interface ExclusionResult {
   excluded: boolean;
   killReason?: string;
   funnelFlags: string[];
@@ -18,14 +18,14 @@ function excluded(
   killReason: string,
   funnelFlags: string[],
   dataConfidence: DataConfidence = "high"
-): KillGateResult {
+): ExclusionResult {
   return { excluded: true, killReason, funnelFlags, dataConfidence };
 }
 
-export function applyKillGates(
-  spec: KillGatesSpec,
+export function applyExclusionRules(
+  spec: ExclusionRulesSpec,
   record: SecurityRecord
-): KillGateResult {
+): ExclusionResult {
   const flags: string[] = [];
   let dataConfidence: DataConfidence = "high";
 

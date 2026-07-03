@@ -25,10 +25,10 @@ vi.mock("../../src/data/us/enrich.js", () => ({
 }));
 
 describe("enrichLiveUniverse", () => {
-  let killGates: Awaited<ReturnType<typeof loadSpecBundle>>["killGates"];
+  let exclusionRules: Awaited<ReturnType<typeof loadSpecBundle>>["exclusionRules"];
 
   beforeEach(async () => {
-    killGates = (await loadSpecBundle(SPEC_DIR)).killGates;
+    exclusionRules = (await loadSpecBundle(SPEC_DIR)).exclusionRules;
   });
 
   const base = (overrides: Partial<SecurityRecord> = {}): SecurityRecord => ({
@@ -59,7 +59,7 @@ describe("enrichLiveUniverse", () => {
       cacheDir: "/tmp/screener-test",
       concurrency: 2,
       skipCache: true,
-      killGates,
+      exclusionRules,
     });
 
     expect(result.universe).toHaveLength(1);
@@ -79,7 +79,7 @@ describe("enrichLiveUniverse", () => {
       cacheDir: "/tmp/screener-test",
       concurrency: 2,
       skipCache: true,
-      killGates,
+      exclusionRules,
     });
 
     expect(result.universe.every((r) => r.metrics.gross_margin_vs_industry)).toBe(true);

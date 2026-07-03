@@ -48,7 +48,7 @@ export async function runCommand(opts: RunCommandOptions): Promise<void> {
     cacheDir: DEFAULT_CACHE_DIR,
     concurrency: opts.enrichConcurrency ?? DEFAULT_ENRICH_CONCURRENCY,
     skipCache: opts.skipCache ?? false,
-    killGates: bundle.killGates,
+    exclusionRules: bundle.exclusionRules,
     progress,
     specDir: path.resolve(opts.spec),
     inheritCacheFrom: opts.inheritCacheFrom,

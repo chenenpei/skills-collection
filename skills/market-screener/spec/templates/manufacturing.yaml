@@ -39,21 +39,6 @@ mispricing_track:
     - { metric: price_vs_52w_high, max: 0.70 }
     - { metric: capex_to_revenue, max: 0.20 }
 
-sector_kill_gates:
-  - id: capex_burn
-    condition: capex_to_revenue_gt_0.25_and_fcf_negative_3y
-    action: exclude
-    reason_slug: gold_in_quicksand_capex_burn
-
-  - id: customer_concentration
-    condition: top_customer_concentration_gt_0.50
-    action: exclude
-    when_field_missing: skip
-
-  - id: inventory_bloat
-    condition: inventory_yoy_minus_revenue_yoy_gt_0.20_for_2_years
-    action: exclude
-
 funnel_flags:
   - cyclical_manufacturing_check
   - technology_iteration_risk

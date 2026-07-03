@@ -1,4 +1,4 @@
-import type { KillGatesSpec } from "../spec/types.js";
+import type { ExclusionRulesSpec } from "../spec/types.js";
 import type { SecurityRecord } from "../domain/types.js";
 import type { Market } from "./types.js";
 
@@ -17,13 +17,13 @@ export const BLOCKED_STATUSES = new Set([
 ]);
 
 export function getUniverseProfile(
-  spec: KillGatesSpec
+  spec: ExclusionRulesSpec
 ): Record<string, ProfileMarket> | undefined {
   return (spec.universe as { profile_b?: Record<string, ProfileMarket> }).profile_b;
 }
 
 export function getUniverseFloors(
-  spec: KillGatesSpec,
+  spec: ExclusionRulesSpec,
   market: Market
 ): { capFloor: number; ageFloor: number } {
   const profile = getUniverseProfile(spec);
@@ -40,14 +40,14 @@ export function getUniverseFloors(
 }
 
 export function passesUniverseProfile(
-  spec: KillGatesSpec,
+  spec: ExclusionRulesSpec,
   record: SecurityRecord
 ): boolean {
   return getUniverseProfileFailureReason(spec, record) === null;
 }
 
 export function getUniverseProfileFailureReason(
-  spec: KillGatesSpec,
+  spec: ExclusionRulesSpec,
   record: SecurityRecord
 ): string | null {
   if (BLOCKED_STATUSES.has(record.status)) return "kill_status_excluded";

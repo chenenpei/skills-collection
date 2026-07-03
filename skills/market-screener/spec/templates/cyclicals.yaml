@@ -27,26 +27,6 @@ mispricing_track:
     - { metric: price_vs_52w_high, max: 0.75 }
     - { metric: operating_margin_vs_10y_median, min: -0.05 }
 
-sector_kill_gates:
-  - id: peak_cycle_trap
-    condition: trailing_pe_lt_8_and_operating_margin_gt_p75_10y
-    action: exclude
-    reason_slug: peak_cycle_trap
-    note: Optically cheap at peak earnings — Li Lu earnings quality trap
-
-  - id: peak_margin_trap
-    condition: operating_margin_gt_p90_10y_and_revenue_yoy_lt_0
-    action: exclude
-
-  - id: balance_sheet_stress
-    condition: net_debt_to_ebitda_gt_4.0
-    action: exclude
-
-  - id: capacity_peak
-    condition: capacity_utilization_gt_0.90
-    action: exclude
-    when_field_missing: skip
-
 funnel_flags:
   - verify_cycle_position_in_deep
   - commodity_price_sensitivity_when_applicable

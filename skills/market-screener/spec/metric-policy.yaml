@@ -207,68 +207,6 @@ pass_logic:
       manufacturing_mispricing: 4_of_6
       financials_banks: 4_of_6  # unchanged; sparse bank data
 
-funnel_soft_cap:
-  max_candidates_per_market: 20
-  overflow: deferred.yaml
-  ranking: template track seat allocation (see template_seat_allocation)
-
-deferred_watchlist_cap:
-  max_deferred_per_market: 20
-
-deferred_lite_sweep:
-  note: Tier-2 qualitative pass; reuses stock-analysis-audit Lite (not Deep)
-  default_top_n: 8
-  applies_to: deferred.yaml ordered by rank ascending
-  report_path: "{output}/{quarter}/audit/{market}/{ticker}.lite.md"
-  skip_when:
-    - user_requests_deep_all
-    - deferred.yaml empty for market
-  promote_next_quarter_when:
-    lite_verdict_slug:
-      - verdict_quality_reasonable_price
-      - verdict_medium_term_revaluation
-    min_confidence: 3
-
-template_seat_allocation:
-  pools:
-    healthcare_quality: { floor: 2, cap: 5 }
-    consumer_quality: { floor: 2, cap: 4 }
-    manufacturing_quality: { floor: 2, cap: 4 }
-    cyclicals_quality: { floor: 0, cap: 3 }
-    financials_quality: { floor: 0, cap: 3 }
-    tech_saas_quality: { floor: 0, cap: 3 }
-    healthcare_mispricing: { floor: 0, cap: 1 }
-    consumer_mispricing: { floor: 0, cap: 1 }
-    cyclicals_mispricing: { floor: 0, cap: 1 }
-    manufacturing_mispricing: { floor: 0, cap: 1 }
-    financials_mispricing: { floor: 0, cap: 1 }
-    tech_saas_mispricing: { floor: 0, cap: 1 }
-  flex:
-    confluence_weight_multiplier: 2
-  backfill:
-    tier1: same_template_quality
-    tier2: global_quality
-
-ranking:
-  method: template_seat_allocation
-  tie_break: track confluence, then pool_score, then data_confidence, then north_star_metric, then ticker
-  note: merged candidates.yaml rank is Deep queue priority, not cross-template conviction
-
-pool_tie_break_north_star:
-  consumer_quality: roe_5y_avg
-  consumer_mispricing: fcf_yield
-  healthcare_quality: gross_margin
-  healthcare_mispricing: fcf_yield_vs_risk_free
-  manufacturing_quality: roic_5y_avg
-  manufacturing_mispricing: roic_ttm
-  cyclicals_mispricing: mid_cycle_fcf_yield
-  financials_quality: roe_ttm
-  financials_mispricing: pb:asc
-  tech_saas_quality: rule_of_40
-  tech_saas_mispricing: revenue_yield_vs_peer
-  default_quality: roic_5y_avg
-  default_mispricing: fcf_yield
-
 metric_snapshot:
   include_on_pass: all metrics evaluated for the passed track
   per_field: { value, period, currency, source, basis, data_confidence }
@@ -276,15 +214,6 @@ metric_snapshot:
 funnel_flags:
   appended_to: candidate_record.funnel_flags
   consumed_by: orchestrator and stock-analysis-audit Deep hints
-
-audit_hints:
-  not_part_of: stock-analysis-audit core schema
-  passed_by: orchestrator into Deep audit prompt
-  fallback_note: When routing_method is fallback, sector scoring is skipped (routing_too_hard); Deep must flag sector classification uncertainty and honor audit_hints
-
-sector_kill_gates:
-  execution: spec_contract_only
-  note: Declared per sector template; NOT evaluated by CLI MVP. Shared kill-gates.yaml + template thresholds enforce subset at funnel time. Deep checks use audit_hints on candidate_record, not sector_kill_gates.
 
 routing_method:
   values: [gics, cn_industry_map, industry_proxy, fallback]

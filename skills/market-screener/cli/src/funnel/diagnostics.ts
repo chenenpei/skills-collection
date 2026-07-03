@@ -8,8 +8,8 @@ import {
   routeSecurityRecord,
   type PassingCandidate,
 } from "./run.js";
-import { templateLiveViability, manifestReviewThresholdsFromBundle } from "../spec/conventions.js";
-import type { KillGateResult } from "./kill-gates.js";
+import { templateLiveViability, manifestReviewThresholdsFromBundle } from "../spec/policy.js";
+import type { ExclusionResult } from "./exclusions.js";
 import type { SecurityRecord } from "../domain/types.js";
 import { resolveTemplateForEvaluation } from "./template-evaluator.js";
 import type { SectorTemplateSpec } from "../spec/types.js";
@@ -136,7 +136,7 @@ export class FunnelDiagnosticsCollector {
   recordPrefilterExcluded(bundle: SpecBundle, records: SecurityRecord[]): void {
     for (const record of records) {
       const killReason =
-        getUniverseProfileFailureReason(bundle.killGates, record) ?? "kill_prefilter_excluded";
+        getUniverseProfileFailureReason(bundle.exclusionRules, record) ?? "kill_prefilter_excluded";
       countReason(this.prefilterByReason, killReason);
       this.prefilterExcludedRows.push({
         ticker: record.ticker,
@@ -154,7 +154,7 @@ export class FunnelDiagnosticsCollector {
   recordKillSurvivor(
     bundle: SpecBundle,
     record: SecurityRecord,
-    kill: KillGateResult
+    kill: ExclusionResult
   ): PassingCandidate | null {
     const route = routeSecurityRecord(bundle, record);
     this.byMethod[route.routingMethod] = (this.byMethod[route.routingMethod] ?? 0) + 1;

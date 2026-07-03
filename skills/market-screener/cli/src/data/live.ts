@@ -90,12 +90,12 @@ export async function enrichLiveUniverse(
   records: SecurityRecord[],
   opts: EnrichOptions
 ): Promise<EnrichResult> {
-  if (!opts.killGates) {
-    throw new Error("killGates is required for live enrichment prefilter");
+  if (!opts.exclusionRules) {
+    throw new Error("exclusionRules is required for live enrichment prefilter");
   }
 
   const progress = opts.progress;
-  const { survivors, prefilterExcluded } = partitionQuotePrefilter(opts.killGates, records);
+  const { survivors, prefilterExcluded } = partitionQuotePrefilter(opts.exclusionRules, records);
 
   progress?.phase(
     `Quote prefilter: ${survivors.length} survivors, ${prefilterExcluded.length} excluded ` +

@@ -7,10 +7,10 @@ import type { SecurityRecord } from "../../src/domain/types.js";
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
 
 describe("passesQuotePrefilter", () => {
-  let killGates: Awaited<ReturnType<typeof loadSpecBundle>>["killGates"];
+  let exclusionRules: Awaited<ReturnType<typeof loadSpecBundle>>["exclusionRules"];
 
   beforeAll(async () => {
-    killGates = (await loadSpecBundle(SPEC_DIR)).killGates;
+    exclusionRules = (await loadSpecBundle(SPEC_DIR)).exclusionRules;
   });
 
   const base = (): SecurityRecord => ({
@@ -30,14 +30,14 @@ describe("passesQuotePrefilter", () => {
   });
 
   it("passes healthy quote record", () => {
-    expect(passesQuotePrefilter(killGates, base())).toBe(true);
+    expect(passesQuotePrefilter(exclusionRules, base())).toBe(true);
   });
 
   it("rejects ST status before enrichment", () => {
-    expect(passesQuotePrefilter(killGates, { ...base(), status: "ST" })).toBe(false);
+    expect(passesQuotePrefilter(exclusionRules, { ...base(), status: "ST" })).toBe(false);
   });
 
   it("rejects below market cap floor", () => {
-    expect(passesQuotePrefilter(killGates, { ...base(), marketCap: 1_000_000_000 })).toBe(false);
+    expect(passesQuotePrefilter(exclusionRules, { ...base(), marketCap: 1_000_000_000 })).toBe(false);
   });
 });

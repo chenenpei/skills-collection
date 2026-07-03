@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
 import { loadSpecBundle } from "../../src/spec/loader.js";
-import type { KillGatesSpec } from "../../src/spec/types.js";
-import { applyKillGates } from "../../src/funnel/kill-gates.js";
+import type { ExclusionRulesSpec } from "../../src/spec/types.js";
+import { applyExclusionRules } from "../../src/funnel/exclusions.js";
 import type { SecurityRecord } from "../../src/domain/types.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
@@ -27,18 +27,18 @@ const baseRecord = (): SecurityRecord => ({
   latestFinancialMonthsOld: 6,
 });
 
-describe("applyKillGates", () => {
-  let killGates: KillGatesSpec;
+describe("applyExclusionRules", () => {
+  let exclusionRules: ExclusionRulesSpec;
 
   beforeAll(async () => {
-    killGates = (await loadSpecBundle(SPEC_DIR)).killGates;
+    exclusionRules = (await loadSpecBundle(SPEC_DIR)).exclusionRules;
   });
 
   it.each(["ST", "delisting", "suspended", "halted", "delisted"] as const)(
     "excludes blocked status %s",
     (status) => {
       const record = { ...baseRecord(), status };
-      const result = applyKillGates(killGates, record);
+      const result = applyExclusionRules(exclusionRules, record);
       expect(result).toMatchObject({
         excluded: true,
         killReason: "kill_status_excluded",
@@ -51,7 +51,7 @@ describe("applyKillGates", () => {
     ["US", 200_000_000, "USD"],
   ] as const)("excludes %s market cap below floor", (market, marketCap, currency) => {
     const record = { ...baseRecord(), market, currency, marketCap };
-    expect(applyKillGates(killGates, record).killReason).toBe("kill_market_cap_below_floor");
+    expect(applyExclusionRules(exclusionRules, record).killReason).toBe("kill_market_cap_below_floor");
   });
 
   it.each([
@@ -64,35 +64,35 @@ describe("applyKillGates", () => {
       currency: market === "CN" ? "CNY" : "USD",
       listingAgeYears,
     };
-    expect(applyKillGates(killGates, record).killReason).toBe("kill_listing_age_below_floor");
+    expect(applyExclusionRules(exclusionRules, record).killReason).toBe("kill_listing_age_below_floor");
   });
 
   it("does not exclude revenue decline when YoY history is insufficient", () => {
-    const result = applyKillGates(killGates, { ...baseRecord(), revenueYoyHistory: [] });
+    const result = applyExclusionRules(exclusionRules, { ...baseRecord(), revenueYoyHistory: [] });
     expect(result.excluded).toBe(false);
     expect(result.killReason).toBeUndefined();
   });
 
   it("excludes 3y consecutive revenue decline", () => {
     const record = { ...baseRecord(), revenueYoyHistory: [-0.05, -0.03, -0.02] };
-    expect(applyKillGates(killGates, record).killReason).toBe(
+    expect(applyExclusionRules(exclusionRules, record).killReason).toBe(
       "kill_revenue_decline_3y_consecutive"
     );
   });
 
   it("excludes ocf negative 2y with widening loss", () => {
     const record = { ...baseRecord(), ocfNegativeYears: 2, netLossWidening: true };
-    expect(applyKillGates(killGates, record).killReason).toBe("kill_ocf_negative_widening_loss");
+    expect(applyExclusionRules(exclusionRules, record).killReason).toBe("kill_ocf_negative_widening_loss");
   });
 
   it("excludes non-standard audit", () => {
-    expect(applyKillGates(killGates, { ...baseRecord(), nonStandardAudit: true }).killReason).toBe(
+    expect(applyExclusionRules(exclusionRules, { ...baseRecord(), nonStandardAudit: true }).killReason).toBe(
       "kill_non_standard_audit"
     );
   });
 
   it("flags all key financial fields missing without excluding (quote-only live tier)", () => {
-    const result = applyKillGates(killGates, {
+    const result = applyExclusionRules(exclusionRules, {
       ...baseRecord(),
       metrics: {
         revenue: { dataConfidence: "low" },
@@ -108,7 +108,7 @@ describe("applyKillGates", () => {
   });
 
   it("passes quote-only adapter defaults through universe kill gates", () => {
-    const result = applyKillGates(killGates, {
+    const result = applyExclusionRules(exclusionRules, {
       ...baseRecord(),
       metrics: {},
       revenueYoyHistory: [],
@@ -121,7 +121,7 @@ describe("applyKillGates", () => {
   });
 
   it("flags stale financial data without excluding", () => {
-    const result = applyKillGates(killGates, { ...baseRecord(), latestFinancialMonthsOld: 24 });
+    const result = applyExclusionRules(exclusionRules, { ...baseRecord(), latestFinancialMonthsOld: 24 });
     expect(result).toMatchObject({
       excluded: false,
       funnelFlags: ["flag_data_stale"],
@@ -130,7 +130,7 @@ describe("applyKillGates", () => {
   });
 
   it("passes healthy record", () => {
-    expect(applyKillGates(killGates, baseRecord())).toMatchObject({
+    expect(applyExclusionRules(exclusionRules, baseRecord())).toMatchObject({
       excluded: false,
       funnelFlags: [],
       dataConfidence: "high",

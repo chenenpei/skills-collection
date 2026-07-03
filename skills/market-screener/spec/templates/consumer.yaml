@@ -35,18 +35,6 @@ mispricing_track:
     - { metric: price_vs_52w_high, max: 0.70 }
     - { metric: inventory_growth_minus_revenue, max: 0.10 }
 
-sector_kill_gates:
-  - id: channel_stuffing
-    condition: inventory_yoy_minus_revenue_yoy_gt_0.15_for_2_years
-    action: exclude
-  - id: margin_collapse
-    condition: gross_margin_yoy_decline_gt_0.08
-    action: exclude
-  - id: same_store_collapse
-    condition: same_store_sales_yoy_lt_neg_0.05_for_2_periods
-    action: exclude
-    when_field_present: same_store_sales_yoy
-
 graham_composite:
   formula: pe_3y_avg_times_pb
   max: 22.5

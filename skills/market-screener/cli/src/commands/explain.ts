@@ -5,7 +5,7 @@ import {
   listTemplateTrackResults,
   routeSecurityRecord,
 } from "../funnel/run.js";
-import { applyKillGates } from "../funnel/kill-gates.js";
+import { applyExclusionRules } from "../funnel/exclusions.js";
 import type { Market, SecurityRecord } from "../domain/types.js";
 import { loadSpecBundle } from "../spec/loader.js";
 
@@ -46,7 +46,7 @@ export async function explainCommand(opts: ExplainCommandOptions): Promise<void>
   const bundle = await loadSpecBundle(path.resolve(opts.spec));
   const record = await loadSecurityRecordFromFixture(opts.fixture, opts.ticker, opts.market);
 
-  const kill = applyKillGates(bundle.killGates, record);
+  const kill = applyExclusionRules(bundle.exclusionRules, record);
   const route = routeSecurityRecord(bundle, record);
   const trackResults = listTemplateTrackResults(bundle, record, route);
 

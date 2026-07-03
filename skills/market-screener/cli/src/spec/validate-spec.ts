@@ -1,5 +1,5 @@
 import type { SpecBundle } from "./types.js";
-import { funnelSoftCapFromBundle } from "./conventions.js";
+import { funnelSoftCapFromBundle } from "./policy.js";
 
 const REQUIRED_TEMPLATE_IDS = [
   "financials",
@@ -11,7 +11,7 @@ const REQUIRED_TEMPLATE_IDS = [
 
 const FUNNEL_SOFT_CAP = 20;
 const KILL_MARKET_CAP_SLUG = "kill_market_cap_below_floor";
-const CORE_SPEC_FILES = 6;
+const CORE_SPEC_FILES = 7;
 const FUNNEL_TRACKS = ["quality_track", "mispricing_track"] as const;
 
 const ALLOWED_REQUIRED_KEYS = new Set([
@@ -219,11 +219,11 @@ export function validateSpecBundle(bundle: SpecBundle): ValidateResult {
     validateCnIndustryMap(bundle, errors);
   }
 
-  const hasMarketCapKill = bundle.killGates.gates.some(
+  const hasMarketCapKill = bundle.exclusionRules.gates.some(
     (gate) => gate.reason_slug === KILL_MARKET_CAP_SLUG
   );
   if (!hasMarketCapKill) {
-    errors.push(`kill-gates must include reason_slug "${KILL_MARKET_CAP_SLUG}"`);
+    errors.push(`exclusion-rules.yaml must include reason_slug "${KILL_MARKET_CAP_SLUG}"`);
   }
 
   for (const [templateId, template] of Object.entries(bundle.templates)) {

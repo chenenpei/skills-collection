@@ -24,7 +24,7 @@ export async function landmineCommand(opts: LandmineCommandOptions): Promise<voi
   const specDir = path.resolve(opts.specDir ?? DEFAULT_SPEC_DIR);
   const bundle = await loadSpecBundle(specDir);
   const formulas =
-    (bundle.landmineRules as { formulas?: Record<string, { slug?: string }> }).formulas ?? {};
+    (bundle.landminePricing as { formulas?: Record<string, { slug?: string }> }).formulas ?? {};
   const raw = parseYaml(await fs.readFile(path.resolve(opts.from), "utf8")) as {
     shortlist_for_landmine?: ShortlistItem[];
     quarter?: string;

@@ -38,17 +38,6 @@ mispricing_track:
     - { metric: price_vs_52w_high, max: 0.65 }
     - { metric: forward_peg, max: 1.5, if_unprofitable: skip }
 
-sector_kill_gates:
-  - id: revenue_collapse
-    condition: revenue_yoy_lt_neg_0.10_for_2_quarters
-    action: exclude
-  - id: gross_margin_erosion
-    condition: gross_margin_yoy_decline_gt_0.10
-    action: exclude
-  - id: extreme_dilution
-    condition: share_dilution_3y_gt_0.25
-    action: exclude
-
 audit_hints:
   - ai_platform_dependency_check_required
   - verify_rule_of_40_components_if_data_confidence_low

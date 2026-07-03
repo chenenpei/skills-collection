@@ -3,8 +3,8 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import {
   CnIndustryMapSchema,
+  ExclusionRulesSchema,
   IndexSchema,
-  KillGatesSchema,
   RoutingMapSchema,
   SectorTemplateSchema,
   type SpecBundle,
@@ -18,9 +18,14 @@ async function readYamlFile(filePath: string): Promise<unknown> {
 export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
   const indexRaw = await readYamlFile(path.join(specDir, "index.yaml"));
   const index = IndexSchema.parse(indexRaw);
+  const rules = index.machine_rules ?? {};
+  const exclusionRulesPath = rules.exclusions ?? rules.universe?.split("#")[0] ?? "exclusion-rules.yaml";
+  const metricPolicyPath = rules.metrics ?? rules.conventions ?? "metric-policy.yaml";
+  const selectionPolicyPath = rules.selection ?? metricPolicyPath;
+  const landminePricingPath = rules.landmine_pricing ?? rules.landmine ?? "landmine-pricing.yaml";
 
-  const killGates = KillGatesSchema.parse(
-    await readYamlFile(path.join(specDir, "kill-gates.yaml"))
+  const exclusionRules = ExclusionRulesSchema.parse(
+    await readYamlFile(path.join(specDir, exclusionRulesPath))
   );
   const routingRefs = index.machine_rules?.routing;
   const usRoutingPath = routingRefs?.us ?? routingRefs?.gics_and_proxy ?? "routing-us.yaml";
@@ -32,11 +37,14 @@ export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
   const cnRouting = cnRoutingPath
     ? CnIndustryMapSchema.parse(await readYamlFile(path.join(specDir, cnRoutingPath)))
     : undefined;
-  const conventions = (await readYamlFile(
-    path.join(specDir, "conventions.yaml")
+  const metricPolicy = (await readYamlFile(
+    path.join(specDir, metricPolicyPath)
   )) as Record<string, unknown>;
-  const landmineRules = (await readYamlFile(
-    path.join(specDir, "landmine-rules.yaml")
+  const selectionPolicy = (await readYamlFile(
+    path.join(specDir, selectionPolicyPath)
+  )) as Record<string, unknown>;
+  const landminePricing = (await readYamlFile(
+    path.join(specDir, landminePricingPath)
   )) as Record<string, unknown>;
 
   const templates: SpecBundle["templates"] = {};
@@ -48,13 +56,14 @@ export async function loadSpecBundle(specDir: string): Promise<SpecBundle> {
   return {
     specDir,
     index,
-    killGates,
+    exclusionRules,
     routing: {
       us: usRouting,
       cn: cnRouting,
     },
-    conventions,
-    landmineRules,
+    metricPolicy,
+    selectionPolicy,
+    landminePricing,
     templates,
   };
 }

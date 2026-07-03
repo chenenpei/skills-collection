@@ -2,7 +2,7 @@
 # Human and Agent runbooks live in ../docs/
 
 version: "0.1.0"
-status: cli_m3_live_funnel_done
+status: active
 tightening_profile: package_m
 
 delivery:
@@ -24,12 +24,13 @@ principles:
   audit_hints: optional_extension_for_orchestrator
 
 machine_rules:
-  universe: kill-gates.yaml#universe
-  conventions: conventions.yaml
+  exclusions: exclusion-rules.yaml
+  metrics: metric-policy.yaml
+  selection: selection-policy.yaml
   routing:
     us: routing-us.yaml
     cn: routing-cn.yaml
-  landmine: landmine-rules.yaml
+  landmine_pricing: landmine-pricing.yaml
 
 data_sources:
   profile: scheme_f

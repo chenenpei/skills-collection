@@ -18,6 +18,9 @@ export const IndexSchema = z.object({
     .optional(),
   machine_rules: z
     .object({
+      exclusions: z.string().optional(),
+      metrics: z.string().optional(),
+      selection: z.string().optional(),
       universe: z.string().optional(),
       conventions: z.string().optional(),
       routing: z
@@ -28,15 +31,19 @@ export const IndexSchema = z.object({
           cn_primary: z.string().optional(),
         })
         .optional(),
+      landmine_pricing: z.string().optional(),
       landmine: z.string().optional(),
     })
     .optional(),
 });
 
-export const KillGatesSchema = z.object({
+export const ExclusionRulesSchema = z.object({
   version: z.string(),
   universe: z.record(z.unknown()),
   gates: z.array(z.record(z.unknown())),
+  flags_not_exclusions: z.array(z.record(z.unknown())).optional(),
+  live_quote_prefilter: z.record(z.unknown()).optional(),
+  enrichment_failures: z.record(z.unknown()).optional(),
 });
 
 export const RoutingMapSchema = z.object({
@@ -66,7 +73,7 @@ export const SectorTemplateSchema = z
   .passthrough();
 
 export type IndexSpec = z.infer<typeof IndexSchema>;
-export type KillGatesSpec = z.infer<typeof KillGatesSchema>;
+export type ExclusionRulesSpec = z.infer<typeof ExclusionRulesSchema>;
 export type RoutingMapSpec = z.infer<typeof RoutingMapSchema>;
 export type CnIndustryMapSpec = z.infer<typeof CnIndustryMapSchema>;
 export type SectorTemplateSpec = z.infer<typeof SectorTemplateSchema>;
@@ -74,12 +81,13 @@ export type SectorTemplateSpec = z.infer<typeof SectorTemplateSchema>;
 export interface SpecBundle {
   specDir: string;
   index: IndexSpec;
-  killGates: KillGatesSpec;
+  exclusionRules: ExclusionRulesSpec;
   routing: {
     us: RoutingMapSpec;
     cn?: CnIndustryMapSpec;
   };
-  conventions: Record<string, unknown>;
-  landmineRules: Record<string, unknown>;
+  metricPolicy: Record<string, unknown>;
+  selectionPolicy: Record<string, unknown>;
+  landminePricing: Record<string, unknown>;
   templates: Record<string, SectorTemplateSpec>;
 }

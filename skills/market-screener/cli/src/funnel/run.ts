@@ -5,7 +5,7 @@ import {
   northStarForPool,
   seatAllocationFromBundle,
   templateLiveViability,
-} from "../spec/conventions.js";
+} from "../spec/policy.js";
 import type { SpecBundle, SectorTemplateSpec } from "../spec/types.js";
 import { writeYamlArtifact } from "../io/artifacts.js";
 import type { ProgressLogger } from "../lib/progress.js";
@@ -13,7 +13,7 @@ import {
   FunnelDiagnosticsCollector,
   routingDiagnosticsFromFunnel,
 } from "./diagnostics.js";
-import { applyKillGates, type KillGateResult } from "./kill-gates.js";
+import { applyExclusionRules, type ExclusionResult } from "./exclusions.js";
 import type { SecurityRecord } from "../domain/types.js";
 import { allocateTemplateSeats } from "./ranker.js";
 import { routeSecurity, type RouteResult } from "./router.js";
@@ -56,7 +56,7 @@ export interface PassingCandidate {
   seat_source?: SeatSource;
   sub_template?: string;
   metric_snapshot: TemplateEvalResult["metricSnapshot"];
-  data_confidence: KillGateResult["dataConfidence"];
+  data_confidence: ExclusionResult["dataConfidence"];
   funnel_flags: string[];
   audit_mode: "deep";
   audit_hints: string[];
@@ -111,7 +111,7 @@ interface TemplatePassTracks {
 
 function buildPassingCandidate(
   record: SecurityRecord,
-  kill: KillGateResult,
+  kill: ExclusionResult,
   route: RouteResult,
   entries: TemplateTrackResult[]
 ): PassingCandidate | null {
@@ -192,7 +192,7 @@ function buildPassingCandidate(
 export function bestPassingCandidate(
   bundle: SpecBundle,
   record: SecurityRecord,
-  kill: KillGateResult,
+  kill: ExclusionResult,
   route: RouteResult,
   trackResults?: TemplateTrackResult[]
 ): PassingCandidate | null {
@@ -240,7 +240,7 @@ export async function runFunnel(opts: FunnelRunOptions): Promise<FunnelRunResult
     diagnostics.recordPrefilterExcluded(opts.bundle, marketPrefilterExcluded);
 
     for (const record of marketUniverse) {
-      const kill = applyKillGates(opts.bundle.killGates, record);
+      const kill = applyExclusionRules(opts.bundle.exclusionRules, record);
       if (kill.excluded) {
         diagnostics.recordKillExcluded(kill.killReason);
         excluded.push({

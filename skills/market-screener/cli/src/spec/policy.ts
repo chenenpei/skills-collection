@@ -7,7 +7,7 @@ export function templateLiveViability(
   templateId: string,
   subTemplateId?: string
 ): TemplateLiveViability {
-  const manifest = (bundle.conventions as {
+  const manifest = (bundle.metricPolicy as {
     template_live_viability?: Record<
       string,
       TemplateLiveViability | Record<string, TemplateLiveViability>
@@ -23,22 +23,22 @@ export function templateLiveViability(
 }
 
 export function funnelSoftCapFromBundle(bundle: SpecBundle): number {
-  const conventions = bundle.conventions as {
+  const selection = bundle.selectionPolicy as {
     funnel_soft_cap?: { max_candidates_per_market?: number };
   };
   return (
-    conventions.funnel_soft_cap?.max_candidates_per_market ??
+    selection.funnel_soft_cap?.max_candidates_per_market ??
     bundle.index.principles?.funnel_soft_cap_per_market ??
     20
   );
 }
 
 export function deferredWatchlistCapFromBundle(bundle: SpecBundle): number {
-  const conventions = bundle.conventions as {
+  const selection = bundle.selectionPolicy as {
     deferred_watchlist_cap?: { max_deferred_per_market?: number };
   };
   return (
-    conventions.deferred_watchlist_cap?.max_deferred_per_market ??
+    selection.deferred_watchlist_cap?.max_deferred_per_market ??
     20
   );
 }
@@ -74,10 +74,10 @@ const DEFAULT_SEAT_ALLOCATION: TemplateSeatAllocationConfig = {
 };
 
 export function seatAllocationFromBundle(bundle: SpecBundle): TemplateSeatAllocationConfig {
-  const conventions = bundle.conventions as {
+  const selection = bundle.selectionPolicy as {
     template_seat_allocation?: Partial<TemplateSeatAllocationConfig>;
   };
-  const configured = conventions.template_seat_allocation;
+  const configured = selection.template_seat_allocation;
   if (!configured?.pools) return DEFAULT_SEAT_ALLOCATION;
 
   return {
@@ -102,7 +102,7 @@ export function northStarForPool(
   bundle: SpecBundle,
   poolKey: string
 ): NorthStarSpec | undefined {
-  const map = (bundle.conventions as { pool_tie_break_north_star?: Record<string, string> })
+  const map = (bundle.selectionPolicy as { pool_tie_break_north_star?: Record<string, string> })
     .pool_tie_break_north_star;
   if (!map) return undefined;
 
@@ -119,7 +119,7 @@ export interface ManifestReviewThresholds {
 }
 
 export function manifestReviewThresholdsFromBundle(bundle: SpecBundle): ManifestReviewThresholds {
-  const mc = (bundle.conventions as {
+  const mc = (bundle.metricPolicy as {
     metric_coverage?: { manifest_review?: Partial<ManifestReviewThresholds> };
   }).metric_coverage?.manifest_review;
   return {

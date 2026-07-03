@@ -39,16 +39,6 @@ mispricing_track:
     - { metric: gross_margin_3y_max_decline_pp, max: 8 }
     - { metric: operating_margin_vs_industry, min: -0.05 }
 
-# sector_kill_gates: spec contract only — NOT evaluated by CLI MVP (see conventions.yaml).
-# Deep sector veto checks: use audit_hints below (those ARE written to candidates.yaml).
-sector_kill_gates:
-  - id: margin_collapse
-    condition: gross_margin_yoy_decline_gt_0.10
-    action: exclude
-  - id: revenue_collapse
-    condition: revenue_3y_cagr_lt_neg_0.10
-    action: exclude
-
 audit_hints:
   - verify_rd_runway_and_dilution_in_deep
   - verify_patent_cliff_if_margin_declining

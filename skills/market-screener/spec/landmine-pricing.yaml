@@ -1,7 +1,6 @@
-# Landmine price calculation — Phase 2 silent period
+# Price observation calculation for screener landmine
 # Input: audit-summary.yaml shortlist_for_landmine
 # Output: landmines.yaml
-# Execution: human places GTC limit or price alert in broker app (never automated buy)
 
 version: "0.1.0"
 
@@ -58,8 +57,3 @@ routing:
     financials_insurance: financials_insurance_other
     financials_other: financials_insurance_other
     cyclicals: cyclicals
-
-human_execution:
-  order_type: GTC_limit_or_price_alert
-  automated_broker_order: false
-  note: User places orders manually in broker app

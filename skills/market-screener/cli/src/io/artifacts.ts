@@ -1,6 +1,6 @@
 import type { Market } from "../domain/types.js";
 import type { SpecBundle } from "../spec/types.js";
-import { funnelSoftCapFromBundle } from "../spec/conventions.js";
+import { funnelSoftCapFromBundle } from "../spec/policy.js";
 
 export function buildRunMetadata(opts: {
   bundle: SpecBundle;

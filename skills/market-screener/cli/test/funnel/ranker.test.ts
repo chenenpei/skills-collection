@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { PassingCandidate } from "../../src/funnel/run.js";
 import { compareInPool, compareNorthStar, poolKeyForCandidate } from "../../src/funnel/ranker.js";
-import { parseNorthStar } from "../../src/spec/conventions.js";
+import { parseNorthStar } from "../../src/spec/policy.js";
 
 function passingCandidate(opts: {
   ticker: string;

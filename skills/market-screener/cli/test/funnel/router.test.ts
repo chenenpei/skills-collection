@@ -4,7 +4,7 @@ import { loadSpecBundle } from "../../src/spec/loader.js";
 import type { SpecBundle } from "../../src/spec/types.js";
 import { routeSecurity } from "../../src/funnel/router.js";
 import { listTemplateTrackResults } from "../../src/funnel/run.js";
-import { templateLiveViability } from "../../src/spec/conventions.js";
+import { templateLiveViability } from "../../src/spec/policy.js";
 
 const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
 

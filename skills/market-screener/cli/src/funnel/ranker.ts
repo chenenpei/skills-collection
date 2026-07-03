@@ -1,4 +1,4 @@
-import type { NorthStarSpec } from "../spec/conventions.js";
+import type { NorthStarSpec } from "../spec/policy.js";
 import type { PassingCandidate } from "./run.js";
 
 export interface TemplateSeatPoolConfig {

@@ -1,5 +1,5 @@
 import type { SecurityRecord } from "../domain/types.js";
-import type { KillGatesSpec } from "../spec/types.js";
+import type { ExclusionRulesSpec } from "../spec/types.js";
 import type { Market } from "../domain/types.js";
 import type { ProgressLogger } from "../lib/progress.js";
 
@@ -19,7 +19,7 @@ export interface EnrichOptions {
   cacheDir: string;
   concurrency: number;
   skipCache?: boolean;
-  killGates?: KillGatesSpec;
+  exclusionRules?: ExclusionRulesSpec;
   progress?: ProgressLogger;
   specDir?: string;
   /** Wall-clock anchor for bank disclosure fiscal year; defaults to runtime Date. */
