@@ -1,12 +1,12 @@
 ---
 name: market-screener
-description: Orchestrates the quantitative funnel for A-share and US single-company equities — universe screening, sector routing, candidate YAML output, Deep audit batching via stock-analysis-audit, landmine pricing, and artifact summarization. Use only when the user explicitly invokes market-screener (e.g. @market-screener, /market-screener, or names this skill) and asks for a batch funnel run, batch screening, landmine setup, output review, or spec explain request. Do not use for single-ticker Lite/Deep analysis without a batch funnel context; use stock-analysis-audit instead.
+description: Orchestrates the quantitative funnel for A-share and US single-company equities — universe screening, sector routing, candidate YAML output, Deep audit batching via stock-analysis-audit, landmine pricing, and result summarization. Use only when the user explicitly invokes market-screener (e.g. @market-screener, /market-screener, or names this skill) and asks for a batch funnel run, batch screening, landmine setup, output review, or spec explain request. Do not use for single-ticker Lite/Deep analysis without a batch funnel context; use stock-analysis-audit instead.
 disable-model-invocation: true
 ---
 
 # Market Screener
 
-Orchestrate the **batch funnel → Deep audit → deferred Lite sweep → qualitative triage → landmine prices → Agent output summary** workflow. Deterministic funnel rules live in `spec/`; the TypeScript CLI at `cli/` executes the funnel. This skill drives **batch orchestration** and chains into **stock-analysis-audit** for single-name Deep work.
+Orchestrate the **batch funnel → Deep audit → deferred Lite sweep → qualitative triage → landmine prices → result summary** workflow. Deterministic funnel rules live in `spec/`; the TypeScript CLI at `cli/` executes the funnel. This skill drives **batch orchestration** and chains into **stock-analysis-audit** for single-name Deep work.
 
 All outputs are research assistance only and are not investment advice.
 
@@ -21,8 +21,8 @@ When loaded, confirm the user's intent:
 
 ## Hard Rules
 
-1. **Never submit trades.** Landmines and alerts are for **human broker execution** only (GTC limits or price alerts).
-2. **Do not decide the execution schedule.** Run the CLI only when the user, an Agent定时任务, or external automation supplies the quarter and market scope.
+1. **Never submit trades.** Landmines are research outputs only.
+2. **Require explicit run inputs.** Before running the CLI, confirm the quarter, market scope, adapter, and output path.
 3. **Default Deep limit:** rank 1–20 per market from `candidates.yaml`. Run full Deep on every candidate only when the user explicitly requests it.
 4. **Default Deferred Lite sweep:** after Deep, run **stock-analysis-audit Lite** on deferred.yaml **rank 1–8** per market (see `spec/conventions.yaml#deferred_lite_sweep`). Reports → `{ticker}.lite.md`. Lite is **not** landmine input unless the user adds Deep same quarter.
 5. **Do not replace stock-analysis-audit** for single-ticker Deep/Lite. Invoke that skill per candidate with funnel context (`audit_hints`, `metric_snapshot`).
@@ -33,20 +33,20 @@ When loaded, confirm the user's intent:
 
 Follow `docs/agent-guide.md` unless the user narrows scope.
 
-1. **Run context** — use the quarter and market scope supplied by the user, Agent定时任务, or external automation. Do not compute or promise an annual run schedule.
+1. **Run inputs** — confirm quarter, market scope, adapter, output path, and `--spec ../spec`.
 2. **Quantitative funnel** — run the CLI from `cli/` (see **CLI** below). Default adapter is `fixture` (offline); use `--adapter live` when the user wants real universe data and enrichment.
 3. **Deep audit** — parallel by market (CN session + US session). For each candidate (default top 20/market), load **stock-analysis-audit** Deep with funnel context attached. Reports → `funnel-output/{quarter}/audit/{market}/{ticker}.md`. **Each quarter: full 20/20 Deep** on current prices; do not carry forward prior-quarter report bodies (see `docs/agent-guide.md` Step 2).
 4. **Deferred Lite sweep** — for each market, take `deferred.yaml` rank **1–8** (default). Load **stock-analysis-audit** **Lite** with deferred funnel context. Reports → `funnel-output/{quarter}/audit/{market}/{ticker}.lite.md`. Optional ad-hoc Lite for quarter-diff / user-requested names → `quarter_diff_lite` in audit-summary.
 5. **Qualitative triage** — produce `audit-summary.yaml`: `shortlist_for_landmine` (Deep only), `rejected_after_deep`, `deferred_lite_screened`, `deep_deferred`, optional `quarter_diff_lite`.
 6. **Landmines** — `npm run dev -- landmine --from audit-summary.yaml --output landmines.yaml` from `cli/` → `landmines.yaml`. Remind user to place orders manually if they choose to act.
-7. **Agent output summary** — summarize results using `docs/agent-output.md`; do not invent alerts, automatic orders, or schedule decisions.
+7. **Result summary** — summarize CLI outputs and audit status using `docs/agent-output.md`.
 
 ## Required References
 
 Read only what is needed for the current step:
 
 - Always read `CONTEXT.md` and `docs/agent-guide.md`.
-- Agent output style: `docs/agent-output.md`.
+- Result summary style: `docs/agent-output.md`.
 - Manifest and integration defaults: `spec/index.yaml`.
 - Universe and shared kill gates: `spec/kill-gates.yaml`.
 - Sector routing (GICS / keyword fallback): `spec/routing-map.yaml`.
@@ -76,7 +76,7 @@ For each Deep candidate, attach funnel context in the prompt:
 若 metric_snapshot 与 Deep 数据冲突，以 Deep 为准并说明。
 ```
 
-Load **stock-analysis-audit** for the actual Deep workflow, templates, and verdict slugs. This skill owns batch orchestration and YAML artifacts only.
+Load **stock-analysis-audit** for the actual Deep workflow, templates, and verdict slugs. This skill owns batch orchestration and YAML outputs only.
 
 ### Deferred Lite prompt (Step 2b)
 
@@ -177,7 +177,7 @@ Ask one question at a time. Prefer multiple-choice options when possible.
 
 ## Completion Checklist
 
-After a scheduled quarterly run, verify:
+After a batch run, verify:
 
 - [ ] `candidates.yaml`, `deferred.yaml`, `excluded.yaml` for CN and US
 - [ ] Live runs with prefilter skips: `prefilter-excluded.yaml` per market
@@ -186,5 +186,5 @@ After a scheduled quarterly run, verify:
 - [ ] Deferred Lite reports under `audit/{market}/` as `*.lite.md` (≤8 per market unless Step 2b skipped)
 - [ ] `audit-summary.yaml` includes `deferred_lite_screened` when Step 2b ran
 - [ ] `landmines.yaml` if shortlist exists
-- [ ] No trades submitted by the agent
-- [ ] Quarter and market scope came from the user, Agent定时任务, or external automation
+- [ ] No trades submitted
+- [ ] Quarter, market scope, adapter, output path, and spec path are recorded
