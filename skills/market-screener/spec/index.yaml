@@ -77,31 +77,6 @@ templates:
     file: templates/healthcare.yaml
     tracks: [quality, mispricing]
 
-output:
-  ref: output-schema.yaml
-  funnel_soft_cap:
-    max_candidates_per_market: 20
-    overflow_artifact: deferred.yaml
-  deferred_watchlist_cap:
-    max_deferred_per_market: 20
-  default_layout:
-    - "{output}/{quarter}/CN/candidates.yaml"
-    - "{output}/{quarter}/US/candidates.yaml"
-    - "{output}/{quarter}/CN/deferred.yaml"
-    - "{output}/{quarter}/US/deferred.yaml"
-    - "{output}/{quarter}/CN/excluded.yaml"
-    - "{output}/{quarter}/US/excluded.yaml"
-    - "{output}/{quarter}/CN/prefilter-excluded.yaml"   # live only; when non-empty
-    - "{output}/{quarter}/US/prefilter-excluded.yaml"   # live only; when non-empty
-    - "{output}/{quarter}/CN/routing-diagnostics.yaml"
-    - "{output}/{quarter}/US/routing-diagnostics.yaml"
-    - "{output}/{quarter}/CN/funnel-diagnostics.yaml"
-    - "{output}/{quarter}/US/funnel-diagnostics.yaml"
-    - "{output}/{quarter}/audit/CN/{ticker}.md"
-    - "{output}/{quarter}/audit/US/{ticker}.md"
-    - "{output}/{quarter}/audit-summary.yaml"
-    - "{output}/{quarter}/landmines.yaml"
-
 integration:
   downstream_skill: stock-analysis-audit
   downstream_mode: deep

@@ -16,7 +16,6 @@ export const IndexSchema = z.object({
       funnel_soft_cap_per_market: z.number().optional(),
     })
     .optional(),
-  output: z.record(z.unknown()).optional(),
 });
 
 export const KillGatesSchema = z.object({
@@ -64,7 +63,6 @@ export interface SpecBundle {
   routingMap: RoutingMapSpec;
   cnIndustryMap?: CnIndustryMapSpec;
   conventions: Record<string, unknown>;
-  outputSchema: Record<string, unknown>;
   landmineRules: Record<string, unknown>;
   templates: Record<string, SectorTemplateSpec>;
 }
