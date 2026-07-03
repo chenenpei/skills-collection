@@ -1,6 +1,6 @@
 # Agent 使用指南 — Market Screener
 
-本指南面向编排 **批量漏斗 → Deep 审计 → landmine 限价 → Agent 输出总结** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
+本指南面向编排 **批量漏斗 → Deep 审计 → landmine 限价 → 结果总结** 的 Agent。定量规则在 `spec/`；领域词汇在 `CONTEXT.md`。单票 Deep 审计见 [stock-analysis-audit](../../stock-analysis-audit/) 与其 `docs/agent-guide.md`。
 
 **CLI 状态：** `screener` CLI 已在 `cli/` 落地（validate / run / explain / landmine）；**M3** 已完成 live adapter 全量 enrichment 管线（quote universe → 逐票财务/行业补全 → 漏斗）。Agent **必须优先调用 CLI** 执行定量漏斗与 landmine；`screener` 不在 `$PATH`，需在 `cli/` 目录通过 `npm run dev -- <command>` 运行（见 §2）。仅当 CLI 安装或执行真实失败时，才回退到 `spec/` 手工编排并标注 `N/A`。
 
@@ -8,15 +8,13 @@
 
 ## 1. 运行前提
 
-本 skill 和 CLI 不决定什么时候运行。季度、市场范围和运行时间应来自用户、Agent 定时任务或外部自动化。
-
-Agent 只负责在收到明确运行请求后校验输入是否足够：
+执行 CLI 前先确认以下输入：
 
 - `quarter` 明确，例如 `2026-Q2`
 - `markets` 明确，例如 `CN`、`US` 或 `CN,US`
-- adapter 明确，或接受默认 `fixture`
-
-不要承诺存在自动排期命令；不要根据本仓库文档替用户制定年度运行日期。
+- `adapter`，例如 `fixture` 或 `live`
+- `output` 输出目录
+- `spec` 规则目录，通常是 `../spec`
 
 ---
 
@@ -39,22 +37,22 @@ npm run dev -- run \
 - **`--adapter fixture`** — 离线 fixture，适合本地验证
 - **`--adapter live`** — CN 东方财富 + US Yahoo 报价宇宙 → **quote prefilter**（status/市值/上市年限，未 enrichment 的写入 `prefilter-excluded.yaml`）→ **M3 enrichment** 拉取逐票年报与行业代理（CN：`eastmoney_datacenter_annual` + `orginfo`；CN 银行额外运行 Sina/cninfo disclosure scrape；US：`sec_companyfacts` + `sec_submissions`），需联网
 
-**CN live preflight:** `--adapter live` runs CN quote/datacenter preflight by default and fails before enrichment when anchors or quote integrity fail. Do not use `--skip-preflight` for quarterly sign-off; it is only for diagnosing provider outages.
+**CN live 预检：** `--adapter live` 默认先运行 CN 报价和数据中心预检；若锚点或报价完整性失败，会在 enrichment 前失败。`--skip-preflight` 仅用于排查数据源故障，不用于正式跑批。
 
-**Degraded live runs:** `--allow-degraded` is only for diagnosing provider outages. Output with `quote_degraded:*` audit hints or low-confidence quote metrics is not quarterly sign-off quality. Hard CN quote integrity failures must not be bypassed by degraded mode.
+**降级 live 跑批：** `--allow-degraded` 仅用于排查数据源故障。带有 `quote_degraded:*` audit hints 或低置信度报价指标的输出，不作为正式跑批结果。CN 报价完整性硬失败不能用降级模式绕过。
 
 **Live enrichment 缓存：** `cli/data/cache/{quarter}/{CN|US}/{ticker}.json`。同季度重复跑会读缓存，显著缩短 CN 全市场耗时（首次约 30–60 分钟，4000+ 请求）。空年报响应**不写入**缓存。CN 银行缓存会包含 `bankScrape`，其披露 PDF 在运行时按 cninfo → 交易所 → Sina 优先级发现，不依赖静态 URL 表。
 
-**CN incremental enrich:** `--inherit-cache-from` is acceptable for opening a new quarter only when the source quarter cache was produced after the latest metric-source and quote schema fixes. It never replaces current quote refresh; verify `quoteHistory` contains the target quarter before sign-off.
+**CN 增量补全：** 只有源季度缓存已经包含最新指标来源和报价 schema 修正时，才可用 `--inherit-cache-from` 开启新季度。它不能替代当季报价刷新；正式确认前需检查 `quoteHistory` 包含目标季度。
 
-### CN valuation cross-check (mandatory for Deep audit)
+### CN 估值交叉检查（Deep 审计必做）
 
-Before using cache `quoteHistory.pe` / `pb` in valuation sections:
+在估值段落使用缓存中的 `quoteHistory.pe` / `pb` 前：
 
-1. Recompute TTM PE: `marketCap / TTM_net_income` OR `price / TTM_EPS`
-2. If `|cache_pe - price| / price < 1%`, treat cache PE as **invalid** (price mislabeled as PE)
-3. If `cache_pb > 15` for non-financials and PE missing, treat cache PB as **likely mislabeled dynamic PE**
-4. Prefer TTM recomputation over cache quote fields for final verdict
+1. 重新计算 TTM PE：`marketCap / TTM_net_income` 或 `price / TTM_EPS`
+2. 如果 `|cache_pe - price| / price < 1%`，将缓存 PE 视为**无效**，很可能是价格被误标为 PE
+3. 如果非金融标的 `cache_pb > 15` 且 PE 缺失，将缓存 PB 视为**可能被误标的动态 PE**
+4. 最终结论优先使用重新计算的 TTM PE，而不是缓存报价字段
 
 **Live run 可选参数：**
 
@@ -173,15 +171,13 @@ npm run dev -- landmine \
 - **Mispricing track：** `landmine_price = min(current_price × 0.85, fair_value_bull_mean × 0.70)`
 - **金融 / 周期：** 见同文件 sector overrides
 
-**执行：** 用户根据 `landmines.yaml` 在券商 App **人工**挂 GTC 限价单或到价提醒。CLI **never** 下单。
+**输出：** `landmines.yaml` 只记录限价观察价。CLI 不提交交易。
 
 ---
 
-## 4. 到价与交易边界
+## 4. 交易边界
 
-`screener landmine` 只生成 `landmines.yaml`，供用户研究和手工决策。CLI 不监控实时价格、不提交交易、不生成券商订单。
-
-到价提醒、券商条件单、仓位节奏和复核纪律由用户、券商工具或上层 Agent 自行决定。当前不要承诺存在自动提醒命令。
+`screener landmine` 只生成 `landmines.yaml`。该文件用于研究记录，不是交易指令。
 
 ---
 
@@ -192,7 +188,7 @@ npm run dev -- landmine \
 | 全市场定量 | `cli/` → `npm run dev -- run` + `spec/templates/` | 不参与 |
 | 单票 Deep | 编排 + audit_hints | Deep workflow |
 | 单票 Deferred Lite | 编排 + deferred 上下文 | Lite workflow |
-| 到价后复核 | 不属于本 skill | 可选再 Deep |
+| 结果总结 | 整理 CLI 输出和 audit-summary | 可引用 Deep / Lite 结论 |
 
 ---
 
@@ -207,40 +203,30 @@ npm run dev -- landmine \
 - [ ] `audit/{market}/*.lite.md`（Deferred Lite，每市场 ≤8，除非跳过 Step 2b）
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml`（若有 shortlist）
-- [ ] quarter、markets 和 adapter 来源明确
-- [ ] 未自动下单
+- [ ] `quarter`、`markets`、`adapter`、`output` 和 `spec` 已记录
+- [ ] 未提交交易
 
 ---
 
-## Post-run quarterly gate (CN live)
+## 跑批后检查（CN live）
 
-1. Run funnel + `filter-breakdown` for the quarter.
-2. Check `funnel-diagnostics.yaml` → `enrichment.cache_missing_count`. If > 3% of enriched survivors, run the cache repair script, then re-run funnel or document residual tickers.
-3. **Medical devices (医疗器械):** L2 routes to `manufacturing` only; strong names may appear in `deferred`, not top 20 — expected after P0 healthcare fix.
-4. **Healthcare pass rate ~15–20%:** monitor in diagnostics; do not tighten template without Deep false-positive review.
-5. **688617 class:** absent from candidates when `inventory_turnover_vs_industry` fails under full-universe benchmarks — sector_filtered, not YAML omission bug.
-6. **Cyclicals also_run on 半导体:** retained; pass rate should improve now that `mid_cycle_*` and quote overlays ship — still monitor in `funnel-diagnostics.yaml`.
-7. **Seat allocation:** candidates span multiple `winning_template` values when passers exist; check `by_pool_selected` in funnel-diagnostics if one sector dominates unexpectedly.
-
----
-
-## 7. 不属于本 skill 的职责
-
-- 不决定 CLI 运行日期或年度计划。
-- 不监控实时价格。
-- 不自动下单。
-- 不承诺自动提醒或自动排期命令可执行。
-- 不把 Lite 结果直接送入 landmine，除非用户同季追加 Deep。
+1. 对本季度运行漏斗和 `filter-breakdown`。
+2. 检查 `funnel-diagnostics.yaml` → `enrichment.cache_missing_count`。如果超过已补全存活标的的 3%，先运行缓存修复脚本，再重跑漏斗或记录剩余标的。
+3. **医疗器械：** L2 只路由到 `manufacturing`；强标的可能进入 `deferred` 而不是前 20，这是 P0 healthcare 修正后的预期结果。
+4. **Healthcare 通过率约 15–20%：** 在 diagnostics 中持续观察；未完成 Deep 假阳性复核前，不要收紧模板。
+5. **688617 类标的：** 如果因全市场基准下 `inventory_turnover_vs_industry` 不达标而不进入 candidates，这是 sector_filtered，不是 YAML 缺失。
+6. **半导体 also_run 到 cyclicals：** 保留该规则；`mid_cycle_*` 和报价覆盖已接入后，通过率应改善，仍需在 `funnel-diagnostics.yaml` 中观察。
+7. **席位分配：** 如果存在通过者，candidates 应覆盖多个 `winning_template`；若单一行业异常集中，检查 funnel-diagnostics 中的 `by_pool_selected`。
 
 ---
 
-## 8. Spec 索引
+## 7. Spec 索引
 
 | 文件 | 内容 |
 |------|------|
-| `docs/agent-output.md` | Agent 输出风格和 artifact 转述指南 |
+| `docs/agent-output.md` | Agent 输出风格和结果转述指南 |
 | `spec/README.md` | CLI 机器规则目录说明 |
-| `spec/index.yaml` | CLI 规则 manifest |
+| `spec/index.yaml` | CLI 规则清单 |
 | `spec/kill-gates.yaml` | 共享 Kill Gate |
 | `spec/routing-map.yaml` | GICS / keyword fallback → sector templates |
 | `spec/cn-industry-map.yaml` | A-share Shenwan L1/L2 → sector templates（CN 主路径） |
