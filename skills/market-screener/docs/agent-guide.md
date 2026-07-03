@@ -165,19 +165,13 @@ npm run dev -- landmine \
   --quarter 2026-Q2
 ```
 
-公式见 `spec/landmine-rules.yaml`：
+公式见 `spec/landmine-pricing.yaml`：
 
 - **Quality track：** `landmine_price = fair_value_bull_mean × 0.70`
 - **Mispricing track：** `landmine_price = min(current_price × 0.85, fair_value_bull_mean × 0.70)`
 - **金融 / 周期：** 见同文件 sector overrides
 
-**输出：** `landmines.yaml` 只记录限价观察价。CLI 不提交交易。
-
----
-
-## 4. 交易边界
-
-`screener landmine` 只生成 `landmines.yaml`。该文件用于研究记录，不是交易指令。
+**输出：** `landmines.yaml` 记录价格观察计算结果。
 
 ---
 
@@ -204,7 +198,6 @@ npm run dev -- landmine \
 - [ ] `audit-summary.yaml`
 - [ ] `landmines.yaml`（若有 shortlist）
 - [ ] `quarter`、`markets`、`adapter`、`output` 和 `spec` 已记录
-- [ ] 未提交交易
 
 ---
 

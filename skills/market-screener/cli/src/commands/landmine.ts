@@ -52,8 +52,6 @@ export async function landmineCommand(opts: LandmineCommandOptions): Promise<voi
       fair_value_reference: bull,
       current_price: spot,
       formula_slug: formulaSlug,
-      expiry: "GTC",
-      notes: "Manual broker order only",
     };
   });
 

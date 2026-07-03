@@ -15,7 +15,7 @@
 1. 运行摘要：说明本次读取或生成了哪些市场、季度和输出文件。
 2. 候选概览：按市场列出候选数量、deferred 数量、主要通过模板和明显异常。
 3. Deep / Lite 进展：说明 Deep 报告、Lite 报告和 `audit-summary.yaml` 的状态。
-4. Landmine 状态：如果存在 `landmines.yaml`，说明它只是研究参考和手工决策输入。
+4. Landmine 状态：如果存在 `landmines.yaml`，说明它包含价格观察计算结果。
 5. 风险和缺口：列出数据质量、路由不确定、fallback、缺失字段和需要人工复核的地方。
 
 ## CLI 输出文件
@@ -29,7 +29,7 @@
 | routing_diagnostics | `routing-diagnostics.yaml` | 路由方式、模板分布和 fallback 诊断 |
 | funnel_diagnostics | `funnel-diagnostics.yaml` | 漏斗阶段统计、剔除原因和模板通过率 |
 | audit_summary | `audit-summary.yaml` | Deep/Lite 后的定性汇总，由 Agent 生成 |
-| landmines | `landmines.yaml` | 限价观察价研究输出，不是交易指令 |
+| landmines | `landmines.yaml` | 价格观察计算结果 |
 
 ## 必须保留的字段含义
 
@@ -84,11 +84,8 @@ Agent 转述 `landmines.yaml` 时必须包含：
 - `fair_value_reference`
 - `current_price`
 
-说明文字必须包含：这些价格只用于研究和手工决策，不是自动下单指令。
-
 ## 禁止输出
 
 - 不写“已挂单”。
 - 不把 `candidates.yaml` 描述为买入清单。
-- 不把 `landmines.yaml` 描述为交易建议。
 - 不隐藏 `routing_confidence: low`、fallback 或低置信度数据。

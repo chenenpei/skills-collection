@@ -21,12 +21,20 @@ describe("landmineCommand", () => {
 
     const doc = parseYaml(await fs.readFile(outFile, "utf8")) as {
       quarter: string;
-      landmines: Array<{ landmine_price: number; formula_slug: string; ticker: string }>;
+      landmines: Array<{
+        landmine_price: number;
+        formula_slug: string;
+        ticker: string;
+        expiry?: string;
+        notes?: string;
+      }>;
     };
     expect(doc.quarter).toBe("2026-Q2");
     expect(doc.landmines[0]?.ticker).toBe("600519");
     expect(doc.landmines[0]?.landmine_price).toBeCloseTo(1800 * 0.7);
     expect(doc.landmines[0]?.formula_slug).toBe("landmine_quality_bull_mean_70pct");
+    expect(doc.landmines[0]).not.toHaveProperty("expiry");
+    expect(doc.landmines[0]).not.toHaveProperty("notes");
   });
 
   it("computes mispricing track as min of 85% spot and 70% bull mean", async () => {
