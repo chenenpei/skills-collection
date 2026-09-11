@@ -1,0 +1,57 @@
+# A 股公司筛选参数：质量研究、金融研究、严格低价与 NCAV。
+# 比例用小数（0.12 = 12%），倍数直接表示；增幅及绝对资本余量用比例差。
+# 固定公式、窗口及状态规则见 ../../../README.md#筛选规则。
+# version 是政策族标识；具体修订由运行归档的 policy.yaml 哈希和实现快照确定。
+version: cn-screening
+# 非金融基础质量：回报、现金兑现和报告杠杆。
+quality:
+  roeMedian: 0.12
+  roeRecentMedian: 0.08
+  ocfConversion: 0.80
+  debtEquity: 1.0
+  debtOcf: 3.0
+# 金融风险：专用资产质量、资本及流动性要求。
+financial:
+  futuresRiskCoverage: 1.50
+  trustRiskCoverage: 1.50
+  trustCapitalEquity: 0.50
+  nplCeiling: 0.02
+  nplIncrease: 0.005 # 增幅上限 0.5 个百分点
+  provisionCoverage: 1.50
+  capitalMargin: 0.02 # 超过适用资本要求的绝对余量：2 个百分点
+  bankLcr: 1.20
+  bankNsfr: 1.10
+  brokerRiskCoverage: 1.50
+  brokerRelativeMargin: 1.20 # 适用监管最低标准的倍数
+  leaseLiquidityRelativeMargin: 1.10 # 保留口径参数；金融租赁目前仍为方法未支持
+# 保险：偿付能力为最低比例，综合成本率为最高比例。
+insurance:
+  coreSolvency: 1.00
+  comprehensiveSolvency: 1.50
+  combinedRatio: 1.00
+  latestCombinedRatio: 1.03
+# 质量研究及价格：回报与现金条件支持研究，盈利折扣与收益率用于额外价格判断。
+priority:
+  roeMedian: 0.15
+  roeRecentFloor: 0.10
+  fcfConversion: 0.75 # 研究层允许部分资本再投入；其他现金与回报约束保留
+  earningsHaircut: 0.30
+  earningsYield: 0.08 # 严格低价参考线
+  normalEarningsYield: 0.05 # 正常参考区间下限；不是内在价值结论
+  displayLimit: 30 # 主研究名单独立容量
+  backupLimit: 5 # NCAV与金融折价共用的独立备选容量
+# 独立策略：金融研究与 NCAV 不继承非金融质量筛选的前置条件。
+strategies:
+  # 专门风险待核验的独立线索，资格低于证据充分的研究名单。
+  financialDiscount:
+    maxPb: 0.75
+    earningsHaircut: 0.30
+    minEarningsYield: 0.10
+    positiveProfitYears: 3
+  ncav:
+    marketCapRatio: 0.6666666666666666
+  financial:
+    methods: [bank, broker, insurance_group, life_insurance, pc_insurance, trust, futures]
+    positiveProfitYears: 4
+    roeMedian: 0.08
+    roeRecentMedian: 0.08

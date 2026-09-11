@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCompanyFactsAnnualRows } from "../../src/data/us/sec.js";
+import { parseCompanyFactsAnnualRows } from "../../src/us/sources/fundamentals.js";
 import fixture from "../fixtures/sec-aapl-companyfacts-snippet.json" with { type: "json" };
 
 describe("parseCompanyFactsAnnualRows", () => {

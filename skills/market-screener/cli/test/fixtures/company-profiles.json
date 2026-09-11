@@ -1,0 +1,122 @@
+[
+  {
+    "ticker": "601628",
+    "kind": "exact-field-excerpt-from-saved-provider-response",
+    "originalSha256": "d1947c1c11fefeee28184a10b506589903a7be3a4cdafefcc0217efc07831508",
+    "sourceUrl": "https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_BASIC_ORGINFO&columns=ALL&filter=(SECUCODE=\"601628.SH\")&pageSize=1&pageNumber=1",
+    "response": {
+      "success": true,
+      "result": {
+        "data": [
+          {
+            "SECURITY_CODE": "601628",
+            "SECUCODE": "601628.SH",
+            "BUSINESS_SCOPE": "人寿保险、健康保险、意外伤害保险等各类人身保险业务;人身保险的再保险业务;国家法律、法规允许或国务院批准的资金运用业务;各类人身保险服务、咨询和代理业务;国家保险监督管理部门批准的其他业务。基金销售业务。",
+            "MAIN_BUSINESS": "主要从事人寿保险、健康保险、意外伤害保险等各类人身保险业务;人身保险的再保险业务;国家法律、法规允许或国务院批准的资金运用业务;各类人身保险服务、咨询和代理业务;证券投资基金销售业务;国家保险监督管理部门批准的其他业务。",
+            "INDUSTRYCSRC1": "金融业-保险业"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ticker": "600739",
+    "kind": "exact-field-excerpt-from-saved-provider-response",
+    "originalSha256": "cd3a3d34d779237aaa7e3ce20df95bcc17255840017417339d6d472736b77f93",
+    "sourceUrl": "https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_BASIC_ORGINFO&columns=ALL&filter=(SECUCODE=\"600739.SH\")&pageSize=1&pageNumber=1",
+    "response": {
+      "success": true,
+      "result": {
+        "data": [
+          {
+            "SECURITY_CODE": "600739",
+            "SECUCODE": "600739.SH",
+            "BUSINESS_SCOPE": "自营和代理货物及技术进出口(国家禁止的不得经营,限制的品种办理许可证后方可经营),经营进料加工和“三来一补”业务,开展对销贸易和转口贸易,承包本行业境外工程和境内国际招标工程,上述境外工程所需的设备、材料出口;对外派遣本行业工程、生产及服务行业的劳务人员,农副产品收购(粮食除外),化肥连锁经营,中草药种植,房屋租赁,仓储服务,煤炭批发经营(依法须经批准的项目,经相关部门批准后方可开展经营活动)",
+            "MAIN_BUSINESS": "医药医疗、金融投资、供应链服务(贸易)和能源开发四大业务板块",
+            "INDUSTRYCSRC1": "批发和零售业-批发业"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ticker": "002961",
+    "kind": "exact-field-excerpt-from-saved-provider-response",
+    "originalSha256": "baec2194fc5bd8504a2be0206c9964a86de8f69a0838fb32db27aca77f2e257a",
+    "sourceUrl": "https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_BASIC_ORGINFO&columns=ALL&filter=(SECUCODE=\"002961.SZ\")&pageSize=1&pageNumber=1",
+    "response": {
+      "success": true,
+      "result": {
+        "data": [
+          {
+            "SECURITY_CODE": "002961",
+            "SECUCODE": "002961.SZ",
+            "BUSINESS_SCOPE": "金融期货经纪;商品期货经纪;期货投资咨询;资产管理。",
+            "MAIN_BUSINESS": "期货经纪业务、资产管理业务、期货交易咨询业务,并通过全资子公司分别开展风险管理业务、境外金融业务和证券投资基金业务",
+            "INDUSTRYCSRC1": "金融业-资本市场服务"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ticker": "000563",
+    "kind": "exact-field-excerpt-from-saved-provider-response",
+    "originalSha256": "5cde44ffeb286e0327fbbd9621d20e07dca34004c0faa175365c099b7f1e5fa4",
+    "sourceUrl": "https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_BASIC_ORGINFO&columns=ALL&filter=(SECUCODE=\"000563.SZ\")&pageSize=1&pageNumber=1",
+    "response": {
+      "success": true,
+      "result": {
+        "data": [
+          {
+            "SECURITY_CODE": "000563",
+            "SECUCODE": "000563.SZ",
+            "BUSINESS_SCOPE": "资金信托;动产信托;不动产信托;有价证券信托;其他财产或财产权信托;作为投资基金或者基金管理公司的发起人从事投资基金业务;经营企业资产的重组、购并及项目融资、公司理财、财务顾问等业务;受托经营国务院有关部门批准的证券承销业务;办理居间、咨询、资信调查等业务;代保管及保管箱业务;以存放同业、拆放同业、贷款、租赁、投资方式运用固有财产;以固有财产为他人提供担保;从事同业拆借;法律法规规定或中国银行业监督管理委员会批准的其他业务。",
+            "MAIN_BUSINESS": "信托业务、固有业务和投资顾问等中介业务",
+            "INDUSTRYCSRC1": "金融业-其他金融业"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ticker": "601318",
+    "kind": "exact-field-excerpt-from-saved-provider-response",
+    "originalSha256": "4607cc362876fa0ecb998a0c8677c162ed7dd31328164f85ab1f9aae078436de",
+    "sourceUrl": "https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_BASIC_ORGINFO&columns=ALL&filter=%28SECUCODE%3D%22601318.SH%22%29&pageSize=1&pageNumber=1",
+    "response": {
+      "success": true,
+      "result": {
+        "data": [
+          {
+            "SECURITY_CODE": "601318",
+            "SECUCODE": "601318.SH",
+            "BUSINESS_SCOPE": "投资保险企业;监督管理控股投资企业的各种国内、国际业务;开展保险资金运用业务;经批准开展国内、国际保险业务;经中国保险监督管理委员会及国家有关部门批准的其他业务。",
+            "MAIN_BUSINESS": "从事金融业,提供多元化的金融产品及服务",
+            "INDUSTRYCSRC1": "金融业-保险业"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ticker": "601601",
+    "kind": "exact-field-excerpt-from-saved-provider-response",
+    "originalSha256": "88e80ee706b6bf0b5fbbfa0ba27c028a00e89e5dac80b8025ff8a77078e81f0d",
+    "sourceUrl": "https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_BASIC_ORGINFO&columns=ALL&filter=%28SECUCODE%3D%22601601.SH%22%29&pageSize=1&pageNumber=1",
+    "response": {
+      "success": true,
+      "result": {
+        "data": [
+          {
+            "SECURITY_CODE": "601601",
+            "SECUCODE": "601601.SH",
+            "BUSINESS_SCOPE": "控股投资保险企业;监督管理控股投资保险企业的各种国内、国际再保险业务;监督管理控股投资保险企业的资金运用业务;经批准参加国际保险活动。",
+            "MAIN_BUSINESS": "公司通过旗下子公司提供各类风险保障、财富规划以及资产管理等产品和服务。公司主要通过太保寿险为客户提供人身保险产品和服务;通过太保产险、太平洋安信农险为客户提供财产保险产品和服务;通过太平洋健康险为客户提供健康险产品及健康管理服务;通过太保资产开展保险资金运用以及第三方资产管理业务;通过长江养老开展养老金融服务及相关资产管理业务;通过太保资本开展私募基金管理业务及相关咨询服务;通过国联安基金开展公募基金管理业务;通过太保科技提供市场化科技赋能支持和服务",
+            "INDUSTRYCSRC1": "金融业-保险业"
+          }
+        ]
+      }
+    }
+  }
+]

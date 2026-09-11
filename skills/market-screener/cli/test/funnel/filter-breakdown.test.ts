@@ -8,10 +8,10 @@ import {
   loadFilterBreakdown,
   loadTemplateTrackBreakdown,
   parseIndustryLevels,
-} from "../../src/funnel/filter-breakdown.js";
-import { loadSpecBundle } from "../../src/spec/loader.js";
+} from "../../src/us/reports.js";
+import { loadSpecBundle } from "../../src/policy/loader.js";
 
-const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../src/policy");
 
 describe("parseIndustryLevels", () => {
   it("splits Shenwan L1-L2-L3", () => {

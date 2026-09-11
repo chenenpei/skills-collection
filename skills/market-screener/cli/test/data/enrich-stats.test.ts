@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { summarizeEnrichRunStats } from "../../src/data/live.js";
-import type { SecurityRecord } from "../../src/domain/types.js";
+import { summarizeEnrichRunStats } from "../../src/us/screening.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
 
 function rec(ticker: string, extra: Partial<SecurityRecord> = {}): SecurityRecord {
   return {
     ticker,
-    market: "CN",
+    market: "US",
     companyName: ticker,
     marketCap: 1e10,
-    currency: "CNY",
+    currency: "USD",
     status: "active",
     listingAgeYears: 5,
     metrics: {},
@@ -29,25 +29,12 @@ describe("summarizeEnrichRunStats", () => {
     expect(stats.emptyAnnualSamples).toEqual(["000002"]);
   });
 
-  it("counts cik_unresolved as enrich failure (US)", () => {
-    const stats = summarizeEnrichRunStats(
-      [
-        {
-          ...rec("AAPL"),
-          market: "US",
-          currency: "USD",
-          enrichmentFailure: "cik_unresolved",
-        },
-        {
-          ...rec("MSFT"),
-          market: "US",
-          currency: "USD",
-        },
-      ],
-      "US"
-    );
+  it("counts cik_unresolved as an enrichment failure", () => {
+    const stats = summarizeEnrichRunStats([
+      { ...rec("AAPL"), enrichmentFailure: "cik_unresolved" },
+      rec("MSFT"),
+    ]);
     expect(stats.enrichFailedCount).toBe(1);
     expect(stats.enrichFailedSamples).toEqual(["AAPL"]);
-    expect(stats.cnMissingIndustryCount).toBeUndefined();
   });
 });

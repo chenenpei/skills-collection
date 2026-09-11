@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
-import { loadSpecBundle } from "../../src/spec/loader.js";
-import type { ExclusionRulesSpec } from "../../src/spec/types.js";
-import { applyExclusionRules } from "../../src/funnel/exclusions.js";
-import type { SecurityRecord } from "../../src/domain/types.js";
+import { loadSpecBundle } from "../../src/policy/loader.js";
+import type { ExclusionRulesSpec } from "../../src/policy/loader.js";
+import { applyExclusionRules } from "../../src/us/template-rules.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
 
-const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../src/policy");
 
 const baseRecord = (): SecurityRecord => ({
   ticker: "TEST",

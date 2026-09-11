@@ -3,14 +3,14 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import os from "node:os";
 import { parse as parseYaml } from "yaml";
-import { landmineCommand } from "../../src/commands/landmine.js";
+import { landmineCommand } from "../../src/cli.js";
 
 describe("landmineCommand", () => {
   it("computes quality track landmine at 70% of bull mean", async () => {
     const fixture = path.resolve(import.meta.dirname, "../fixtures/audit-summary.yaml");
     const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "landmine-"));
     const outFile = path.join(outDir, "landmines.yaml");
-    const specDir = path.resolve(import.meta.dirname, "../../../spec");
+    const specDir = path.resolve(import.meta.dirname, "../../src/policy");
 
     await landmineCommand({
       specDir,
@@ -41,7 +41,7 @@ describe("landmineCommand", () => {
     const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "landmine-"));
     const auditFile = path.join(outDir, "audit-summary.yaml");
     const outFile = path.join(outDir, "landmines.yaml");
-    const specDir = path.resolve(import.meta.dirname, "../../../spec");
+    const specDir = path.resolve(import.meta.dirname, "../../src/policy");
 
     await fs.writeFile(
       auditFile,

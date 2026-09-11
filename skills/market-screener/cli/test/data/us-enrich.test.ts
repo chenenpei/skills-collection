@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { mergeUsEnrichment } from "../../src/data/us/enrich.js";
-import type { SecurityRecord } from "../../src/domain/types.js";
-import type { AnnualFinancialRow } from "../../src/data/metrics.js";
+import { mergeEnrichment } from "../../src/us/sources/fundamentals.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
+import type { AnnualFinancialRow } from "../../src/us/sources/fundamentals.js";
 
-describe("mergeUsEnrichment", () => {
+describe("mergeEnrichment", () => {
   const base: SecurityRecord = {
     ticker: "AAPL",
     market: "US",
@@ -54,7 +54,7 @@ describe("mergeUsEnrichment", () => {
   ];
 
   it("merges annual rows and industry into SecurityRecord", () => {
-    const merged = mergeUsEnrichment(base, rows, "Electronic Computers");
+    const merged = mergeEnrichment(base, rows, "Electronic Computers");
     expect(merged.industryProxy).toBe("Electronic Computers");
     expect(merged.metrics.roe_5y_avg?.value).toBeGreaterThan(0.1);
     expect(merged.metrics.roe_5y_avg?.value).toBeLessThan(2);
@@ -71,7 +71,7 @@ describe("mergeUsEnrichment", () => {
       },
     };
 
-    const merged = mergeUsEnrichment(withQuote, rows, "Electronic Computers");
+    const merged = mergeEnrichment(withQuote, rows, "Electronic Computers");
     expect(merged.metrics.trailing_pe?.value).toBe(28.5);
     expect(merged.metrics.roe_5y_avg?.value).toBeGreaterThan(0.1);
     expect(merged.metrics.roe_5y_avg?.value).toBeLessThan(0.2);
@@ -79,7 +79,7 @@ describe("mergeUsEnrichment", () => {
   });
 
   it("returns record unchanged when annual rows are empty", () => {
-    const merged = mergeUsEnrichment(base, [], "Electronic Computers");
+    const merged = mergeEnrichment(base, [], "Electronic Computers");
     expect(merged).toBe(base);
   });
 });

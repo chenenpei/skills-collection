@@ -3,10 +3,10 @@
 ## Contexts
 
 - [Stock Analysis Audit](./skills/stock-analysis-audit/CONTEXT.md) — evidence-first single-security audit (Lite / Deep); vocabulary for verdicts, classifications, archetypes, and data quality
-- [Market Screener](./skills/market-screener/CONTEXT.md) — quarterly quantitative funnel that scans an investable universe and feeds candidates into stock-analysis-audit
+- [Market Screener](./skills/market-screener/CONTEXT.md) — quantitative funnel that produces research candidates; independently usable with optional qualitative follow-up
 
 ## Relationships
 
-- **Market Screener → Stock Analysis Audit**: the funnel outputs a short candidate list; each candidate enters Deep audit as `security_single_company`
-- **Shared vocabulary**: screener uses `security_single_company` and investment-classification slugs from Stock Analysis Audit; screener-specific terms (Quantitative Funnel, Investable Universe) live in Market Screener context only
-- **Executable spec**: screener rules live in `skills/market-screener/spec/`; `CONTEXT.md` is glossary only
+- **Market Screener → Stock Analysis Audit**: optional downstream use: the funnel produces research candidates; a user-selected company may enter a separate Lite or Deep audit as `security_single_company`. Neither skill requires the other
+- **Vocabulary ownership**: each context defines its own terms. Screening qualification and audit verdicts are distinct; sharing a company identity does not transfer a verdict or create a runtime dependency
+- **Executable policy**: screener rules live in `skills/market-screener/cli/src/policy/`; `CONTEXT.md` is glossary only

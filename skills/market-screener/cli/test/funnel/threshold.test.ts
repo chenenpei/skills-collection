@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluateThreshold, type MetricValue } from "../../src/funnel/threshold.js";
+import { evaluateThreshold, type MetricValue } from "../../src/us/template-rules.js";
 
 describe("evaluateThreshold", () => {
   const high = (value: number): MetricValue => ({ value, dataConfidence: "high" });

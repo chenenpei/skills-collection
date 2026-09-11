@@ -4,8 +4,8 @@ import {
   enrichRecordFromCachePayload,
   mergeEnrichment,
   updatedQuoteHistory,
-} from "../../src/data/merge-enrichment.js";
-import type { SecurityRecord } from "../../src/domain/types.js";
+} from "../../src/us/sources/fundamentals.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
 
 describe("mergeEnrichment quote history overlays", () => {
   const base: SecurityRecord = {

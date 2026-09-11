@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "referenceId": "developer-reviewed-csrc-broker-risk-controls-2024-13-v1",
+  "kind": "developer-reviewed-structured-regulatory-reference",
+  "notHttpResponse": true,
+  "reviewedAt": "2026-09-10",
+  "references": [
+    {
+      "method": "broker",
+      "subjectScope": "legal_entity",
+      "regime": "CSRC-2024-13",
+      "effectiveReportYear": { "start": 2025, "end": 2026 },
+      "officialAnnouncementDate": "2024-09-13",
+      "officialSources": [
+        {
+          "url": "https://www.csrc.gov.cn/csrc/c106256/c1653957/content.shtml",
+          "article": "第17条",
+          "description": "证券公司风险控制指标最低标准"
+        },
+        {
+          "url": "https://www.csrc.gov.cn/csrc/c101954/c7507765/content.shtml",
+          "article": "公告〔2024〕13号",
+          "description": "自2025-01-01起执行"
+        }
+      ],
+      "metrics": {
+        "riskCoverage": { "definition": "net-capital/total-risk-capital-reserve", "direction": "minimum", "unit": "ratio", "minimum": 1 },
+        "capitalLeverage": { "definition": "core-net-capital/total-on-and-off-balance-assets", "direction": "minimum", "unit": "ratio", "minimum": 0.08 },
+        "lcr": { "definition": "high-quality-liquid-assets/net-cash-outflows-30d", "direction": "minimum", "unit": "ratio", "minimum": 1 },
+        "nsfr": { "definition": "available-stable-funding/required-stable-funding", "direction": "minimum", "unit": "ratio", "minimum": 1 }
+      }
+    }
+  ]
+}

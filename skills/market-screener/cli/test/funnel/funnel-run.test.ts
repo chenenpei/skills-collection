@@ -3,12 +3,12 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import os from "node:os";
 import { parse as parseYaml } from "yaml";
-import { loadSpecBundle } from "../../src/spec/loader.js";
-import type { SpecBundle } from "../../src/spec/types.js";
-import { runFunnel } from "../../src/funnel/run.js";
-import type { SecurityRecord } from "../../src/domain/types.js";
+import { loadSpecBundle } from "../../src/policy/loader.js";
+import type { SpecBundle } from "../../src/policy/loader.js";
+import { runFunnel } from "../../src/us/screening.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
 
-const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../src/policy");
 const FIXTURE = path.resolve(import.meta.dirname, "../fixtures/universe-cn.json");
 
 describe("runFunnel", () => {

@@ -1,27 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { SecurityRecord } from "../../src/domain/types.js";
-import { enrichLiveUniverse } from "../../src/data/live.js";
-import { loadSpecBundle } from "../../src/spec/loader.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
+import { enrichLiveUniverse } from "../../src/us/screening.js";
+import { loadSpecBundle } from "../../src/policy/loader.js";
 import path from "node:path";
 
-const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../src/policy");
 
-vi.mock("../../src/data/cn/enrich.js", () => ({
-  enrichCnRecord: vi.fn(async (record: SecurityRecord) => ({
-    ...record,
-    industryProxy: "白酒",
-    metrics: {
-      ...record.metrics,
-      gross_margin: { value: 0.5, dataConfidence: "medium" },
-      operating_margin: { value: 0.2, dataConfidence: "medium" },
-      revenue: { value: 1e11, dataConfidence: "medium" },
-    },
-    revenueYoyHistory: [0.05, 0.06, 0.07],
-  })),
+vi.mock("../../src/us/sources/fundamentals.js", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../src/us/sources/fundamentals.js")>(),
+  resolveCik: vi.fn(async () => "0000000001"),
+  fetchUsAnnualRows: vi.fn(async () => [{ year: 2024, revenue: 1e11, grossProfit: 5e10, netIncome: 2e10, operatingCashFlow: 2e10, roe: 0.2, assetLiabilityRatio: 0.4 }]),
+  fetchUsIndustryProxy: vi.fn(async () => "Software"),
 }));
 
-vi.mock("../../src/data/us/enrich.js", () => ({
-  enrichUsRecord: vi.fn(async (record: SecurityRecord) => record),
+vi.mock("../../src/us/sources/market-data.js", () => ({
+  fetchUsQuoteSnapshot: vi.fn(async () => ({ metrics: {} })),
+  createUsYahooAdapter: vi.fn(() => ({ loadUniverse: vi.fn(async () => []) })),
 }));
 
 describe("enrichLiveUniverse", () => {
@@ -32,10 +26,10 @@ describe("enrichLiveUniverse", () => {
   });
 
   const base = (overrides: Partial<SecurityRecord> = {}): SecurityRecord => ({
-    ticker: "600519",
-    market: "CN",
-    companyName: "Moutai",
-    currency: "CNY",
+    ticker: "AAPL",
+    market: "US",
+    companyName: "Apple",
+    currency: "USD",
     status: "active",
     marketCap: 2e12,
     listingAgeYears: 20,
@@ -63,7 +57,7 @@ describe("enrichLiveUniverse", () => {
     });
 
     expect(result.universe).toHaveLength(1);
-    expect(result.universe[0].ticker).toBe("600519");
+    expect(result.universe[0].ticker).toBe("AAPL");
     expect(result.prefilterExcluded).toHaveLength(1);
     expect(result.prefilterExcluded[0].ticker).toBe("TINY");
   });
@@ -88,7 +82,7 @@ describe("enrichLiveUniverse", () => {
 
 describe("live adapter enrichRecords", () => {
   it("exposes enrichRecords on live adapter", async () => {
-    const { createLiveAdapter } = await import("../../src/data/registry.js");
+    const { createLiveAdapter } = await import("../../src/us/screening.js");
     const adapter = createLiveAdapter("/tmp/screener-cache-test");
     expect(adapter.enrichRecords).toBeDefined();
   });

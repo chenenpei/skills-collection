@@ -1,114 +1,247 @@
 # market-screener
 
-面向 A 股和美股个股的全市场定量筛选技能。`cli/` 中的 `screener` 命令读取 `spec/` 规则，生成 `candidates.yaml`、`deferred.yaml`、`excluded.yaml`、`routing-diagnostics.yaml`、`funnel-diagnostics.yaml` 等结果。
+参考芒格、巴菲特、李录、格雷厄姆的价值投资思路，用可靠的定量事实缩小市场范围，找到值得进一步研究的公司。阈值是项目筛选参数，并非这些投资者提出的固定公式。
 
-本目录包含两部分：`spec/` 保存机器规则，`cli/` 执行定量漏斗。后续单票审计可以由使用者自行接入其他 skill；这不是 `market-screener` 完成筛选任务的前提。
+CLI 使用结构化 API、固定计算和确定性规则，无需 LLM 或 Agent。`stock-analysis-audit` 是可选、独立的下游定性工具，两者互不依赖。
 
-## 目录结构
-
-| 路径 | 用途 |
-|------|------|
-| [SKILL.md](./SKILL.md) | Agent 编排入口，仅在用户明确调用时使用 |
-| [cli/](./cli/) | TypeScript 命令行工具，包含 `validate`、`run`、`explain`、`landmine`、`filter-breakdown`、`bank-indicators` |
-| [docs/agent-guide.md](./docs/agent-guide.md) | 面向 Agent 的运行手册 |
-| [docs/agent-output.md](./docs/agent-output.md) | 面向 Agent 的输出风格和结果转述指南 |
-| [docs/future-work.md](./docs/future-work.md) | 中文后续工作清单；集中记录未实现能力和规划项 |
-| [CONTEXT.md](./CONTEXT.md) | 领域词汇表，仅保存术语和 slug |
-| [spec/README.md](./spec/README.md) | CLI 机器规则目录说明 |
-| [spec/index.yaml](./spec/index.yaml) | CLI 规则清单 |
-| [spec/exclusion-rules.yaml](./spec/exclusion-rules.yaml) | 投资范围、预筛和共享剔除规则 |
-| [spec/routing-cn.yaml](./spec/routing-cn.yaml) | A 股申万行业到模板的路由规则 |
-| [spec/routing-us.yaml](./spec/routing-us.yaml) | 美股 GICS 和行业代理到模板的路由规则 |
-| [spec/metric-policy.yaml](./spec/metric-policy.yaml) | 指标阈值、衍生指标和数据补全策略 |
-| [spec/selection-policy.yaml](./spec/selection-policy.yaml) | 候选上限、延后名单和席位分配规则 |
-| [spec/landmine-pricing.yaml](./spec/landmine-pricing.yaml) | 价格观察计算规则 |
-| [spec/templates/](./spec/templates/) | 六类行业漏斗规则 |
-
-## 命令行工具
-
-路径：[`cli/`](./cli/)。这是基于 Commander 和 `tsx` 的 TypeScript 命令行工具。
-
-### 安装依赖
+## 安装和运行
 
 ```bash
 cd skills/market-screener/cli
 npm install
+
+# 默认 A 股、全部策略，联网采集
+npm run dev -- run --output /tmp/cn-run
+
+# 单策略：quality、financial、ncav
+npm run dev -- run --strategy quality --output /tmp/cn-quality
+
+# 从已有证据离线评估，或从冻结身份清单开始采集
+npm run dev -- run --input ./evidence-input.json --output /tmp/cn-recomputed
+npm run dev -- run --collect-from ./identity.json --output /tmp/cn-collected
 ```
 
-### 运行测试
+每次指定新输出目录，避免覆盖证据。自动采集生成 `<output>.identity`、`<output>.collection` 和最终 `<output>`；省略输出路径时，保存在仓库 `.scratch/market-screener/runs/`。缓存位于 `.scratch/market-screener/cache/`，可用 `SCREENER_DATA_DIR` 改变数据根目录。运行数据不属于 skill 源码，也不进入 Git。
+
+`run --help` 是参数约束的权威入口。`--policy` 使用 `cn-screening` 或 `template-screening`。`--no-pdf` 关闭 PDF 兜底；`--evaluate-all` 只用于观察后续条件，不改变资格和采集预算。默认主研究名单最多 30 家，另有独立折价备选最多 5 家，合计最多 35 家。分别用 `--limit`、`--backup-limit` 调整，0 关闭对应名单。
+
+## 名单与状态
+
+| 名单 | 含义 |
+|---|---|
+| 基础质量池 | 适用的基础财务条件通过，比研究名单宽 |
+| `quality_research` | 基础质量、持续回报及现金／风险余量条件通过 |
+| `quality_value` | 质量研究候选中，保守盈利价格条件也通过 |
+| `financial_research` | 独立金融盈利、回报和专用风险条件通过 |
+| `financial_value` | 金融研究候选中，保守盈利价格条件也通过 |
+| `financial_discount` | 可靠基本数字与账面折价条件通过，专门风险仍待核验的金融线索 |
+| `ncav` | 非金融账面净流动资产折价条件通过，价格是必要条件 |
+
+`all` 的主研究名单包含质量或金融研究条件通过的公司；独立备选包含质量未通过或未知、但 NCAV 或金融折价条件通过的公司。默认分别最多30和5家，不凑数、不借位：主名单满30仍可另列5家备选；只有20家主候选、3家备选就展示23家。同一公司只出现一次，保留全部命中策略；主候选因容量未展示时，也不会借备选名额。`financial` 使用相同独立容量与排序，但只包含其适用策略。
+
+主名单按 `undervalued`（满足低估条件）、`normal`（参考价格正常/合理）、`expensive`（高于参考价格区间）、`unknown`（价格待判断）排列。使用已验证的保守盈利收益率：默认≥8%为低估参考，5%至8%为正常参考，低于5%为偏贵；缺失、冲突或界限跨越分档线时保持未知。高估或未知价格不取消已成立的研究资格，未知不等于非低估。固定折扣和价格区间是研究参考，不代表已核定内在价值。
+
+同价格档先按适用窗口的报告ROE中位数降序，再按保守盈利收益率降序，最后以公司/证券代码打破并列。非金融采用扣非回报约束，金融采用其报告回报口径；这些是透明的历史回报排序信号，不是护城河、未来回报或跨行业综合质量评分。排序不另加字段采集门槛。
+
+备选先列可靠净流动资产覆盖的NCAV，再列专用金融风险待核验的折价线索；这是证据类型的优先选择，不意味着NCAV一定风险更低。NCAV按净流动资产／市值降序，金融折价按PB升序、折扣盈利收益率降序，最后代码并列。同一5席包含两种备选，不分别预留行业或策略名额。
+
+完整集合独立于展示限制。`summary.json` 的 `candidateQueue` 保存主/备选层次、排序信号及未展示原因，`backupCandidates`/`backupDisplayed` 保存独立备选，`strategies.*.qualified` 保留每策略全部资格。单策略视图保留自身资格与展示；`quality`/`ncav` 的独立视图不等同于 `all` 主名单。NCAV不继承质量漏斗，缺价格不能通过。
+
+| 状态 | 含义 |
+|---|---|
+| `pass` | 可靠事实支持条件满足 |
+| `fail` | 可靠事实证明条件不满足 |
+| `unknown` | 必要证据缺失、冲突、过时，或方法仍未确定 |
+| `not_applicable` | 已确定条件不适用 |
+| `not_evaluated` | 本次未执行，包括前置失败后的停止 |
+
+已支持方法缺数据与明确未支持的方法分别记录；两者都没有默认通过资格。“太难”是本次有限能力下的状态，不是对公司质量的永久评价，也不是必须逐票补齐的任务。
+
+## 路由和覆盖范围
+
+先核对证券身份，再结合已核验行业／主营业务、报表家族及已知冲突选择财务方法。使用公司合并口径和适用的集团／法人风险指标，不要求逐分部筛选、完整子公司清单或证明没有未披露风险。只有可靠证据表明重大异质业务、客户资金、融资、重述或特殊收益权使核心指标失效时，才影响相应条件。
+
+| 方法 | 当前范围 |
+|---|---|
+| 一般非金融 | 消费、医疗、药品、软件、制造等保留行业标签，使用共同财务漏斗 |
+| 周期企业 | 明确资源、商品化农业、运价运输、半导体／面板／光伏／电池及地产项目采用较长窗口 |
+| 银行、券商 | 使用各自盈利及监管风险条件 |
+| 保险集团、寿险、财险 | 使用适用集团或直接经营主体条件；纯财险上市主体的全流程覆盖尚未验证 |
+| 信托、期货 | 仅限已验证收费经营和可确认的自有资金范围 |
+| 金融租赁、自有投资、信用资产处置、未验证混合金融 | 专用研究方法未支持；金融身份可靠时可独立判断折价线索，停止方法专属补数 |
+
+普通主营和普通报表一致时可支持非金融方法。收费资管、支付、金融信息服务须有结构化业务证据；客户资产不能当作自有缓冲。末级行业名没有“金融”、或仅有“综合”标签，都不足以证明非金融。新标签或实质冲突保持未决，不默认回落到制造业。
+
+明确插座／电源连接、个人卫生用品、游戏研发运营等主营可使用一般窗口，不因宽泛行业标签自动成为周期企业。真实周期歧义可分别计算五年和七年：都通过才通过，都失败才失败，否则未知。
+
+## 筛选规则
+
+当前 A 股数值参数以 [cn-screening.yaml](cli/src/policy/cn-screening.yaml) 为准，报告口径和状态由来源解析与求值器实现。修改规则须核对这些实现，不能因候选数量或单票缺失率临时放宽门槛。完整领域术语见 [CONTEXT.md](CONTEXT.md)。
+
+### 非金融质量
+
+PNI 为报告归母净利润，ANI 为扣非归母净利润，NI 为合并净利润。年度回报 R 取同年报告加权 ROE 与扣非加权 ROE 的较低者；FCF 为合并经营现金流 OCF 减购建长期资产支付现金 CAPEX。
+
+以最新披露完整财年为窗口终点；一般企业五年，周期附加七年条件。缺年不能以前期填位，季度不能替代完整年度，重述取截止时点可用的可比版本。最新年报超过 18 个月且无可核实更新时，必要历史证据过时。
+
+| 条件 | 计算与要求；可调阈值见政策同名分组 |
+|---|---|
+| N1 盈利历史 | 五年 PNI 至少四年为正、合计为正 |
+| N2 股东回报 | 五年及最近三年 R 中位数达到 `quality` 门槛 |
+| N3 经营现金兑现 | 五年 NI 合计为正，OCF/NI 合计比率达标；OCF 至少四年为正，最近两年合计为正 |
+| N4 投资后现金 | 五年 FCF 合计非负 |
+| N5 报告杠杆 | 合并及归母权益均为正；报告有息债务／合并权益达标 |
+| N6 债务偿还能力 | 最近三年平均 OCF 为正；报告有息债务／该均值达标 |
+| 周期附加条件 | 七年 R 中位数达标，PNI 至少五年为正，FCF 合计非负 |
+| P1 研究回报 | 适用窗口回报中位数、最近三年每年回报达到 `priority` 门槛；窗口内每年 PNI、ANI 为正 |
+| P2 研究现金 | 五年 FCF 至少四年为正，最近两年合计为正，FCF/NI 合计比率达标 |
+| P3 价格 | 下调后的参考普通股每股盈利／当前价格达到盈利收益率门槛 |
+
+报告有息债务归集借款、债券、租赁、一年内到期及单独列示的其他有息融资，年度与非流动项目须互斥。混合一年内项目可整体保守计入并标注，空值不能填零。
+
+对来源契约支持的普通合并年报资产负债表，可靠总负债可作报告有息债务上界：上界也达标可证明通过，上界超标本身不能证明失败。已知互斥债务项目合计可作下界。负值、口径冲突或已知融资范围冲突不能被上界掩盖；结果标为 `bound`，不冒充精确债务。不另加利息覆盖、经营资本或税负场景前置，也不默认扣现金。
+
+非金融年度参考盈利取 `min(PNI, ANI)`；E_ref 取五年中位数、最近三年中位数、最新年中的最小值，周期再加入七年中位数。用当前同权普通股数换算每股盈利，不以历史 EPS 乘当前股数制造历史利润。报告 FCF 不是已核定的 owner earnings，报告债务不是完整经济负债。
+
+研究层五年 FCF／NI 合计比率默认至少 75%，同时要求经营现金兑现、持续正 FCF、回报和债务条件。经营现金流减去全部资本支出是统一可得的保守近似，未区分维持与增长投入。阈值用于控制研究范围，不代表收益最优参数。
+
+### 金融与保险
+
+金融质量使用报告盈利和加权 ROE，专用风险条件替代非金融现金、债务条件，不强制扣非 ROE。保险保留五年披露盈利历史，回报及经营判断采用最新适用会计基础下三个完整可比年度。
+
+| 方法 | 必要风险事实 |
+|---|---|
+| 银行 | 不良率、连续三个年末不良率增幅、拨备覆盖率、核心一级与总资本充足率、适用 LCR／NSFR |
+| 券商 | 最新年末及可比期初风险覆盖率、资本杠杆率、LCR／NSFR |
+| 财险 | 可比承保结果、原定义分母加权综合成本率、核心及综合偿付能力 |
+| 寿险 | 可比再保险后保险服务结果、核心及综合偿付能力 |
+| 保险集团 | 所筛权益主体的集团回报及集团监管资本，不能挑选最强子公司替代 |
+| 信托 | 净资本／各项业务风险资本、净资本／净资产，以及固有与客户财产范围 |
+| 期货 | 风险覆盖、净资本、自有流动性、负债／净资产及自有结算准备金，核对适用最低额或预警界限 |
+
+阈值见政策 `financial`、`insurance`。适用监管要求必须有制度、生效期间、主体范围和比较方向；参考值不是公司实际指标。客户资产及保证金不能计作自有缓冲。不可比制度断点保持未知。
+
+金融质量研究还要求持续回报，以及最近三个可比年末的适用资本／流动性余量；经营条件保留自身窗口，不扩成三组三年。已知适用的保险 C／D 评级排除候选，冲突或适用期不能判断时相关风险未知；未取得评级仅标未核验。赔付发展、假设、投资构成和压力敏感性为附加观察，不强求完整。
+
+独立 `financial_research` 不继承质量 P0/P1/P2：五年 PNI 至少四年为正，合计和最新年为正；回报达到政策 `strategies.financial` 门槛，适用风险条件成立。保险回报用可比三年；财险另要求最新年承保盈利且综合成本率不高于 100%，寿险要求最新年可比再保险后保险服务结果为正，集团使用可信集团监管口径。
+
+`financial_value` 再加 P3：普通金融参考盈利取五年、最近三年中位数与最新 PNI 最小值，保险取可比三年中位数与最新年最小值。PB、同行百分位、股息及 52 周跌幅不是必要条件。
+
+### 金融折价线索
+
+`financial_discount` 独立于金融研究策略。可靠金融方法、一致金融报表族，或明确金融业分类与主营金融业务可支持适用性；核心身份冲突保留未知。金融信息软件不会仅因介绍提及证券而进入此策略。
+
+默认要求最近三年报告归母利润各年为正、最新完整年报基本 EPS 与普通股 BPS 为正，并同时满足 PB ≤ 0.75、报告 EPS 打七折后的收益率 ≥ 10%（相当于报告 PE ≤ 7）。阈值见 `strategies.financialDiscount`，是研究线索参数，不是已验证的内在价值或清算安全边际。
+
+年报 BPS 使用年度指标中的 `BPS`；同一响应的 `TOTAL_SHARE` 是当前股数，不能当作报告期股数。股价须与每股指标口径相容，复用股本接口已有历史：无报告期后变化时直接比较；可核验且发生在披露之后的送股／转增可按比例换算。债转股、增发、回购、历史不足或每股指标可能已重述时，价格保持未知。已存在的普通股权益与 BPS 明显矛盾时阻止通过；不强制为每个线索额外补抓资产负债表。
+
+核心字段缺失、负其他权益工具、已知收益归属或资本范围冲突均不通过。已有证据证明适用监管最低线违反或非标审计时排除；原研究策略更严格的风险余量失败不等于监管违规。缺专用风险指标标为待核验，不证明监管合格，也不触发逐主体审计。
+
+指标数字条件满足后即请求现有价格、股本和交易日核对，不等待金融研究通过，并优先于专用财报补数。该线索路径无法判断时在现有来源范围内结束，保留原因。
+
+### 非金融 NCAV
+
+仅适用于可靠非金融方法、普通合并资产负债表。可靠金融报表族可证明不适用，无需先细分牌照；其余方法未定为未知。它不要求质量、周期或分部审计通过。
+
+```text
+NCAV = 流动资产 − 全部负债 − max(少数股东权益, 0) − 其他权益工具合计
+市值 = 有效股价 × 当前同权普通股数
+```
+
+同一主体、合并基础、币种和最新完整年末的 NCAV 必须为正，市值不高于政策 `strategies.ncav.marketCapRatio` 指定比例。权益工具只扣一次。缺少数股东权益或其他权益工具不能填零；已知扣除项可给 NCAV 上界，只有上界已不足时才能可靠失败，上界不能产生通过或精确排序。核心资产负债缺失或冲突不能构造界限。可靠的流动资产减总负债已不大于零时，即使其他权益工具为负或归属扣减项未明，也可独立证明 NCAV 失败；保留异常记录，仅报告上界，不给出精确 NCAV。
+
+NCAV 是报告账面折价，不是已核定清算价值。缺资产变现分析或现金消耗预测不自动触发额外抓取。
+
+## 来源、缓存与停止
+
+身份来自沪深北交易所清单，保留缺页和覆盖状态。年度指标及三表使用已核验东方财富结构化接口，股价使用腾讯未复权日线，股本使用已核验股权结构。CNInfo 年报仅作已接入通用解析的必要缺口兜底；扫描件、未知格式或未验证口径可以结束为数据不足。普通运行不探索新来源或编写个股解析器。
+
+事实保留主体、期间、单位、原值与归一值、披露及取得时间、来源地址、字段／页码和内容哈希。同口径可靠观测冲突时保留冲突；空白不等于零。股数须核对股份类别、同权权益、公告及生效日期；股价须对应截止时点已完成交易日。已知优先分配、非比例收益权或股数冲突须定向处理；宽泛权益工具余额本身不自动否定盈利归属。
+
+| 范围 | 默认预算 |
+|---|---|
+| 身份清单 | 600 请求、30 分钟，每请求 10 秒 |
+| 财务采集 | 公司并发 4，每来源尝试 1 次，每请求 10 秒 |
+| 单家公司 | 10 请求、90 秒、最多一份 PDF，均计入预算 |
+| 全部公司 | 随身份数推导，上限 60,000 请求、12 小时 |
+
+公司内部仅将相互独立的行情和股本请求并行获取，每家公司最多两路，默认最多 8 个在途采集请求；交易日核对在两者完成后执行。财报仍按筛选依赖顺序获取，保留提前停止和请求预算。美股按主机通过 p-queue 排队，共享 Yahoo 会话，并复用同一次行情响应中的股息信息。
+
+这些是停止上限，不是预计耗时。`--budget-file` 可覆盖财务预算，并发用 `--enrich-concurrency` 调整；预算写入账本，运行中不重置。某策略已可靠失败后停止专属补数，其他仍可能通过的策略继续。基础财报之后优先取得必要价格和股本，再补缺年或 PDF；五年基础窗口不完整时不先追七年。
+
+`--cache-from <input.json>` 复用已保存输入的年报三表，限当前联网采集，不与 `--input` 或 `--as-of` 合用。默认 30 天复核，可用 `--annual-cache-days 0..365` 调整，0 关闭复用。先刷新指标，若披露／更新时间更晚或无法核对，则重新请求；哈希损坏或格式不兼容在预算内重取。30 天是复核周期，不是报告有效期。行情、股本与业务资料重新获取。
+
+明确空数组按完全相同请求负缓存 24 小时，并要求披露更新时间未改变；网络错误和不明空结构不负缓存。PDF 仅在本次公告索引仍选中相同报告版本、信息及哈希核验通过时复用；`--cache-from` 不导入 PDF。归档保存实际使用的来源副本，缓存到期不删除历史原文。
+
+年度研究资格通过的非金融公司，在展示截断前补取近期财务变化；通常每家公司增加一次结构化请求，沿用公司与全局预算。只获取累计收入、归母利润、扣非归母利润、经营现金流，季度／中报与上年同期间比较。金融公司与仅命中折价备选的公司不套用此项，也不触发额外 PDF 或 Agent 审计。
+
+`results.jsonl` 与 `explain` 的 `result.recentFinancials` 保存期间、披露／更新日期、四项本期与同期金额、变化及原始事实 ID。`yoy` 是比例（-0.2 表示下降 20%），仅在同期基数为正时提供；零或负基数显示金额变化及 `nonpositive_prior`。`hints` 描述下降、转负、归母上升而扣非下降等事实，不推断原因，也不影响资格、价格分档或排序。`complete` 只表示这四项数据可比，不表示经营健康；`missing`、`stale`、`conflicting` 分别表示缺数据、仍未取得应披露的新一期、口径或金额冲突。缺失近期信息不会推翻已通过的年度资格。
+
+近期响应随证据归档，固定截止日可离线复用。联网缓存沿用 `--annual-cache-days` 复核周期；只有包含最新已结束季度及其可比同期的完整响应才可复用，新季度改变查询范围，已知财报更新、过期或损坏会触发重取。未公布的新报告不会靠缓存补齐；期间内发生的其他更正最迟在复核周期后重新查询。原始历史版本继续保留，失败不作为成功财报长期缓存。
+
+`complete` 表示声明身份处理完毕，允许部分公司数据不足。中断、身份缺页或全局到限导致未处理身份时为 `partial`；单票 `source_error`、`budget_exhausted` 与财务条件状态分别报告。部分运行、非法参数、损坏证据或重放不一致返回非成功状态。
+
+## 解释、比较和重放
 
 ```bash
+npm run dev -- candidates /tmp/cn-run
+# 查看全部独立备选，或单独查看全部金融折价资格
+npm run dev -- candidates /tmp/cn-run --backups
+npm run dev -- candidates /tmp/cn-run --financial-leads
+npm run dev -- explain 603195 --from-run /tmp/cn-run
+npm run dev -- filter-breakdown --from-run /tmp/cn-run
+npm run dev -- compare /tmp/earlier-run /tmp/cn-run
+npm run dev -- replay /tmp/cn-run
+```
+
+| 归档文件 | 用途 |
+|---|---|
+| `summary.json` | 完整资格、展示集合、策略与覆盖统计 |
+| `results.jsonl` | 每家公司方法、条件、阈值、状态及原因 |
+| `companies.jsonl` | 归一化事实和来源关联 |
+| `input.json`、`sources/` | 身份、采集账本和原始响应 |
+| `manifest.json`、`policy.yaml`、`implementation.json` | 状态、冻结规则、实现及校验依据 |
+
+`replay` 使用归档保存的实现、政策和来源重现并核对结果，要求依赖与归档记录一致。`run --input` 则使用当前实现和政策重新评估兼容的证据输入；两者都不重新采集。提前停止的采集可能没有后续条件所需的事实，重新评估时仍须保留这些缺口。
+
+`filter-breakdown` 按接口与原因汇总实际失败、跳过及受影响公司，保留请求、响应定位和后续恢复证据。`explain` 同时给出该公司的问题与策略必要缺口，`actionable` 区分尚阻碍判断与已失败旁的缺口。同公司错误和缺项只表示关联，未查明原因不能宣称因果或自动追加抓取。
+
+采集增量日志可恢复完整记录，未写完的尾条不算证据；正常结束清理临时日志。并发请求时间有重叠，不应求和当作总耗时。比较结果时区分规则、数据、预算／来源失败和实现变化，不用候选增加证明投资质量提升。
+
+## 美股与价格观察
+
+美股采用季度模板。默认 `fixture` 是离线样本；显式 `--adapter live` 使用 SEC／Yahoo 来源。
+
+```bash
+npm run dev -- run --markets US --quarter 2026-Q2 --output /tmp/us-run --spec src/policy
+npm run dev -- run --markets CN,US --quarter 2026-Q2 --output /tmp/mixed --spec src/policy
+npm run dev -- landmine --from ./audit-summary.yaml --output /tmp/landmines.yaml
+```
+
+美股与 A 股分别运行和保存。美股模板的 `candidates.yaml` 保存选入队列，`deferred.yaml` 保存容量外合格队列；支持项投票、行业模板与席位分配属于模板筛选。解释和过滤统计的参数见 CLI 帮助。
+
+`landmine` 是独立价格观察计算，不生成筛选资格。
+
+历史指标只能用口径兼容的原值派生，不能从 ROE 比例、假设债务或毛利率伪造 ROIC、负债、EBITDA；同行及历史基准只能使用实际可用数据。低置信度、代理或降级结果保留标记。
+
+## 维护
+
+`SKILL.md` 定义 Agent 操作约定，本文承载使用和规则说明，`CONTEXT.md` 保存领域词汇。CLI 入口为 `src/cli.ts`，构建后为 `dist/cli.js`。缓存与运行归档保存在源码之外。
+
+源码以市场流程组织：`cn/` 保存 A 股采集、证据校验、筛选与运行归档；`us/` 保存美股筛选、模板规则和报告。两者的 `sources/` 集中放来源实现，外层流程负责何时调用，来源模块负责如何取得和解释数据。`cli.ts` 只承担命令调度及小型独立价格观察命令。
+
+`shared/` 只放两类真实共用内容：`financial-model.ts` 定义事实与口径，`runtime.ts` 处理数据目录、请求、并发和文件读写。A 股采用证据筛选，美股采用模板筛选。
+
+`policy/loader.ts` 与三份政策资源放在一起：`cn-screening.yaml`、`template-screening.yaml`、`landmine.yaml`。`cn/sources/broker-regulations.json` 是带原文来源和适用期间的监管参考，区别于自主设置的阈值。政策族使用 `cn-screening`、`template-screening` 标识；A 股每次运行归档政策原文及其哈希，精确修订由哈希与实现快照追踪。自定义政策使用相同格式并通过校验后生效。
+
+修改时按业务职责归属代码，不为减少行数压缩排版；注释说明口径、适用范围、缺失处理和停止原因。固定样本留在 `test/fixtures/`，不添加平行的设计报告。
+
+```bash
+cd skills/market-screener/cli
 npm test
-```
-
-### 常用命令
-
-以下命令都在 `skills/market-screener/cli` 目录执行，可使用 `npm run dev -- <command>` 或 `npx tsx bin/screener.ts <command>`。
-
-**校验规则文件**
-
-```bash
 npm run validate
-# or: npx tsx bin/screener.ts validate ../spec
+npm run build
+node dist/cli.js --help
 ```
 
-**运行定量漏斗**（`--adapter fixture` 为离线 fixture；`--adapter live` 使用东方财富、Yahoo、SEC 等在线数据源）
-
-```bash
-# Offline (default)
-npx tsx bin/screener.ts run \
-  --markets CN,US \
-  --quarter 2026-Q2 \
-  --output /tmp/screener-out \
-  --spec ../spec \
-  --adapter fixture
-
-# Live universe (requires network)
-npx tsx bin/screener.ts run \
-  --markets CN,US \
-  --quarter 2026-Q2 \
-  --output /tmp/screener-out-live \
-  --spec ../spec \
-  --adapter live
-```
-
-写入 `{output}/{quarter}/{CN|US}/candidates.yaml`、`deferred.yaml`、`excluded.yaml`、`routing-diagnostics.yaml`、`funnel-diagnostics.yaml`，在线运行且有预筛剔除时还会写入 `prefilter-excluded.yaml`。
-
-**A 股路由：** 补全后的 A 股标的通过 `spec/routing-cn.yaml` 路由（`routing_method: cn_industry_map`）。季度漏斗前可用 `npx tsx scripts/reports/routing-report.ts --quarter YYYY-Qn --market CN --spec ../spec` 检查覆盖率，目标是 `fallback_rate` < 5%。
-
-**在线数据参数：** `--enrich-concurrency`（默认 4）、`--skip-cache`。
-
-**解释单个标的的路由和筛选结果**
-
-```bash
-npx tsx bin/screener.ts explain 600519 \
-  --market CN \
-  --fixture test/fixtures/universe-cn.json \
-  --spec ../spec
-```
-
-**根据 Deep 审计短名单生成限价观察价**
-
-```bash
-npx tsx bin/screener.ts landmine \
-  --from test/fixtures/audit-summary.yaml \
-  --output /tmp/landmines.yaml \
-  --quarter 2026-Q2
-```
-
-**统计漏斗剔除原因**
-
-```bash
-npm run dev -- filter-breakdown \
-  --output /tmp/screener-out \
-  --quarter 2026-Q2 \
-  --markets CN
-```
-
-默认写入 `/tmp/screener-out/2026-Q2/CN/filter-breakdown.md`。
-
-`run` 和 `explain` 需要显式传入 `--spec ../spec`。`landmine` 可通过 `--spec` 指定规则目录；省略时会使用命令内部的默认规则路径。
-
-## 相关文档
-
-- [CONTEXT-MAP.md](../../CONTEXT-MAP.md)
+构建版本与源码使用相同默认政策和数据路径，分发时保留源码政策资源；归档也需要源码以实现重放。规则或来源修改应验证原始响应经过真实适配、路由和求值，覆盖缺失／冲突反例、策略独立性、价格与研究资格分离、预算中断及重放一致；保留美股和 landmine 回归。不以选中某家指定公司作为验收条件。

@@ -3,12 +3,12 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import os from "node:os";
 import { parse as parseYaml } from "yaml";
-import { withAdapterDefaults } from "../../src/data/cn/quotes.js";
-import { loadSpecBundle } from "../../src/spec/loader.js";
-import { runFunnel } from "../../src/funnel/run.js";
-import type { SpecBundle } from "../../src/spec/types.js";
+import { withAdapterDefaults } from "../../src/us/sources/market-data.js";
+import { loadSpecBundle } from "../../src/policy/loader.js";
+import { runFunnel } from "../../src/us/screening.js";
+import type { SpecBundle } from "../../src/policy/loader.js";
 
-const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../src/policy");
 
 function quoteOnlyRecord(ticker: string, marketCap: number) {
   return withAdapterDefaults({
@@ -51,4 +51,21 @@ describe("quote-only live-tier funnel integration", () => {
     ) as { excluded: Array<{ kill_reason: string }> };
     expect(excluded.excluded).toHaveLength(0);
   });
+});
+
+
+it("runs the public US CLI against its bundled fixture and writes inspectable results", async () => {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "screener-us-cli-"));
+  try {
+    await promisify(execFile)(process.execPath, ["--import", "tsx", "src/cli.ts", "run", "--markets", "US", "--quarter", "2026-Q2", "--output", directory, "--spec", SPEC_DIR], { cwd: new URL("../../", import.meta.url).pathname });
+    const output = path.join(directory, "2026-Q2", "US");
+    const { candidates } = parseYaml(await fs.readFile(path.join(output, "candidates.yaml"), "utf8"));
+    expect(candidates.some((record: { ticker: string }) => record.ticker === "AAPL")).toBe(true);
+    for (const name of ["deferred.yaml", "excluded.yaml", "routing-diagnostics.yaml", "funnel-diagnostics.yaml"]) {
+      expect(parseYaml(await fs.readFile(path.join(output, name), "utf8"))).toBeTruthy();
+    }
+    await expect(fs.stat(path.join(directory, "2026-Q2", "CN"))).rejects.toMatchObject({ code: "ENOENT" });
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });

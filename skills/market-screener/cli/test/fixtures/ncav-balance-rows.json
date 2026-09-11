@@ -1,0 +1,80 @@
+{
+  "note": "Selected NCAV balance operands and report metadata from the captured EastMoney annual statements. Values, including null and negative minority equity, are unchanged. Source hash identifies the complete original response; data is a field projection, not a complete HTTP response.",
+  "statements": [
+    {
+      "ticker": "600519",
+      "source": {
+        "capture": "cn-method-v1/raw/600519-full-zcfzb.json",
+        "sha256": "53a1f128d33c4b3ec660af1ba194542d5d4a4d1b64e99c22f612fe711ebeec63",
+        "locator": "/data/0"
+      },
+      "data": [
+        {
+          "SECURITY_CODE": "600519",
+          "ORG_TYPE": "通用",
+          "REPORT_DATE": "2025-12-31 00:00:00",
+          "REPORT_TYPE": "年报",
+          "NOTICE_DATE": "2026-04-17 00:00:00",
+          "UPDATE_DATE": "2026-08-15 00:00:00",
+          "CURRENCY": "CNY",
+          "TOTAL_CURRENT_ASSETS": 252518662398.57,
+          "TOTAL_LIABILITIES": 49875590112.37,
+          "MINORITY_EQUITY": 9321442876.89,
+          "OTHER_EQUITY_TOOL": null,
+          "PREFERRED_SHARES": null,
+          "PERPETUAL_BOND": null
+        }
+      ]
+    },
+    {
+      "ticker": "600276",
+      "source": {
+        "capture": "cn-method-v1/raw/600276-full-zcfzb.json",
+        "sha256": "17730a9214459658eb46e429cb23b866175572a0e88a6cb85942b1a871c00f40",
+        "locator": "/data/0"
+      },
+      "data": [
+        {
+          "SECURITY_CODE": "600276",
+          "ORG_TYPE": "通用",
+          "REPORT_DATE": "2025-12-31 00:00:00",
+          "REPORT_TYPE": "年报",
+          "NOTICE_DATE": "2026-03-26 00:00:00",
+          "UPDATE_DATE": "2026-08-20 00:00:00",
+          "CURRENCY": "CNY",
+          "TOTAL_CURRENT_ASSETS": 51490372457.04,
+          "TOTAL_LIABILITIES": 8070492359.49,
+          "MINORITY_EQUITY": 524754772.84,
+          "OTHER_EQUITY_TOOL": null,
+          "PREFERRED_SHARES": null,
+          "PERPETUAL_BOND": null
+        }
+      ]
+    },
+    {
+      "ticker": "600660",
+      "source": {
+        "capture": "cn-method-v1/raw/600660-full-zcfzb.json",
+        "sha256": "85c5cbe54eee08fe2f340066768ff252e3e7fa55c2f86ba8225cea0ed83bc04c",
+        "locator": "/data/0"
+      },
+      "data": [
+        {
+          "SECURITY_CODE": "600660",
+          "ORG_TYPE": "通用",
+          "REPORT_DATE": "2025-12-31 00:00:00",
+          "REPORT_TYPE": "年报",
+          "NOTICE_DATE": "2026-03-18 00:00:00",
+          "UPDATE_DATE": "2026-08-19 00:00:00",
+          "CURRENCY": "CNY",
+          "TOTAL_CURRENT_ASSETS": 39345419834,
+          "TOTAL_LIABILITIES": 32510194296,
+          "MINORITY_EQUITY": -4304721,
+          "OTHER_EQUITY_TOOL": null,
+          "PREFERRED_SHARES": null,
+          "PERPETUAL_BOND": null
+        }
+      ]
+    }
+  ]
+}

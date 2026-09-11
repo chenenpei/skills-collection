@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deriveFromAnnualRows, type AnnualFinancialRow } from "../../src/data/metrics.js";
+import { deriveFromAnnualRows, type AnnualFinancialRow } from "../../src/us/sources/fundamentals.js";
 
 const moutaiLike: AnnualFinancialRow[] = [
   { year: 2021, revenue: 109_464_278_564, grossProfit: 97_206_777_034, netIncome: 52_460_144_378, operatingCashFlow: 64_028_676_147, roe: 0.2989, assetLiabilityRatio: 0.2281 },
