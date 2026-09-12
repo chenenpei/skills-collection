@@ -9,7 +9,6 @@
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **code-simplify**       | 针对近期改动做复用、质量与效率审查，并直接落地修复；适用于「简化这次改动」「清理 diff」「检查复用与性能」等场景。实现思路参考 Claude Code 的 `/simplify` 类工作流，可参考外部实现 [simplify.ts](https://github.com/yasasbanukaofficial/claude-code/blob/main/src/skills/bundled/simplify.ts)。 |
 | **code-research**       | 只读深度梳理代码库业务与实现，按模板产出中文研究报告到 `docs/research/`；适用于「研究某模块实现」「理解调用链」「交接前摸底」等，不负责顺手改业务代码。                                                                                                                               |
-| **communication-style-guide** | 中文对话风格偏好指南。默认用于回复用户时校准语气、主语、完整动作、用词分寸、情绪表达和对话收束；包含可持续追加的纠正示例参考。 |
 | **figma-design-review** | 对照 Figma 设计稿（或截图降级）走查实现与设计的一致性，关注布局、间距、字体颜色与设计 token / 组件复用；缺少设计稿或代码范围时不强行评审。**完整走查 Figma 节点时需在 Agent 环境中配置 Figma MCP**（以便通过 MCP 读取设计上下文）；仅有截图时仍可按 SKILL 中的降级流程做有限评审。                                              |
 | **stock-analysis-audit** | 对个股和基金类产品做证据优先的投资审计。个股侧重财务质量、护城河、估值、机会成本和反向排雷；基金侧覆盖 ETF、指数基金、主动基金等，重点看基金结构、持仓暴露、费用、同类基金比较和组合角色。支持 Lite（轻量审计）与 Deep（深度审计）。同目录含 `spec/` 规则、`chatbot/` 分阶段提示词与 `docs/` 示例。结论仅供研究辅助，非投资建议。 |
 | **market-screener** | 面向 A 股和美股个股的确定性定量筛选。A 股使用年度财务证据、适用行业方法与独立折价策略，美股使用季度模板；输出可解释、可比较和可重放的研究候选。TypeScript CLI 可独立运行，无需 LLM；可按需搭配独立的 **stock-analysis-audit** 做定性研究。规则位于 `cli/src/policy/`，使用方式见 [README](skills/market-screener/README.md)。 |
@@ -32,10 +31,6 @@ npx skills add https://github.com/chenenpei/skills-collection --skill code-simpl
 
 ```bash
 npx skills add https://github.com/chenenpei/skills-collection --skill code-research -y
-```
-
-```bash
-npx skills add https://github.com/chenenpei/skills-collection --skill communication-style-guide -y
 ```
 
 ```bash
@@ -64,10 +59,6 @@ npx skills add . --skill code-simplify -y
 
 ```bash
 npx skills add . --skill code-research -y
-```
-
-```bash
-npx skills add . --skill communication-style-guide -y
 ```
 
 ```bash
