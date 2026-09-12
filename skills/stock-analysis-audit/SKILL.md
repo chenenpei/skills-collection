@@ -1,118 +1,97 @@
 ---
 name: stock-analysis-audit
-description: Performs evidence-first stock analysis and valuation audits. Use when the user asks to analyze a stock, equity, listed company, ETF, index fund, fund, ticker, valuation, moat, financial quality, opportunity cost versus indexes, or wants a Buffett/Munger/Graham-style investment audit.
+description: 对个股、ETF 和基金进行证据优先的轻量审计或深度审计，解释生意或投资暴露、财务质量、估值、机会成本与反证。适用于公司名或代码发起的股票研究、快速审计、完整分析和价格锚点复核；批量定量市场筛选由 market-screener 负责。
 ---
 
-# Stock Analysis Audit
+# 股票与基金研究审计
 
-Use this skill to analyze listed companies and pooled fund vehicles with an evidence-first workflow. For single companies, the goal is not to prove a stock is worth buying; it is to decide whether the stock deserves single-name concentration risk versus index alternatives. For ETFs and funds, the goal is to decide whether the fund is a sensible tool for the desired exposure versus peer funds and broad benchmarks.
+帮助用户理解生意，检验投资论点，并在证据允许时形成可解释的价格与行动判断。兼顾长期复利、成长投入、资产折价和估值修复；结论取决于经营实质、资本配置、安全边际、机会成本及反证。
 
-All conclusions are research assistance only and are not investment advice.
+## 开始研究
 
-## Default Behavior
+1. 接受公司或基金名称、代码、简称；识别证券、上市地、交易币种及股份类别。身份有实质歧义时只澄清受影响对象。
+2. 按 [CONTEXT.md](CONTEXT.md) 的模式定义识别“轻量审计／深度审计”及同义表达。新任务未指定深度默认轻量；续接保持已确定模式。启动时简短说明实际模式。
+3. 根据证券类型加载下表中的资料；使用实际可用工具和用户材料开展研究。名称或代码足以启动，证据是否足以完成判断另行评估。
 
-- Default to Lite screening unless the user explicitly asks for Deep, full audit, or complete analysis.
-- Accept minimal input: company name, ticker, abbreviation, or business keyword.
-- Identify the security before analyzing it.
-- Default opportunity-cost benchmarks:
-  - Nasdaq 100 for global large-cap growth and technology opportunity cost
-  - CSI Dividend Index for high-dividend cash-return opportunity cost
-  - Relevant 10-year government bond yield as the risk-free-rate baseline
-- Add a local core index when the primary listing market is clear.
+| 场景 | 读取范围 |
+| --- | --- |
+| 所有研究 | [词汇与模式](CONTEXT.md)、下文运行边界、[取证与计算](references/data.md)中适用部分 |
+| 单公司 | [个股研究与报告](references/company.md)中当前模式部分；轻量不默认加载深度论点、估值及完整报告部分 |
+| ETF、指数基金、主动基金及其他集合产品 | [基金研究与报告](references/fund.md)，不加载个股专属规则；明确要求研究某只持仓时另开个股分析 |
 
-## Output Locale
+## 可选筛选证据
 
-- Match the user's message language by default.
-- If the user explicitly asks for a language, use that language for headings and narrative.
-- Keep standard financial abbreviations such as P/E, FCF, ROE, ROIC, NTM, and AUM.
-- Use stable slugs from `CONTEXT.md` in `Structured Summary`.
-- Render human-readable labels from the slug according to the user locale.
-- Do not mix taxonomy layers: business archetype, investment classification, and final verdict are separate.
+本 skill 可独立运行，不需要安装或先运行 `market-screener`。用户可提供通过、未知、被筛掉的候选，或任何未筛选公司；轻量审计均贡献独立的业务与研究价值判断。
 
-## Required References
+已有快照、事实表、披露和历史审计可复用。按来源、期间、主体和口径处理冲突，不能因来自深度报告或筛选通过名单而优先采信。筛选标签只解释入口，不继承其阈值、行业覆盖、排名、固定折扣价格或提前停止条件。使用现有工具取证，无需重跑筛选或为启动审计新建 CLI。
 
-Read only what is needed:
+## 交付
 
-- Always read `CONTEXT.md` and `spec/gates.md`.
-- For data rules, tool use, source order, cross-checking, and calculations: `spec/data.md`.
-- For single-company workflow: `spec/workflow-company.md`.
-- For ETF / fund workflow: `spec/workflow-fund.md`.
-- For Deep single-company investment type classification: `spec/classification.md`.
-- For single-company report shapes: `spec/templates-company.md`.
-- For ETF / fund report shapes: `spec/templates-fund.md`.
+按所选模板交付一份主要报告：开头判断地图，正文展开机制、证据与反证，结尾裁决与重审条件。深度审计保留完整分析及实际完成的对抗过程；价格锚点必须有价值依据，无法可靠定价是允许的结论。
 
-For Lite single-company analysis, read `CONTEXT.md`, `spec/gates.md`, `spec/data.md`, `spec/workflow-company.md`, and `spec/templates-company.md`.
+默认标题、表头、评价词及正文统一中文；用户明确指定其他语言时采用该语言。同一概念译名和核心章节标题保持一致，通用财务缩写首次出现时解释。正文用中文判断摘要，机器字段只在明确需要时按 [CONTEXT.md](CONTEXT.md) 导出。
 
-For Deep single-company analysis, also read `spec/classification.md`.
+## Chatbot 与维护
 
-For Lite or Deep fund/ETF analysis, read `CONTEXT.md`, `spec/gates.md`, `spec/data.md`, `spec/workflow-fund.md`, and `spec/templates-fund.md`.
+Chatbot 使用 [提示词说明](chatbot.md)提供的对话内指令组合，无须读取本地文件或执行 CLI。维护时以本文件负责入口与运行边界，`CONTEXT.md` 负责词汇，各参考文件负责对应研究内容，`chatbot.md` 负责无本地文件环境的指令组合。
 
-For fund/ETF analysis, do not load `spec/workflow-company.md`, `spec/templates-company.md`, or `spec/classification.md` unless the user explicitly asks for underlying single-company holding analysis.
+## 运行边界
 
-## Bundled Prompt Kit
+### 身份与范围
 
-This skill directory also ships runtime references, Chatbot assets, and human docs:
+先确认研究对象与所评价证券。名称、代码、上市地或股份类别有实质歧义时，询问最少必要信息；批量只暂停歧义对象，其余继续。公司业务跨行业、筛选器未覆盖、缺筛选结果或未安装 CLI 均不阻止启动独立审计。
 
-- `CONTEXT.md` — canonical vocabulary
-- `spec/` — runtime references
-- `chatbot/` — staged prompts for tool-less chatbots
-- `docs/` — usage guides and examples
+基金默认只做基金层面的研究。底层持仓贡献和风险分析不等于逐只公司的完整审计；用户明确要求时才加载个股规则。
 
-## Execution Rules
+### 实际能力
 
-1. Identify the security first.
-   - Confirm security type: single company, ETF/index fund, active fund, or unclear.
-   - For single companies: confirm company full name, ticker, primary listing, trading currency, business, and possible ADR/share-class ambiguity.
-   - For funds/ETFs: confirm fund name, ticker, issuer, tracked index or mandate, expense ratio, and closest peer fund.
-   - If multiple candidates exist, stop and ask the user to choose.
-   - If the security is an ETF or fund, use `spec/workflow-fund.md` and `spec/templates-fund.md` instead of company classification, moat scoring, and company output templates.
+| 能力 | 运行方式 |
+| --- | --- |
+| 有工具、有子代理 | 深度个股审计默认一轮独立看多／看空分析，主审裁决 |
+| 有工具、无子代理 | 同一模型分阶段形成双方最强论证，再裁决，标明单模型分阶段对抗 |
+| 无数据工具 | 使用对话中提供的材料；没有当前证据时提出最小材料需求或给出有边界的研究问题，不能虚构财报、行情或来源 |
 
-2. Gather data before analysis.
-   - Use available tools to collect company filings, market data, valuation data, and benchmark data.
-   - Do not invent unavailable numbers. Use `N/A` and explain the impact.
-   - If data quality is Low, final verdict must not exceed Watchlist.
+Chatbot 有浏览、文件或计算能力时使用实际能力，不以界面名称推断工具是否可用。只有名称／代码也可启动身份识别和问题梳理，完成哪些判断由证据决定。不得引用对话中未提供且无法读取的本地规则；使用说明应给出可直接粘贴的完整指令组合。
 
-3. Run the appropriate workflow.
-   - Single-company Lite: company identity, data quality, business model, key financial snapshot, valuation/opportunity cost, potential misunderstanding, top risks, preliminary verdict.
-   - Single-company Deep: cross-cycle financials, industry-specific metrics, profit-pool destruction check, hidden upside check, classification, moat, management, valuation, red-team risks, circle-of-competence, final verdict.
-   - Fund/ETF Lite or Deep: fund identity, wrapper quality, portfolio anatomy, weighted valuation, growth attribution, peer comparison, exposure-level profit-pool check, Bull-side misunderstanding check, Bear-side hidden re-pricing check, fund-specific risks, fund verdict.
+### 证据与结论边界
 
-## Market Screener Handoff
+- 对关键来源冲突，先按主体、期间、币种和定义核对；仍无法解决则限制相关结论。只向用户询问其可能掌握的信息，不把普通数据缺口变成反复审批。
+- 有依据的重大反证可以支持否定论点，即使其他数据仍缺失。积极价格与行动判断须有相应关键依据，不能靠整体数据质量或模型投票弥补。
+- 利润池破坏与最强反向解释按当前模式的深度检查。决定性反证已成立时，有限核对最强反向解释后可以结束，不继续寻找所有潜在价值。
+- 缺价格限制当前价格判断；缺个人背景限制个性化仓位及适合性，均不阻止其他可成立的公司或基金分析。
+- 价值假设或关键数据不足时，可交付完整业务分析并说明无法可靠定价。有用的情景算术与可用于行动的价格锚分开。
+- 已有材料尚未分析不等于证据不存在；尚未做完不能被“无法判断”标签掩盖。完整报告与受限结束明确区分。
 
-This skill can run standalone. If `market-screener` artifacts are provided, treat them as optional upstream screening evidence, not a dependency or final evidence. Reference skill: https://github.com/chenenpei/skills-collection/tree/main/skills/market-screener
+### 时间与有限取证
 
-When `candidates.yaml`, `deferred.yaml`, `metric_snapshot`, `passed_track`, `routed_templates`, or `audit_hints` are provided:
-- Briefly explain why the company passed the upstream screener.
-- Re-check only the few decisive metrics needed for the audit.
-- If Deep data conflicts with `metric_snapshot`, use Deep data and explain the difference.
-- Do not recreate `market-screener` scoring, `pool_score`, or sector template gates.
+批量轻量审计、单公司深度审计以约 30 分钟作为本轮整体进度检查点，包含取证、对抗、裁决与报告整理。这是软检查点，不是默认截止，也不是必须耗满的时长。
 
-4. Use classification discipline for single companies only.
-   - Classify with necessary conditions, M/N supporting evidence, veto conditions, and industry exceptions.
-   - Do not let one attractive metric hide a major flaw.
-   - Before positive classification, check who can destroy the product or profit pool without needing to profit from that product.
-   - Before Reject, Watchlist, or Value Trap conclusions, check whether the market is using an outdated business classification that misses hidden assets, ecosystem lock-in, capital allocation change, or a new profit pool.
-   - Hidden upside requires hard evidence: net-income/cash-flow divergence, real buyback-driven share count reduction, segment/backlog/order evidence, industry clearing effects, or proof that the impairment is cyclical rather than structural.
-   - For ETFs and funds, skip company classification and use growth attribution, peer comparison, and exposure-level profit-pool checks from `spec/workflow-fund.md`.
+到时简要交代完成范围、关键未决问题和下一步。必要分析还未完成，或有可能改变判断且可解决的关键问题时，继续定向工作；无需仅因超时重复请求同意。额外取证须能说明可能改变哪项判断，无新增判断价值时收敛，不能无休止更换来源或重试。
 
-5. Produce a clear final verdict.
-   - Single company: choose exactly one company verdict slug from `CONTEXT.md`.
-   - ETF/fund: choose exactly one of Reject, Watchlist, Satellite Hold, Core Hold, Tactical Only.
-   - Include confidence, data quality, top supporting evidence, top opposing evidence, key falsification metric, and re-audit trigger.
-   - Include `## Structured Summary` with `field | slug | label`.
+用户明确要求限时时才设置硬截止，所有阶段和并行子代理共用本轮时间，提前预留交付时间。重试、切换阶段或续用同一轮子代理不重置截止。无计时／中断能力时说明限制，按阶段检查进度，不宣称准确执行了时间约束。
 
-## Stop and Ask
+有可靠时钟时在开始和交付时记录时间，区分单家公司与批次、首次研究与资料复用；能取得阶段时间时再区分取证、分析／对抗和复核。并行耗时不相加冒充总历时，漏记起点不事后估成实测。简要记录改变判断的新增证据、失败重试与返工；用判断质量和时间共同评估效率，不以更快或更少来源为目标。无计时或 token 用量接口时说明未测得，不为计量额外建设工具或拆分报告。
 
-Stop instead of continuing when:
+批量各对象逐项有状态。只看代码和上游标签不算完成；按已有材料和明确研究线索安排处理，不把一处数据缺口扩成无限补数。因限时或其他限制未完成的对象标“未审”，续接复用已完成工作。
 
-- Company or fund identity is ambiguous.
-- Data sources conflict on a key value and cannot be reconciled.
-- The company is delisted, privatized, renamed, merged, or materially restructured and the current security is unclear.
-- The user asks for an action framework but provides no circle-of-competence or risk context.
-- Critical data is unavailable and the missing data would change the verdict.
+### 何时结束
 
-Ask one question at a time. Prefer multiple-choice options when possible.
+| 情形 | 交付 |
+| --- | --- |
+| 证据与分析足以支持当前模式判断 | 交付判断及边界，提前结束 |
+| 决定性反证经有限反向核对成立 | 解释论点为何不成立、已完成分析与可能重启条件 |
+| 关键问题无可行解决路径，新增取证不再推进判断 | 交付有边界的结论、关键未知与重审触发；可无法可靠定价 |
+| 用户指定硬截止临近或到达 | 提前收尾，截止时交付完成范围和限制，批量列明未审对象 |
+| 身份或用户意图确有歧义 | 只暂停依赖答案的部分，询问最少必要信息 |
 
-## Style
+未完成的主题如实说明，不能用空段落伪装完整性。结束后的主报告保留最强支持与反对依据、决定性未知和重审条件，不强制重复的机器摘要表。
 
-Use clear, direct, auditable language. Avoid vague phrases such as "looks promising" or "worth watching" unless conditions and evidence are stated. Do not treat low valuation as safety margin, and do not treat company quality as stock attractiveness.
+### 基金专属兼容
+
+基金继续按自身工具质量与组合角色评价，不套用公司的统一现金流、护城河或投资类型门槛。
+
+- 正面配置判断前，完成至少一个同类基金与一个相关宽基的比较；无明确优势或关键证据不足时保持观察或受限判断。
+- 组合远期估值须有发行人披露或可复算的组合计算；缺少它限制依赖该指标的结论，不能用媒体数值、单只持仓或任意倍数代替。
+- 数据质量低时基金结论不高于观察；可靠重大反证仍可支持不采用。
+- 核心配置需理解产品结构及暴露。用户背景未知时只能说明适用条件，不能推定其能力圈。杠杆、反向等产品可解释机制，个性化使用建议缺必要风险背景时再澄清。
+- 基金的增长归因、利润池破坏及正反叙事检查见 [基金研究](references/fund.md)。

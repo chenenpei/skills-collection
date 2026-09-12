@@ -16,6 +16,9 @@ skills-lock.json
 skills/market-screener/cli/node_modules/
 skills/market-screener/cli/dist/
 
+# Local stock-audit research reports, evidence and validation records
+/.scratch/stock-analysis-audit/
+
 # Editor / IDE
 .idea/
 .vscode/

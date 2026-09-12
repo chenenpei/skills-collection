@@ -1,341 +1,89 @@
-# Stock Analysis Audit Context
-
-Vocabulary for the stock-analysis-audit skill. This file defines domain terms only; process rules, thresholds, data contracts, and report templates live in `spec/`.
-
-## Language
-
-Use the slug as the stable structured value. Render labels in the user's requested language. If no output language is specified, match the user's message language.
-
-## Security Types
-
-**Single company**:
-A listed operating company whose business, financial statements, moat, management, and valuation can be audited directly.
-slug: security_single_company
-_Avoid_: stock when the security may be an ETF or fund
-
-**ETF or index fund**:
-A pooled vehicle designed to track an index or passive mandate. Analyze it as an exposure tool, not as an operating company.
-slug: security_etf_or_index_fund
-_Avoid_: company, issuer quality
-
-**Active fund**:
-A pooled vehicle whose portfolio is selected by a manager or active mandate. Analyze wrapper quality, portfolio exposure, fees, manager evidence, and active-share evidence.
-slug: security_active_fund
-_Avoid_: treating manager reputation as proof of skill
-
-**Other pooled vehicle**:
-A REIT fund, bond fund, commodity fund, closed-end fund, leveraged ETF, inverse ETF, options-overlay fund, or structured product.
-slug: security_other_pooled_vehicle
-_Avoid_: ordinary ETF
-
-## Analysis Modes
-
-**Lite screening**:
-Default mode. It answers whether the security deserves more research or a cautious portfolio role with limited data burden.
-slug: mode_lite
-_Avoid_: full audit, deep dive
-
-**Deep audit**:
-Full workflow used only when the user asks for Deep, full audit, or complete analysis, or when Lite provides enough evidence to justify further work.
-slug: mode_deep
-_Avoid_: quick take
-
-## Taxonomy Layers
-
-**Business archetype**:
-A qualitative business-model label used to describe how a company tends to earn and defend profits. It is not an investment classification and not a final verdict.
-slug: taxonomy_business_archetype
-_Avoid_: using archetype as a buy/sell conclusion
-
-**Investment classification**:
-A Deep-only single-company M/N classification with necessary conditions, supporting evidence, veto conditions, and sector exceptions.
-slug: taxonomy_investment_classification
-_Avoid_: conflating with final verdict or business archetype
-
-**Final verdict**:
-The final decision label for the security. Company and fund verdicts use different scales.
-slug: taxonomy_final_verdict
-_Avoid_: investment type
-
-## Company Verdicts
-
-**Reject**:
-The stock does not currently justify single-name concentration risk versus alternatives.
-slug: verdict_reject
-zh: 一票否决
-_Avoid_: value trap unless classification rules specifically support it
-
-**Watchlist**:
-The stock may be worth monitoring, but data, valuation, quality, risks, or opportunity cost do not support positive action now.
-slug: verdict_watchlist
-zh: 观察名单
-_Avoid_: vague "worth watching" without trigger conditions
-
-**Medium-term revaluation opportunity**:
-A bounded, medium-term opportunity whose thesis depends on identifiable re-pricing, catalysts, and falsification conditions.
-slug: verdict_medium_term_revaluation
-zh: 中期估值修复机会
-_Avoid_: long-term compounder
-
-**High-quality company at reasonable price**:
-A long-term candidate where business quality, cash generation, and valuation pass the audit, subject to competence and sizing.
-slug: verdict_quality_reasonable_price
-zh: 合理价格的高质量公司
-_Avoid_: high conviction unless all stricter gates are met
-
-**High conviction candidate**:
-A rare positive verdict requiring at least Medium data quality, clear business model, strong moat, real cash generation, valuation margin, superior opportunity cost, no visible asymmetric destroyer, and user competence.
-slug: verdict_high_conviction
-zh: 高 conviction 候选
-_Avoid_: using for Low data quality or weak circle of competence
-
-## Fund Verdicts
-
-**Fund reject**:
-The fund's fee, structure, tracking, liquidity, concentration, valuation, or exposure is clearly inferior to relevant alternatives.
-slug: verdict_fund_reject
-zh: Reject
-_Avoid_: company-style Reject
-
-**Fund watchlist**:
-The exposure may be useful, but current data, price, cycle, structure, or peer comparison does not support action now.
-slug: verdict_fund_watchlist
-zh: Watchlist
-_Avoid_: core holding
-
-**Satellite hold**:
-The fund is reasonable as a small satellite exposure for users who specifically want this exposure.
-slug: verdict_satellite_hold
-zh: Satellite Hold
-_Avoid_: core holding
-
-**Core hold**:
-The fund is a durable, transparent, cost-effective tool with clear advantages versus peers and broad benchmarks for long-term allocation.
-slug: verdict_core_hold
-zh: Core Hold
-_Avoid_: using without peer and broad benchmark comparison
-
-**Tactical only**:
-The fund may be useful for a defined cycle, event, or valuation window, but should not be treated as a long-term core holding.
-slug: verdict_tactical_only
-zh: Tactical Only
-_Avoid_: permanent allocation
-
-## Investment Classification Types
-
-**Cigar-butt undervalued asset**:
-An investment type where the thesis mainly comes from low price rather than high business quality. Detailed thresholds live in `spec/classification.md`.
-slug: classification_cigar_butt
-zh: 烟蒂型低估资产
-_Avoid_: business archetype cigar-butt; this is not a moat label
-
-**High-quality company at reasonable price classification**:
-An investment type where business quality, cash conversion, resilience, and valuation are all credible.
-slug: classification_quality_at_reasonable_price
-zh: 合理价格的高质量公司
-_Avoid_: final verdict unless the report is explicitly in verdict context
-
-**Quantitative mispricing with high upside**:
-An investment type where above-average business quality plus excessive market pessimism creates high upside with a resilient balance sheet.
-slug: classification_quantitative_mispricing
-zh: 定量错配的高赔率机会
-_Avoid_: cigar-butt value
-
-**Value trap**:
-A cheap-looking stock whose revenue, margin, cash flow, moat, leverage, or industry structure is deteriorating after the hidden-upside check fails.
-slug: classification_value_trap
-zh: 价值陷阱
-_Avoid_: using before hidden-upside check
-
-**Overpriced excellent company**:
-A high-quality company whose valuation likely limits medium-term shareholder returns despite good fundamentals.
-slug: classification_overpriced_excellent
-zh: 估值透支的优秀公司
-_Avoid_: Reject without explaining quality
-
-## Lifecycle Stages
-
-**Chaotic stage**:
-Business direction is not stable, financial validation is insufficient, and the business model is still being tested.
-slug: lifecycle_chaotic
-zh: 混沌期
-_Avoid_: evidence-established stage
-
-**Evidence-established stage**:
-Business model has been validated by consecutive financial evidence, but the market may still undervalue it due to historical bias, short-term negative events, or macro pressure.
-slug: lifecycle_evidence_established
-zh: 证据确立期
-_Avoid_: 证据确认期, 证据验证期
-
-**Fully priced stage**:
-The company's advantages are widely recognized and valuation already reflects optimistic expectations.
-slug: lifecycle_fully_priced
-zh: 摊牌期
-_Avoid_: cheap quality
-
-**Declining stage**:
-Core business, margins, cash flow, or competitive position show structural deterioration.
-slug: lifecycle_declining
-zh: 衰退期
-_Avoid_: temporary bad news
-
-## Business Archetypes
-
-**Toll-road business**:
-A business with strong barriers, predictable cash flow, and a low need for reinvestment to maintain its position.
-slug: archetype_toll_road
-zh: 收费公路型
-_Avoid_: calling any high-margin business a toll road without evidence
-
-**Quasi toll-road business**:
-A business that resembles a toll road but has weaker pricing power, weaker durability, or more dependency risk.
-slug: archetype_quasi_toll_road
-zh: 准收费公路型
-_Avoid_: toll-road business
-
-**Gold in quicksand business**:
-A business that may contain valuable assets or growth but requires continuous heavy investment, adaptation, or reinvention to avoid erosion.
-slug: archetype_gold_in_quicksand
-zh: 流沙淘金型
-_Avoid_: stable compounder
-
-**Cyclical asset**:
-A business whose earnings power and valuation are strongly driven by industry cycles, capacity, commodity prices, or demand timing.
-slug: archetype_cyclical_asset
-zh: 周期资产
-_Avoid_: using peak-cycle earnings as normalized earnings
-
-**Financial leverage asset**:
-A business whose shareholder returns are primarily shaped by leverage, spreads, duration, asset quality, or regulatory capital.
-slug: archetype_financial_leverage_asset
-zh: 金融杠杆资产
-_Avoid_: ordinary industrial company
-
-## Data Quality
-
-**High data quality**:
-Primary filings or reliable data providers support most key values, and dates, periods, currencies, and calculation bases are clear.
-slug: data_quality_high
-_Avoid_: using secondary media as primary evidence
-
-**Medium data quality**:
-Enough reliable data exists for a directional conclusion, but some values are missing, delayed, or estimated.
-slug: data_quality_medium
-_Avoid_: high-conviction certainty
-
-**Low data quality**:
-Key identity, financial, valuation, benchmark, fund-wrapper, or portfolio data is missing or materially conflicting.
-slug: data_quality_low
-_Avoid_: verdict above Watchlist
-
-## Core Principles
-
-**Margin of safety**:
-Safety margin must come from reasonable valuation, verifiable cash flow, stable business quality, and tolerable downside scenarios.
-slug: principle_margin_of_safety
-_Avoid_: treating low valuation alone as safety
-
-**Good company versus good stock**:
-A good company is not automatically an attractive stock if valuation already absorbs future returns.
-slug: principle_good_company_good_stock
-_Avoid_: quality-only conclusions
-
-**Opportunity cost**:
-A single stock must justify concentration risk versus index alternatives; a fund must justify its role versus peer funds, broad benchmarks, and the risk-free rate.
-slug: principle_opportunity_cost
-_Avoid_: analyzing in isolation
-
-**Evidence-first language**:
-Qualitative claims such as moat, management quality, or industry runway require verifiable evidence.
-slug: principle_evidence_first
-_Avoid_: vague optimism
-
-## Qualitative Frameworks
-
-**Moat dimensions**:
-Switching cost, pricing power, network effects, scale economies, brand or trust, data or workflow lock-in, regulation or license barriers, and upstream/platform/customer dependence.
-slug: framework_moat_dimensions
-_Avoid_: single-metric moat
-
-**Management allocator rating**:
-Capital allocation conclusion must be Excellent, Acceptable, Questionable, Poor, or Insufficient data.
-slug: framework_management_allocator
-_Avoid_: personality-based management praise
-
-**Circle of competence**:
-User competence depends on understanding the business model, industry variables, leading indicators, temporary versus structural bad news, and any informational or experiential edge.
-slug: framework_circle_of_competence
-_Avoid_: high conviction without competence
-
-## Audit Concepts
-
-**Profit-pool destruction**:
-The check for actors who do not need to profit from the product but can make the profit pool free, bundled, obsolete, regulated away, or uneconomic.
-slug: audit_profit_pool_destruction
-_Avoid_: ordinary volatility risk
-
-**Hidden upside check**:
-The check for whether negative market narratives miss underappreciated assets, new profit pools, business reclassification, capital allocation change, or cyclical rather than structural impairment.
-slug: audit_hidden_upside
-_Avoid_: management promises without evidence
-
-**Bull-side debunking**:
-For funds, the check that bullish claims hold at portfolio level rather than only at leader-holding, industry-narrative, or media level.
-slug: audit_bull_side_debunking
-_Avoid_: leader growth equals fund growth
-
-**Bear-side hidden re-pricing**:
-For funds, the check that bearish narratives do not miss portfolio earnings catch-up, cyclical recovery, index methodology effects, or exposure misunderstanding.
-slug: audit_bear_side_hidden_repricing
-_Avoid_: calling an exposure too expensive without portfolio evidence
-
-## Sector Adjustments
-
-**Healthcare sector adjustment**:
-Deep audit metrics for pharmaceutical, biotech, vaccine, CXO, and healthcare-services companies: gross margin and pricing power, R&D and pipeline quality, patent cliff, FCF conversion or pre-profit cash runway, reimbursement and procurement risk, and CXO customer concentration.
-slug: sector_adjustment_healthcare
-_Avoid_: screening healthcare via consumer or tech_saas sector blocks
-
-## Fund Concepts
-
-**Fund wrapper**:
-The vehicle layer: fee, liquidity, AUM, premium or discount, tracking, tax drag, and structural durability.
-slug: fund_layer_wrapper
-_Avoid_: portfolio exposure
-
-**Portfolio exposure**:
-The economic exposure the fund actually owns, including concentration, sector/country mix, weighted valuation, and weighted growth.
-slug: fund_layer_portfolio_exposure
-_Avoid_: wrapper quality
-
-**Underlying holdings**:
-The individual holdings that drive or distort the fund thesis.
-slug: fund_layer_underlying_holdings
-_Avoid_: fund-level company analysis
-
-**Growth attribution**:
-The decomposition of portfolio growth into leader contribution, drag names, cycle effects, earnings catch-up, and one-off distortions.
-slug: fund_growth_attribution
-_Avoid_: one holding's growth equals fund growth
-
-**Implied NTM earnings growth**:
-Mechanical approximation: portfolio trailing P/E divided by portfolio forward P/E minus one.
-slug: fund_implied_ntm_growth
-_Avoid_: consensus growth
-
-## Structured Summary
-
-**Structured Summary**:
-A fixed report block containing `field`, `slug`, and rendered `label`. Narrative text may use the user's language, but this block keeps outputs auditable.
-slug: output_structured_summary
-_Avoid_: unstructured final labels only
-
-## Concept Index
-
-- Verdict slugs: this file; report shape in `spec/templates-company.md` and `spec/templates-fund.md`
-- Investment classification slugs: this file; M/N rules in `spec/classification.md`
-- Lifecycle and archetype slugs: this file; usage in `spec/workflow-company.md`
-- Data quality definitions: this file; downgrade gates in `spec/gates.md`
-- Data metrics and calculations: `spec/data.md`
-- Company workflow: `spec/workflow-company.md`
-- Fund workflow: `spec/workflow-fund.md`
+# 研究术语与模式
+
+本文件定义模式、概念与结论含义。执行顺序见 `references/company.md`／`references/fund.md`，取证计算见 `references/data.md`，结束条件见 `SKILL.md` 的运行边界。
+
+## 模式
+
+| 正式名称 | 兼容表达 | 目标 |
+| --- | --- | --- |
+| 轻量审计 | Lite、快速审计、轻度审计、初步研究 | 用有限证据理解生意或投资暴露，判断研究价值及下一步 |
+| 深度审计 | Deep、深度研究、全面审计、完整分析、full audit、complete analysis | 完整展开经济机制、支持与反对论证、估值与条件式行动 |
+
+新任务未明确研究深度时默认轻量。明确模式优先；“继续”沿用当前模式，明确要求切换时再切换。轻量审计可以建议深入，建议本身不自动升级。“深度审计，尽量快一点”仍为深度审计，速度要求单独处理。识别用户研究意图，不按引用材料中的模式词切换。
+
+## 证券与分析层次
+
+- **单公司**：直接分析一家经营主体，另行确认实际所评价证券及普通股股东权益。
+- **ETF／指数基金**：跟踪投资暴露的集合工具；发行人不是被审计的经营公司。
+- **主动基金**：按管理人的投资授权配置资产，额外评价费用、主动管理及业绩来源。
+- **其他集合产品**：债券、商品、REIT 基金、封闭式、杠杆、反向或结构化产品，按资产和产品机制研究。
+
+**商业模式／业务原型**描述利润如何产生和维持；收费公路型、周期资产、金融杠杆资产等只能作为有证据的描述，允许不归类。**投资论点／投资分类**描述回报来自持续经营、成长投入、资产折价或修复等机制，见 `references/company.md` 的投资论点参考。二者均不替代当前价格与行动判断，也不是统一晋级阶梯。
+
+## 单公司轻量审计的研究处置
+
+| 处置 | 含义 |
+| --- | --- |
+| 继续研究 | 已有具体研究理由，下一步有明确且可能改变判断的问题 |
+| 等待条件 | 有研究价值，优先等待可说明的价格、披露或经营变化 |
+| 不再继续 | 当前证据支持停止本次研究投入，说明经济理由及可能重启条件 |
+| 无法判断 | 已有限审查，但决定性证据仍不足或冲突，说明具体影响 |
+
+处置与价格吸引力分别说明。信息未知不是公司质量差，研究价值也不等于可以买入。
+
+## 执行、数据与判断分开
+
+- **执行状态**：已完成、受限结束、未审。批量中，未审表示尚未完成足以形成轻量处置的审查，不赋予负面处置。受限结束说明完成范围，不能伪装成完整审计。
+- **数据质量**：高表示关键依据来源和口径清楚；中表示足够支持部分判断、仍有明确限制；低表示决定性数据不足或冲突。按受影响问题说明，整体标签不能掩盖关键缺口，也不自动否定其他已成立的判断。
+- **判断把握**：说明哪些推断稳固、哪些依赖假设及原因；不把数据齐全、多个模型同意或语气强烈等同于判断正确。
+- **对抗方式**：独立子代理对抗、单模型分阶段对抗、未完成对抗。名称反映实际执行，不能互相冒充。
+
+## 单公司深度审计的结论
+
+用自然中文给出当前判断及成立条件，例如可考虑买入、等待更有利条件、持有复核、减持复核或当前不采用该论点。说明支持和反对依据，行动取决于论点与条件，不套统一评级阶梯。
+
+**无法可靠定价**表示证据不能支持有意义的价值区间或行动锚点，可以伴随完整业务分析；其本身不是坏公司或“不再继续”的同义词。**价格锚点**是价值假设、风险补偿与用途明确的条件区间，可随新证据或纠错调整、撤销；**情景价格**是特定假设下的算术结果，未必足以支持行动。
+
+**安全边际**来自价格相对有依据的价值及风险的补偿。**机会成本**比较持有个股或基金与合适替代资产的回报来源、风险和研究负担。
+
+### 价格分层
+
+单公司深度审计默认使用以下称呼。它们表达价格与论点的关系，不是公司评级；证据不足的档位可写“暂无法确定”或“不适用”，不为凑齐五个数字扩大取证。轻量审计仍只解释研究意义。
+
+| 名称 | 含义 |
+| --- | --- |
+| 市场价（合理价值参考） | 合理经营假设下的价值参考，尚无明显折价；与另列的当前交易价区分 |
+| 打折价 | 相对价值已有一定风险补偿，关键假设仍需验证 |
+| 捡漏价 | 较保守的经营假设下仍有较充分风险补偿，须解释压力情景与损失风险 |
+| 恐慌价 | 异常低价触发重点复核；先查生意、资产与原价值依据是否变化，不由跌幅或倍数认定市场犯错或自动加仓 |
+| 跑路价（论点失效条件） | 原投资论点被经营、财务或治理证据推翻，可在任何股价发生；有依据时列量化触发，不强造一个止损价 |
+
+好生意与估值修复采用各自适用的价值依据。金融股不能仅凭账面折价认定捡漏，须核对资产质量、监管资本、利率与经营改善。高估后的持有／减持复核另述，不把价格上涨与论点失效混为一谈，也不预设必须卖出价。
+
+## 对抗与认知边界
+
+**利润池破坏**检查能使利润被免费、捆绑、替代、监管或交易对手挤压的经济机制。**隐藏上行检查**提出可能被遗漏的解释；**隐藏上行证据**检验这些解释的经营、现金和股东收益依据。
+
+**护城河**关注优势的来源、维持成本及失效机制。**管理层与资本配置**看投资、并购、负债、分红、回购和稀释如何影响股东，不以性格评价替代经营结果。**能力边界**说明研究者尚不理解的机制；用户能力圈、持仓和风险承受力只有获得信息后才可作个性化判断。
+
+## 基金术语与结论
+
+基金研究分三层：**基金结构**（费用、流动性、跟踪、税收及产品机制）、**组合暴露**（集中度、行业国家分布、组合估值与增长）、**底层持仓**（主要贡献和拖累来源）。组合增长归因不能用单只龙头增长替代。历史／远期市盈率比值推导的增长属于同口径下的机械近似，不等于独立预测。
+
+| 中文结论 | 用途 |
+| --- | --- |
+| 不采用 | 费用、结构、暴露、风险或价格相对替代工具不合适 |
+| 观察 | 有研究或暴露价值，当前证据、比较或条件不支持配置判断 |
+| 卫星配置 | 在明确适用前提下作为有限的补充暴露 |
+| 核心配置 | 有充分比较依据的长期核心工具，仍需符合用户的目标与理解程度 |
+| 仅限战术配置 | 依赖明确周期、事件或使用期限，不能默认为长期配置 |
+
+## 按需机器输出与旧值兼容
+
+默认交付中文报告和判断摘要。只有用户要求或明确的程序对接需要时才导出机器字段，不默认增加文件。
+
+已有接口可继续使用 `security_type` 的 `security_single_company`／`security_etf_or_index_fund`／`security_active_fund`／`security_other_pooled_vehicle`、`analysis_mode` 的 `mode_lite`／`mode_deep`、`data_quality` 的 `data_quality_high`／`data_quality_medium`／`data_quality_low`。
+
+基金 `final_verdict` 旧值依次对应：不采用 `verdict_fund_reject`、观察 `verdict_fund_watchlist`、卫星配置 `verdict_satellite_hold`、核心配置 `verdict_core_hold`、仅限战术配置 `verdict_tactical_only`。原有 `portfolio_role` 可按实际角色使用 `avoid`／`watch`／`satellite`／`core`／`tactical`。
+
+旧公司 `final_verdict`、`investment_classification`、`business_archetype` 等值仅作为历史材料，不自动映射为轻量处置或行动建议，不重写旧报告。对接需要时明确传递研究处置、条件式行动、执行状态和对抗方式的含义；按实际接口约定字段，不另建默认输出协议。机器字段与 slug 留在请求的导出中，正文显示中文含义。
