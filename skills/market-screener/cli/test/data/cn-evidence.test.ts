@@ -12,6 +12,32 @@ import {evaluateCompany} from '../../src/cn/screening.js';
 import {parseCnListingPage,reconcileCnUniverse} from '../../src/cn/sources/listings.js';
 import {loadCnPolicy} from '../../src/policy/loader.js';
 
+it('quarantines an unsupported archived table value while retaining supported facts and rejecting corrupted evidence',async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'cn-retired-table-contract-'));
+ try {
+  const table={line:'承保利润\t10,717\t5,463\t96.2',scalar:10717};
+  const income={data:[{SECURITY_CODE:'600660',REPORT_TYPE:'年报',REPORT_DATE:'2025-12-31',NOTICE_DATE:'2026-03-01',CURRENCY:'CNY',ORG_TYPE:'通用',PARENT_NETPROFIT:100}]};
+  const sources=[{id:'table',path:'table.json',url:'https://example.com/table',mediaType:'application/json',fetchedAt:'2026-05-01',sha256:sha256(JSON.stringify(table))},{id:'income',path:'income.json',url:'https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/lrbAjaxNew',mapping:'income',mediaType:'application/json',fetchedAt:'2026-05-01',sha256:sha256(JSON.stringify(income))}];
+  await fs.writeFile(path.join(dir,'table.json'),JSON.stringify(table));await fs.writeFile(path.join(dir,'income.json'),JSON.stringify(income));
+  const legacy:CompanyFacts['facts'][number]={id:'retired-table-fact',field:'insurance.underwritingResult',entity:'600660:subsidiary',year:2025,period:{start:'2025-01-01',end:'2025-12-31'},publishedAt:'2026-03-01',basis:'test',unit:'CNY',unitScale:1_000_000,state:'observed',value:10_717_000_000,evidence:[{sourceId:'table',locator:'/line',raw:table.line}]};
+  const context:CompanyFacts['facts'][number]={...legacy,id:'retired-context',field:'regulatory.context',unit:'text',value:'{"regime":"retired-mapping"}',evidence:[...legacy.evidence,{sourceId:'table',locator:'/scalar',raw:table.scalar}]};
+  const company={ticker:'600660',companyId:'600660',companyName:'Synthetic',market:'CN',currency:'CNY',asOf:'2026-05-01',latestFiscalYear:2025,basis:'test',method:{state:'unresolved',evidence:[]},checks:{},facts:[legacy,context]};
+  const file=path.join(dir,'input.json'),save=async()=>{await fs.writeFile(file,JSON.stringify({schemaVersion:1,sources,companies:[company]}));return loadEvidenceInput(file);};
+  const loaded=await save(),facts=loaded.input.companies[0].facts;
+  expect(facts.find(f=>f.id===legacy.id)).toMatchObject({state:'missing',reason:'unverified_field_or_scope_contract',evidence:legacy.evidence});
+  expect(facts.find(f=>f.id===legacy.id)).not.toHaveProperty('value');
+  expect(facts.find(f=>f.id===context.id)).toMatchObject({state:'missing',reason:'unverified_field_or_scope_contract'});
+  expect(facts.find(f=>f.id===context.id)).not.toHaveProperty('value');
+  expect(facts.find(f=>f.field==='parentProfit')).toMatchObject({state:'observed',value:100});
+  legacy.evidence[0].raw='altered line';await expect(save()).rejects.toThrow(/Source locator\/value mismatch/);
+  legacy.evidence[0]={sourceId:'table',locator:'/scalar',raw:table.scalar};legacy.value=1;
+  await expect(save()).rejects.toThrow(/Normalized value mismatch/);
+  legacy.evidence[0]={sourceId:'table',locator:'/line',raw:table.line};legacy.value=10_717_000_000;
+  await fs.writeFile(path.join(dir,'table.json'),JSON.stringify({...table,line:'changed source'}));
+  await expect(save()).rejects.toThrow(/Source hash mismatch/);
+ }finally{await fs.rm(dir,{recursive:true,force:true});}
+});
+
 it('preserves effective and announcement dates and ordinary share classes from the latest structure snapshot',()=>{
  const row={SECUCODE:'920009.BJ',SECURITY_CODE:'920009',END_DATE:'2026-05-13 00:00:00',NOTICE_DATE:'2026-04-30 00:00:00',TOTAL_SHARES:77546000,TOTAL_A_SHARES:77546000,B_FREE_SHARE:null,LIMITED_B_SHARES:null,H_FREE_SHARE:null,LIMITED_H_SHARES:null,OTHER_FREE_SHARES:null,PREFERRED_SHARES:null,CHANGE_REASON:'转增股上市'};
  const options={sourceId:'structure',entity:'920009',basis:'reported',asOf:'2026-09-10T03:00:00Z',observedAt:'2026-09-10T02:59:00Z'};
@@ -477,7 +503,7 @@ it('routes explicit BSE manufacturing categories without treating arbitrary plas
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });
 
-it('derives C1 cycle applicability only from verified fine business classifications',async()=>{
+it('uses the base window for verified ordinary issuers and adds history for explicit cycle exposure',async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'cn-cycle-routing-'));
  try {
   const source={id:'listing',mapping:'bse-list' as const,url:'https://www.bse.cn/nqxxController/nqxxCnzq.do',fetchedAt:'2026-09-10',request:{method:'POST' as const,contentType:'application/x-www-form-urlencoded' as const,body:'page=0&typejb=T&xxfcbj%5B%5D=2&xxzqdm=&sortfield=xxzqdm&sorttype=asc'}};
@@ -504,7 +530,7 @@ it('derives C1 cycle applicability only from verified fine business classificati
    } else {
     expect(loaded.method,`${label}/${family}`).toMatchObject({state:'applies',value:'nonfinancial'});
     if(cycle) expect(loaded.checks.cycle,`${label}/${family}`).toMatchObject({state:cycle,reason:'verified_fine_business_cycle_mapping',evidence:['listing:920204:industry']});
-    else expect(loaded.checks.cycle,`${label}/${family}`).toBeUndefined();
+    else expect(loaded.checks.cycle,`${label}/${family}`).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
    }
   }
  } finally {await fs.rm(dir,{recursive:true,force:true});}
@@ -531,18 +557,34 @@ it('uses a current verified fine profile to refine a broad class and retains cyc
    return (await loadEvidenceInput(file)).input.companies[0];
   };
   expect((await load('半导体器件研发、生产和销售')).checks.cycle).toMatchObject({state:'applies',evidence:['profile:business.profile']});
-  expect((await load('半导体测试设备生产和销售')).checks.cycle).toBeUndefined();
+  expect((await load('半导体测试设备生产和销售')).checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
   expect((await load('半导体器件制造；兼营软件销售')).checks.cycle).toMatchObject({state:'applies'});
   expect((await load('白酒生产和销售','制造业-酒、饮料和精制茶制造业')).checks.cycle).toMatchObject({state:'not_applicable',evidence:['profile:business.profile']});
   expect((await load('生物制药研发和生产','制造业-医药制造业')).checks.cycle).toMatchObject({state:'not_applicable'});
-  expect((await load('普通产品生产和销售','制造业-新型量子服务业')).checks.cycle).toBeUndefined();
+  expect((await load('普通产品生产和销售','制造业-新型量子服务业')).checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
   expect((await load('转换器、墙壁开关插座、LED照明和数码配件等电源连接产品的研发、生产和销售','制造业-电气机械和器材制造业')).checks.cycle).toMatchObject({state:'not_applicable'});
-  expect((await load('电气设备研发生产','制造业-电气机械和器材制造业')).checks.cycle).toBeUndefined();
+  expect((await load('电气设备研发生产','制造业-电气机械和器材制造业')).checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
   expect((await load('墙壁开关插座及光伏电池片的生产销售','制造业-电气机械和器材制造业')).checks.cycle).toMatchObject({state:'applies'});
   expect((await load('一次性个人卫生用品的研发、生产和销售','制造业-造纸和纸制品业')).checks.cycle).toMatchObject({state:'not_applicable'});
-  expect((await load('纸制品生产销售','制造业-造纸和纸制品业')).checks.cycle).toBeUndefined();
+  expect((await load('纸制品生产销售','制造业-造纸和纸制品业')).checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
   expect((await load('网络游戏的研发及运营业务','信息传输、软件和信息技术服务业-互联网和相关服务')).checks.cycle).toMatchObject({state:'not_applicable'});
-  expect((await load('互联网平台服务','信息传输、软件和信息技术服务业-互联网和相关服务')).checks.cycle).toBeUndefined();
+  expect((await load('互联网平台服务','信息传输、软件和信息技术服务业-互联网和相关服务')).checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
+  for(const [business,industry] of [
+   ['国际、国内海上集装箱运输业务','水上运输业'],
+   ['内外贸油品、化学品和气体运输，航次租船及定期租船','水上运输业'],
+   ['干散货航运及港航物流服务','水上运输业'],
+   ['航空速运、地面综合服务和综合物流解决方案','航空运输业'],
+  ]) expect((await load(business,`交通运输、仓储和邮政业-${industry}`)).checks.cycle).toMatchObject({state:'applies'});
+  for(const [business,industry] of [
+   ['集装箱码头装卸和仓储服务','水上运输业'],
+   ['船舶运输和轮渡港口服务，客滚运输航线','水上运输业'],
+   ['航空维修和应急救援','航空运输业'],
+   ['航空货运代理服务','航空运输业'],
+   ['航空货物运输设备研发、生产和销售','航空运输业'],
+   ['集装箱运输代理服务','水上运输业'],
+   ['国际海运代理、干散货运输业务代理','水上运输业'],
+   ['铁路特种集装箱运输及物流业务','铁路运输业'],
+  ]) expect((await load(business,`交通运输、仓储和邮政业-${industry}`)).checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
   expect((await load('半导体器件研发、生产和销售','制造业-酒、饮料和精制茶制造业')).checks.cycle).toMatchObject({state:'unresolved',reason:'conflicting_cycle_evidence'});
   listing[0].content[0].xxhyzl='通用设备制造业';
   expect((await load('半导体器件研发、生产和销售','制造业-通用设备制造业')).checks.cycle).toMatchObject({state:'applies'});
@@ -550,7 +592,7 @@ it('uses a current verified fine profile to refine a broad class and retains cyc
   listing[0].content[0].xxhyzl='C 制造业';
   expect((await load('半导体器件研发、生产和销售','制造业-通用设备制造业')).checks.cycle).toMatchObject({state:'applies'});
   listing[0].content[0].xxhyzl='计算机、通信和其他电子设备制造业';
-  expect((await load('白酒生产和销售','制造业-酒、饮料和精制茶制造业','2026-09-11')).checks.cycle).toBeUndefined();
+  expect((await load('白酒生产和销售','制造业-酒、饮料和精制茶制造业','2026-09-11')).checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
   // The same source family can also contradict a fine noncyclical exchange label.
   listing[0].content[0].xxhyzl='食品制造业';
   expect((await load('半导体器件研发、生产和销售')).checks.cycle).toMatchObject({state:'unresolved',reason:'conflicting_cycle_evidence'});

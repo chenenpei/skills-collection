@@ -539,9 +539,9 @@ it('uses a current fine business profile to request the two-year tail only for a
   // not consume its slot in the bounded per-company request budget.
   expect(quoteIndex).toBeGreaterThan(-1);expect(quoteIndex).toBeLessThan(sevenYearIndex);
   expect(cyclic.input.companies[0].facts.filter(f=>f.field==='weightedRoe'&&f.state==='observed').map(f=>f.year)).toEqual(expect.arrayContaining([2019,2020]));
-  const unknown=await collect(await write('unknown','电子产品研发、生产和销售'));
-  expect(unknown.input.companies[0].checks.cycle).toBeUndefined();
-  expect(unknown.urls.some(url=>new URL(url).searchParams.get('filter')?.includes("2019-12-31"))).toBe(false);
+  const ordinary=await collect(await write('ordinary','电子产品研发、生产和销售'));
+  expect(ordinary.input.companies[0].checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
+  expect(ordinary.urls.some(url=>new URL(url).searchParams.get('filter')?.includes("2019-12-31"))).toBe(false);
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });
 
@@ -1017,6 +1017,7 @@ it('collects an independent leasing lead before specialist enrichment, saves its
   const {execFile}=await import('node:child_process'),{promisify}=await import('node:util');
   const result=await promisify(execFile)(process.execPath,['--import','tsx','src/cli.ts','candidates',run,'--financial-leads'],{cwd:new URL('../../',import.meta.url).pathname});
   expect(JSON.parse(result.stdout)).toMatchObject({count:1,candidates:[{id:`CN:${ticker}`,selection:{tier:3,displayed:false}}]});
+  expect(JSON.parse(result.stdout).candidates[0]).not.toHaveProperty('recentFinancials');
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 },20000);
 
@@ -1057,7 +1058,17 @@ it('supplements frozen research qualifiers only, preserves annual decisions on f
     expect((await loadEvidenceInput(cached.inputFile)).input.collection).toMatchObject({requests:0,events:expect.arrayContaining([expect.objectContaining({state:'cache_hit',reason:'recent_same_cutoff_facts'})])});
     const run=path.join(dir,'run');await runEvidenceSnapshot(cached.inputFile,run,{policyFile:new URL('../../src/policy/cn-screening.yaml',import.meta.url).pathname,strategy:'all'});
     expect(await replayEvidenceRun(run)).toEqual({matches:true,count:1});
+    const {execFile}=await import('node:child_process'),{promisify}=await import('node:util');
+    const output=await promisify(execFile)(process.execPath,['--import','tsx','src/cli.ts','candidates',run],{cwd:new URL('../../',import.meta.url).pathname});
+    const rows=JSON.parse(output.stdout).candidates;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ranking:after.researchRanking,recentFinancials:newHint,selection:{displayed:true}});
+   } else if(mode==='failure') {
+    const run=path.join(dir,'missing-run');await runEvidenceSnapshot(result.inputFile,run,{policyFile:new URL('../../src/policy/cn-screening.yaml',import.meta.url).pathname,strategy:'all',displayLimit:0});
+    const {execFile}=await import('node:child_process'),{promisify}=await import('node:util');
+    const output=await promisify(execFile)(process.execPath,['--import','tsx','src/cli.ts','candidates',run],{cwd:new URL('../../',import.meta.url).pathname});
+    expect(JSON.parse(output.stdout).candidates).toMatchObject([{recentFinancials:{state:'missing'},selection:{displayed:false,reason:'main_limit'}}]);
    }
   }
  }finally{await fs.rm(dir,{recursive:true,force:true});}
-});
+},20000);
