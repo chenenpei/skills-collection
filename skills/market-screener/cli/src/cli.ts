@@ -398,6 +398,8 @@ export async function runCli(argv: string[]): Promise<void> {
             companyName: result.companyName,
             ranking: result.researchRanking,
             selection: run.summary.candidateQueue?.find((r) => r.id === id),
+            // Surface archived changes without interpreting missing data as stability.
+            ...(result.recentFinancials ? { recentFinancials: result.recentFinancials } : {}),
             qualifications: Object.values(result.strategies ?? {})
               .filter((s) => s.state === "pass")
               .map((s) => s.id),

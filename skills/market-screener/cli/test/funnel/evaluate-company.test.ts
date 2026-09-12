@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it as vitestIt } from "vitest";
 import fs from "node:fs/promises";
 import { parseCnStatementFacts, parseCnRecentFinancialFacts } from "../../src/cn/sources/market-data.js";
 import { parseCnDisclosureFacts } from "../../src/cn/sources/annual-reports.js";
+import { resolveStatementMethod } from "../../src/cn/evidence.js";
 import { createEvaluationAccumulator, evaluateCompany,evaluateCompanies, recentFinancialChanges } from "../../src/cn/screening.js";
 import { loadCnPolicy, type CnPolicy } from "../../src/policy/loader.js";
 import { latestDisclosedFiscalYear, type CompanyEvaluation, type CompanyFacts, type FinancialFact } from "../../src/shared/financial-model.js";
@@ -267,6 +268,11 @@ c1It('uses a same-row consolidated liability only as a conservative bound for in
  };
  const c=c1Company();delete c.checks.financing;c.facts=c.facts.filter(f=>f.field!=='shortBondsPayable');bound(c,10);
  expect(condition(c,'N5')).toMatchObject({state:'pass',proof:'bound'});expect(condition(c,'N6')).toMatchObject({state:'pass',proof:'bound'});
+ const disclosedZero=structuredClone(c);disclosedZero.facts=disclosedZero.facts.filter(f=>f.field!=='bondsPayable');
+ absence(disclosedZero,'bondsPayableAbsentAtYearEnd',2025);
+ expect(condition(disclosedZero,'N5')).toMatchObject({state:'pass',proof:'bound',missing:expect.arrayContaining(['shortBondsPayable:2025'])});
+ expect(condition(disclosedZero,'N6')).toMatchObject({state:'pass',proof:'bound'});
+ expect(evaluateCompany(disclosedZero,policy).derivedFacts?.some(f=>f.field==='reportedDebt')).toBe(false);
  const corroborated=structuredClone(c);
  corroborated.facts.push(...c.facts.filter(f=>f.evidence.some(e=>e.sourceId==='balance')).map(f=>({...structuredClone(f),id:`copy:${f.id}`,evidence:f.evidence.map(e=>({...e,sourceId:'balance-copy'}))})));
  expect(condition(corroborated,'N5')).toMatchObject({state:'pass',proof:'bound'});
@@ -418,6 +424,28 @@ it('rejects excessive reported borrowings without requiring every remaining debt
   expect(condition(low,'N5').state).toBe('unknown');
   const scoped=structuredClone(c);scoped.checks.financing={state:'unresolved',evidence:['mismatched-scope'],reason:'known_scope_conflict'};
   expect(condition(scoped,'N5').state).toBe('unknown');
+});
+
+it('uses five verified ordinary years without waiving financial gaps or a later cycle signal',()=>{
+  const c=completeCompany();delete c.checks.cycle;
+  const base=c.facts.find(f=>f.year===2025)!;
+  c.facts.push(
+    {...base,id:'family',field:'statementFamily',unit:'text',value:'通用'},
+    {...base,id:'industry',field:'industryClassification',unit:'text',value:'电气机械和器材制造业'},
+  );
+  resolveStatementMethod(c);
+  expect(condition(c,'cycle')).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
+  expect(evaluateCompany(c,policy).research).toBe('pass');
+  const missing=structuredClone(c);missing.facts=missing.facts.filter(f=>f.field!=='operatingCashFlow');
+  expect(condition(missing,'N3').state).toBe('unknown');
+  const conflict=structuredClone(c);conflict.checks.cycle={state:'unresolved',evidence:['scope-conflict'],reason:'known_scope_conflict'};
+  resolveStatementMethod(conflict);
+  expect(condition(conflict,'cycle').state).toBe('unknown');
+  c.facts.push({...base,id:'profile',field:'business.profile',unit:'text',value:JSON.stringify({mainBusiness:'光伏电池片生产销售',industry:'制造业-电气机械和器材制造业'})});
+  resolveStatementMethod(c);
+  expect(c.checks.cycle?.state).toBe('applies');
+  expect(condition(c,'cycle').state).toBe('unknown');
+  expect(condition(c,'cycle').missing).toContain('parentProfit:2019');
 });
 
 it('qualifies both windows without inventing a cycle classification',()=>{

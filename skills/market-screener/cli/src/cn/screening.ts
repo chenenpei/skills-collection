@@ -1464,8 +1464,10 @@ function boundedReportedDebt(c: CompanyFacts, year: number): Quantity {
   // Each amount must have a peer in the bound's statement row. Agreeing
   // corroborating copies may come from another captured response; read() above
   // has already rejected differences in value, period, unit or state.
+  // A verified zero adds no debt, so a same-scope absence disclosure needs no row peer.
   const peerDebtFacts = [...fixed, supplemental].every(
     (q) =>
+      (isExact(q) && q.low === 0) ||
       !q.facts.length ||
       q.facts.some((id) => {
         const f = c.facts.find((candidate) => candidate.id === id);
@@ -2966,7 +2968,9 @@ function evaluateQualityCompany(
   const noncycleConfirmed =
     scopeCovers(c, "cycle", annualWindow(c), "not_applicable") ||
     (cycle?.state === "not_applicable" &&
-      cycle?.reason === "verified_fine_business_cycle_mapping" &&
+      ["verified_fine_business_cycle_mapping", "standard_nonfinancial_window"].includes(
+        cycle?.reason ?? "",
+      ) &&
       cycle.evidence.length > 0 &&
       !!cycle.coverage &&
       Date.parse(cycle.coverage.end) >= Date.parse(`${year}-12-31`));
@@ -2974,7 +2978,13 @@ function evaluateQualityCompany(
   let cycleCondition: ConditionResult;
   if (noncycleConfirmed)
     cycleCondition = {
-      ...pending("cycle", "verified_noncyclical", "not_applicable"),
+      ...pending(
+        "cycle",
+        cycle.reason === "standard_nonfinancial_window"
+          ? "standard_nonfinancial_window"
+          : "verified_noncyclical",
+        "not_applicable",
+      ),
       factIds: cycle.evidence,
     };
   else if (!financialMethod) {

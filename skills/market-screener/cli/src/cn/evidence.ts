@@ -811,7 +811,7 @@ export async function openEvidenceInput(file: string) {
             "business.trustAssetSeparation",
           ].includes(contract.field) &&
           contract.unit === "text";
-        if (!f.evidence.length || (!multiPageContext && f.evidence.length !== 1))
+        if (!f.evidence.length || (contract && !multiPageContext && f.evidence.length !== 1))
           throw new Error(`Observed fact needs one primary observation: ${f.id}`);
         for (const e of f.evidence) {
           if (!documents.has(e.sourceId)) throw new Error(`Missing source: ${e.sourceId}`);
@@ -822,9 +822,15 @@ export async function openEvidenceInput(file: string) {
             throw new Error(`Source locator/value mismatch: ${f.id}`);
         }
         const raw = jsonPointer(documents.get(f.evidence[0].sourceId), f.evidence[0].locator);
+        // Without a current parser contract, a table row cannot validate a scalar.
+        // Preserve it as unverified below; directly comparable corrupt values still fail.
+        const sourceValue =
+          !contract && f.evidence.length === 1 && typeof f.value === "number"
+            ? normalized(raw, f.unit, f.unitScale)
+            : undefined;
         if (
           f.value === undefined ||
-          (!contract && normalized(raw, f.unit, f.unitScale) !== f.value)
+          (!contract && sourceValue !== undefined && sourceValue !== f.value)
         )
           throw new Error(`Normalized value mismatch: ${f.id}`);
         if (contract) {
@@ -1286,8 +1292,8 @@ const manufacturingIndustryCategories = new Set([
 
 // These are business classifications, not issuer exceptions.  A broad sector is
 // deliberately absent unless its label itself identifies the policy's business
-// exposure.  In particular, agriculture, electronics, and transport need a
-// finer verified label before they select either cycle branch.
+// exposure. Unmapped labels do not prove a cycle; a verified ordinary issuer
+// may still use the base window without proving that every business is stable.
 const cyclicalIndustryCategories = new Set([
   "煤炭开采和洗选业",
   "石油和天然气开采业",
@@ -1365,7 +1371,7 @@ function cycleProfileApplicability(value: unknown): {
         typeof profile.mainBusiness === "string" ? profile.mainBusiness.replace(/\s/g, "") : "";
     // The provider's industry value is hierarchical. Only a nonempty, explicitly
     // delimited leaf is eligible for the same fixed fine-label mapping used for
-    // exchange classifications; unknown leaves remain unresolved.
+    // exchange classifications; an unknown leaf adds no cycle evidence.
     const levels =
       typeof profile.industry === "string"
         ? profile.industry.split("-").map((level: string) => level.trim())
@@ -1405,12 +1411,20 @@ function cycleProfileApplicability(value: unknown): {
         text,
       );
     const exposedOperation = /研发|生产|制造|销售/.test(text);
+    // Freight carriers earn transport rates; ports, forwarding, ferries and
+    // equipment suppliers do not become carriers merely by serving this sector.
+    const freightRateExposure =
+      (industryLabel === "水上运输业" &&
+        /(?:集装箱运输|干散货(?:运输|航运)|(?:原油|成品油|油品|油气|油轮|液化天然气)[^。；]{0,30}运输|航次租船)(?!代理|业务代理|设备|装备)/.test(text)) ||
+      (industryLabel === "航空运输业" &&
+        /航空(?:速运|货运|货物运输)(?!代理|业务代理|设备|装备)/.test(text));
     const product =
       exposedProduct &&
       exposedOperation &&
       !/(?:半导体|集成电路)(?:测试|检测)?设备|(?:生产|检测)装备|专用仪器/.test(text)
         ? "applies"
-        : /生猪养殖|肉鸡养殖|水产养殖|国际海运|干散货运输|房地产开发/.test(text)
+        : freightRateExposure ||
+            /生猪养殖|肉鸡养殖|水产养殖|(?:国际海运|干散货运输)(?!代理|业务代理|设备|装备)|房地产开发/.test(text)
           ? "applies"
           : ordinaryProduct
             ? "not_applicable"
@@ -1421,8 +1435,8 @@ function cycleProfileApplicability(value: unknown): {
   }
   return {};
 }
-/** Derive cycle scope from verified fine business evidence, never a caller label. */
-function resolveCycleApplicability(c: CompanyFacts): void {
+/** Select the extra history requirement; the base window is not proof of a stable business. */
+function resolveCycleApplicability(c: CompanyFacts, ordinaryStatements: boolean): void {
   if (c.market !== "CN" || c.method.state !== "applies" || c.method.value !== "nonfinancial")
     return;
   const classifications = c.facts.filter(
@@ -1536,7 +1550,28 @@ function resolveCycleApplicability(c: CompanyFacts): void {
     return;
   }
   const value = values[0] ?? reviewedValues[0];
-  if (!value) return;
+  if (!value) {
+    // Missing taxonomy coverage alone must not demand two more years of data.
+    // Keep explicit scope decisions/conflicts and require a verified ordinary
+    // statement family as well as the already established nonfinancial method.
+    if (
+      !ordinaryStatements ||
+      !c.method.evidence.length ||
+      reviewed.length ||
+      (c.checks.cycle &&
+        !["standard_nonfinancial_window", "scope_contract_unverified"].includes(
+          c.checks.cycle.reason ?? "",
+        ))
+    )
+      return;
+    c.checks.cycle = {
+      state: "not_applicable",
+      evidence: [...c.method.evidence],
+      coverage: { start: `${c.latestFiscalYear}-01-01`, end: `${c.latestFiscalYear}-12-31` },
+      reason: "standard_nonfinancial_window",
+    };
+    return;
+  }
   const coverage = values.length
     ? { start: `${c.latestFiscalYear}-01-01`, end: `${c.latestFiscalYear}-12-31` }
     : {
@@ -1843,7 +1878,7 @@ export function resolveStatementMethod(c: CompanyFacts): void {
                   : "unknown_statement_family",
     };
   }
-  resolveCycleApplicability(c);
+  resolveCycleApplicability(c, family === "通用");
 }
 
 const reviewSchema = z
