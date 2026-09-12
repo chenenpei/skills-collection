@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { SecurityRecord } from "../../src/domain/types.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
 
 const CN_FIXTURE = path.resolve(import.meta.dirname, "../fixtures/universe-cn.json");
 

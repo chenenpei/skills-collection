@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
-import { loadSpecBundle } from "../../src/spec/loader.js";
-import { passesQuotePrefilter } from "../../src/data/quote-prefilter.js";
-import type { SecurityRecord } from "../../src/domain/types.js";
+import { loadSpecBundle } from "../../src/policy/loader.js";
+import { passesUniverseProfile } from "../../src/us/template-rules.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
 
-const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../src/policy");
 
-describe("passesQuotePrefilter", () => {
+describe("passesUniverseProfile", () => {
   let exclusionRules: Awaited<ReturnType<typeof loadSpecBundle>>["exclusionRules"];
 
   beforeAll(async () => {
@@ -30,14 +30,14 @@ describe("passesQuotePrefilter", () => {
   });
 
   it("passes healthy quote record", () => {
-    expect(passesQuotePrefilter(exclusionRules, base())).toBe(true);
+    expect(passesUniverseProfile(exclusionRules, base())).toBe(true);
   });
 
   it("rejects ST status before enrichment", () => {
-    expect(passesQuotePrefilter(exclusionRules, { ...base(), status: "ST" })).toBe(false);
+    expect(passesUniverseProfile(exclusionRules, { ...base(), status: "ST" })).toBe(false);
   });
 
   it("rejects below market cap floor", () => {
-    expect(passesQuotePrefilter(exclusionRules, { ...base(), marketCap: 1_000_000_000 })).toBe(false);
+    expect(passesUniverseProfile(exclusionRules, { ...base(), marketCap: 1_000_000_000 })).toBe(false);
   });
 });

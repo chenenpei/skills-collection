@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { filterBreakdownCommand } from "../../src/commands/filter-breakdown.js";
+import { filterBreakdownCommand } from "../../src/us/reports.js";
 
 describe("filterBreakdownCommand", () => {
   it("writes report next to funnel artifacts using run-style --output", async () => {

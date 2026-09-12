@@ -1,0 +1,1299 @@
+# 顶层 version 标识政策族；子规则随同一文件维护，不单独标版本。
+# 模板筛选政策：用于美股当前运行，并保留历史 CN 模板解释所需规则。
+# 新 A 股筛选只使用 cn-screening.yaml，不使用这里的席位、投票或行业模板。
+# 百分比/小数的单位沿用各指标名及 fundamentals.ts 的定义，避免混用两种尺度。
+version: template-screening
+status: active
+tightening_profile: required-with-supporting
+# 市场范围与硬性排除
+exclusionRules:
+  universe:
+    security_type: security_single_company
+    exclude_pooled_vehicles: true
+    profile_b:
+      slug: market_cap_profile_b
+      CN:
+        market_cap_min_cny: 2000000000
+        listing_age_min_years: 3
+      US:
+        market_cap_min_usd: 300000000
+        listing_age_min_years: 2
+    status_exclusions:
+      slug: universe_exclude_status
+      CN:
+        - ST
+        - delisting
+        - suspended
+      US:
+        - halted
+        - delisted
+  gates:
+    - id: status_excluded
+      phase: universe
+      action: exclude
+      reason_slug: kill_status_excluded
+    - id: market_cap_below_floor
+      phase: universe
+      action: exclude
+      reason_slug: kill_market_cap_below_floor
+    - id: listing_age_below_floor
+      phase: universe
+      action: exclude
+      reason_slug: kill_listing_age_below_floor
+    - id: revenue_decline_3y_consecutive
+      phase: shared
+      action: exclude
+      condition: revenue_yoy_negative_each_of_last_3_years
+      reason_slug: kill_revenue_decline_3y_consecutive
+      note: Sector templates apply additional filters
+    - id: ocf_negative_widening_loss
+      phase: shared
+      action: exclude
+      condition: ocf_negative_2_consecutive_years_and_net_loss_widening
+      reason_slug: kill_ocf_negative_widening_loss
+    - id: non_standard_audit
+      phase: shared
+      action: exclude
+      condition:
+        CN: audit_opinion_non_standard
+        US: going_concern_emphasis
+      reason_slug: kill_non_standard_audit
+    - id: key_fields_missing
+      phase: shared
+      action: exclude
+      condition: missing_count_gte_3
+      fields:
+        - revenue
+        - net_income
+        - market_cap
+        - operating_cash_flow
+      reason_slug: kill_key_fields_missing
+      note: >
+        CLI flags flag_key_fields_unavailable when all tracked financial fields
+        are absent (quote-only live tier) instead of excluding — prefer wide in
+        until financial enrichment is available.
+    - id: data_stale_flag_only
+      phase: shared
+      action: flag
+      condition: latest_financial_data_older_than_months_18
+      set: data_confidence_low
+      reason_slug: flag_data_stale
+      note: Do not exclude; Deep audit re-checks
+  flags_not_exclusions:
+    - id: revenue_decline_ocf_positive
+      condition: revenue_yoy_negative_1y_and_ocf_positive
+      funnel_flag: revenue_decline_ocf_positive
+    - id: profit_loss_ocf_divergence
+      condition: net_loss_and_ocf_positive
+      funnel_flag: profit_loss_ocf_divergence
+  live_quote_prefilter:
+    applies_when: adapter_live
+    phase: before_financial_enrichment
+    shared_with: universe gates (status_excluded, market_cap_below_floor,
+      listing_age_below_floor)
+    implementation: cli/src/us/screening.ts
+    output_artifact: prefilter-excluded.yaml
+    note: >
+      Skipped securities are not enriched (saves HTTP). They are excluded from
+      the enriched funnel universe but counted in run_metadata.universe_count.
+      Funnel kill gates apply only to enriched survivors; prefilter skips appear
+      only in prefilter-excluded.yaml, not in excluded.yaml.
+  enrichment_failures:
+    optional_field: enrichment_failure
+    values:
+      cik_unresolved: US ticker not in SEC company_tickers map
+      fetch_failed: per-ticker HTTP or parse error (record kept quote-only; may
+        flag_key_fields_unavailable)
+# 指标来源、缺失处理与可用性说明
+metricPolicy:
+  threshold_syntax:
+    simple:
+      example:
+        min: 0.12
+      meaning: metric value must be >= min
+    max_only:
+      example:
+        max: 0.25
+      meaning: metric value must be <= max
+    market_overrides:
+      example:
+        default: 0.009
+        market_overrides:
+          CN: 0.0075
+          US: 0.009
+      meaning: Use market-specific floor/ceiling when market is CN or US
+    market_metric:
+      example:
+        CN:
+          min: 1.5
+        US:
+          field: rbc_ratio
+          min: 200
+          missing: data_confidence_low
+      meaning: Different metric fields per market when definitions differ
+    missing:
+      values:
+        - skip
+        - data_confidence_low
+      skip: metric not counted toward supporting pass count
+      data_confidence_low: record low confidence; do not prekill at funnel stage
+    allowed_keys:
+      note: CLI threshold evaluator only understands these rule keys
+      keys:
+        - min
+        - max
+        - default
+        - market_overrides
+        - missing
+        - field
+      unsupported_example:
+        max_decline_pp: 5
+  derived_metrics:
+    gross_margin_3y_max_decline_pp:
+      meaning: Largest peak-to-trough drop in gross margin over the last 3 fiscal years
+      unit: percentage_points
+      example: 2.5 means a 2.5pp decline from the 3y peak margin
+      compute_from: annual gross_margin series in enrichment layer (cli/src/us/sources/fundamentals.ts)
+      threshold:
+        max: 5
+      replaces: gross_margin_3y_stable with max_decline_pp rule (removed — engine
+        ignored it)
+    operating_margin:
+      meaning: Latest fiscal-year operating margin (operating profit / revenue when
+        available)
+      unit: ratio
+      compute_from: cli/src/us/sources/fundamentals.ts — operatingProfit/revenue only; omit when missing
+      used_by: operating_margin_vs_industry benchmark overlay
+    gross_margin_vs_industry:
+      meaning: Security gross margin minus industry-peer median gross margin (same
+        market + industryProxy group)
+      unit: ratio
+      compute_from: cli/src/us/sources/fundamentals.ts after enrichment
+      threshold_example:
+        min: 0.05
+    operating_margin_vs_industry:
+      meaning: Security operating margin minus industry-peer median operating margin
+      unit: ratio
+      compute_from: cli/src/us/sources/fundamentals.ts — median of operating_margin within
+        industryProxy group
+      threshold_example:
+        min: 0
+      note: Requires operating_margin from derive; not a ROE proxy
+    capex_to_revenue:
+      meaning: Average of abs(capex) / revenue over last 2–3 fiscal years with capex
+        data
+      min_years: 2
+      confidence: medium when 2 years, high when 3 years
+      unit: ratio
+      compute_from: cli/src/us/sources/fundamentals.ts — CONSTRUCT_LONG_ASSET (CN) or SEC capex
+        tags (US)
+      threshold_example:
+        max: 0.15
+    inventory_turnover_vs_industry:
+      meaning: Security inventory turnover minus industry-peer median turnover
+      unit: ratio
+      compute_from: cli/src/us/sources/fundamentals.ts — COGS / avg inventory vs industry median
+      threshold_example:
+        min: 0
+  enrich_tiers:
+    low:
+      note: All metrics in spec that enrichment can derive — always attempt
+      examples:
+        - roe_ttm
+        - gross_margin
+        - capex_to_revenue
+        - dividend_yield
+        - mid_cycle_pe
+        - rule_of_40
+    medium:
+      note: Derive when annual rows or quote bulk provide inputs; peer/5y overlays
+        when cache accumulates
+      examples:
+        - pe_ttm_vs_peer_median
+        - mid_cycle_pe_vs_10y_median
+        - mid_cycle_ev_ebitda_vs_peer
+        - ev_ebitda_vs_5y_median
+        - ps_vs_5y_median
+        - revenue_yield_vs_peer
+        - roe_vs_industry_median
+        - fcf_yield_vs_risk_free
+        - inventory_growth_minus_revenue
+    high:
+      note: Not in CLI MVP unless explicitly implemented by a sector enrich path;
+        otherwise manual in Deep only
+      examples:
+        - NDR
+        - SBC detail CN
+        - capacity utilization
+        - customer concentration
+        - forward_peg
+      implemented_exceptions:
+        - cn_bank_regulatory_ratios_via_disclosure_scrape
+  template_live_viability:
+    consumer: full
+    healthcare: full
+    manufacturing: full
+    cyclicals: full
+    tech_saas: proxy
+    financials:
+      banks: proxy
+      banks_proxy: proxy
+      insurance: quant_too_hard
+      other_financials: full
+  deep_only_metrics:
+    note: Not in live YAML supporting/required; Deep audit manual only
+    metrics:
+      - rotce
+      - rotce_3y_avg
+      - capacity_utilization
+      - top_customer_concentration
+      - same_store_sales_yoy
+      - ndr
+      - forward_peg
+      - embedded_value_growth_3y
+      - loss_ratio_3y_volatility
+      - investment_yield
+  metric_coverage:
+    ref: cli/src/us/reports.ts
+    meaning: Per-template required-metric presence after enrich; rate = present / routed
+    manifest_review:
+      meaning: Advisory hints when observed coverage diverges from
+        template_live_viability
+      note: Does not auto-update manifest; operator follows suggestion then ADR/spec
+        edit
+      promote_min_rate: 0.7
+      demote_warn_rate: 0.5
+      min_routed: 5
+  metric_source_hygiene:
+    ref: README.md#美股与历史功能
+    policy: missing_over_proxy
+    cn_vendor_roic:
+      report: RPT_F10_FINANCE_MAINFINADATA
+      column: ROIC
+      unit: percent_to_decimal
+    cn_balance_derive:
+      report: RPT_DMSK_FN_BALANCE
+      columns:
+        - TOTAL_LIABILITIES
+        - TOTAL_EQUITY
+        - MONETARYFUNDS
+    forbidden_silent_proxies:
+      - roic_from_roe_scale
+      - debt_from_revenue_times_alr
+      - cash_from_ocf_scale
+      - ebitda_from_gross_margin_scale
+      - operating_margin_from_gross_margin_scale
+      - us_roe_from_revenue_times_constant
+      - us_alr_hardcoded
+      - us_gross_profit_revenue_scale
+      - us_ocf_net_income_fallback
+    us_gaap_tags:
+      revenue:
+        - RevenueFromContractWithCustomerExcludingAssessedTax
+        - Revenues
+        - SalesRevenueNet
+      net_income:
+        - NetIncomeLoss
+      operating_cash_flow:
+        - NetCashProvidedByUsedInOperatingActivities
+      gross_profit:
+        - GrossProfit
+      cost_of_revenue:
+        - CostOfRevenue
+        - CostOfGoodsAndServicesSold
+      operating_profit:
+        - OperatingIncomeLoss
+      assets:
+        - Assets
+      liabilities:
+        - Liabilities
+      equity:
+        - StockholdersEquity
+      cash:
+        - CashAndCashEquivalentsAtCarryingValue
+      long_term_debt:
+        - LongTermDebtNoncurrent
+        - LongTermDebt
+      short_term_debt:
+        - DebtCurrent
+        - ShortTermBorrowings
+      income_tax:
+        - IncomeTaxExpenseBenefit
+      pretax_income:
+        - IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest
+    us_roic_derive:
+      nopat: operatingProfit * (1 - effectiveTaxRate)
+      effective_tax_rate: clamp(incomeTax / pretaxIncome, 0, 0.35) when both present else 0.21
+      invested_capital: totalEquity + longTermDebt + shortTermDebt - monetaryFunds
+      omit_when: any required component missing or <= 0
+  pass_logic:
+    all_required_and_supporting_min_N_of_M:
+      required: all must pass
+      supporting: at least N of M listed supporting rules must pass
+  metric_snapshot:
+    include_on_pass: all metrics evaluated for the passed track
+    per_field:
+      value: null
+      period: null
+      currency: null
+      source: null
+      basis: null
+      data_confidence: null
+  funnel_flags:
+    appended_to: candidate_record.funnel_flags
+    consumed_by: orchestrator and stock-analysis-audit Deep hints
+  routing_method:
+    values:
+      - gics
+      - cn_industry_map
+      - industry_proxy
+      - fallback
+    cn_primary: cn_industry_map
+    fallback_confidence: low
+  graham_composite:
+    formula: pe_3y_avg * pb
+    max_default: 22.5
+  rule_of_40:
+    formula: revenue_growth_pct + fcf_margin_pct
+    fallback: operating_margin_pct with data_confidence_low
+  mid_cycle:
+    window_years_default: 7
+    ref: template-screening.yaml#templates.cyclicals.normalization
+  risk_free_rate:
+    default: 0.04
+    used_by: fcf_yield_vs_risk_free
+    note: Static proxy for mispricing spread vs risk-free; not a live treasury feed
+# 模板候选排序及展示席位
+selectionPolicy:
+  funnel_soft_cap:
+    max_candidates_per_market: 20
+    overflow: deferred.yaml
+    ranking: template track seat allocation
+  deferred_watchlist_cap:
+    max_deferred_per_market: 20
+  template_seat_allocation:
+    pools:
+      healthcare_quality:
+        floor: 2
+        cap: 5
+      consumer_quality:
+        floor: 2
+        cap: 4
+      manufacturing_quality:
+        floor: 2
+        cap: 4
+      cyclicals_quality:
+        floor: 0
+        cap: 3
+      financials_quality:
+        floor: 0
+        cap: 3
+      tech_saas_quality:
+        floor: 0
+        cap: 3
+      healthcare_mispricing:
+        floor: 0
+        cap: 1
+      consumer_mispricing:
+        floor: 0
+        cap: 1
+      cyclicals_mispricing:
+        floor: 0
+        cap: 1
+      manufacturing_mispricing:
+        floor: 0
+        cap: 1
+      financials_mispricing:
+        floor: 0
+        cap: 1
+      tech_saas_mispricing:
+        floor: 0
+        cap: 1
+    flex:
+      confluence_weight_multiplier: 2
+    backfill:
+      tier1: same_template_quality
+      tier2: global_quality
+  ranking:
+    method: template_seat_allocation
+    tie_break: track confluence, then pool_score, then data_confidence, then
+      north_star_metric, then ticker
+    note: merged candidates.yaml rank is queue priority, not cross-template
+      conviction
+  pool_tie_break_north_star:
+    consumer_quality: roe_5y_avg
+    consumer_mispricing: fcf_yield
+    healthcare_quality: gross_margin
+    healthcare_mispricing: fcf_yield_vs_risk_free
+    manufacturing_quality: roic_5y_avg
+    manufacturing_mispricing: roic_ttm
+    cyclicals_mispricing: mid_cycle_fcf_yield
+    financials_quality: roe_ttm
+    financials_mispricing: pb:asc
+    tech_saas_quality: rule_of_40
+    tech_saas_mispricing: revenue_yield_vs_peer
+    default_quality: roic_5y_avg
+    default_mispricing: fcf_yield
+# 证券行业到财务模板的对应关系；cn 分支用于历史兼容
+routing:
+  us:
+    classifier:
+      primary: gics_level_2_or_3
+      proxy: yahoo_industry
+      proxy_map_ref: industry_proxy_map
+      fallback_behavior: routing_too_hard
+      fallback_confidence: low
+    routing_confidence:
+      high: single_template
+      ambiguous_union: parallel_templates_pass_if_any
+    mappings:
+      - gics_prefix: "4010"
+        template: financials
+        sub_template: banks
+        confidence: high
+      - gics_prefix: "4020"
+        template: financials
+        sub_template: other_financials
+        confidence: high
+      - gics_prefix: "4030"
+        template: financials
+        sub_template: insurance
+        confidence: high
+      - gics_prefix: "1010"
+        template: cyclicals
+        confidence: high
+      - gics_prefix: "1510"
+        template: cyclicals
+        confidence: high
+      - gics_prefix: "2010"
+        template: manufacturing
+        confidence: high
+      - gics_prefix: "2020"
+        template: manufacturing
+        confidence: ambiguous_union
+        also_run: cyclicals
+      - gics_prefix: "2030"
+        template: manufacturing
+        confidence: high
+      - gics_prefix: "2510"
+        template: consumer
+        confidence: high
+      - gics_prefix: "2550"
+        template: consumer
+        confidence: ambiguous_union
+        also_run: tech_saas
+        note: Interactive media / platform retail
+      - gics_prefix: "3010"
+        template: consumer
+        confidence: high
+      - gics_prefix: "3020"
+        template: consumer
+        confidence: high
+      - gics_prefix: "3030"
+        template: consumer
+        confidence: high
+      - gics_prefix: "3510"
+        template: manufacturing
+        confidence: high
+        note: Medical devices / equipment
+      - gics_prefix: "3520"
+        template: healthcare
+        confidence: high
+        note: Biotech / pharma; aligns with healthcare funnel and audit sector block
+      - gics_prefix: "4510"
+        template: tech_saas
+        confidence: high
+      - gics_prefix: "4520"
+        template: manufacturing
+        confidence: ambiguous_union
+        also_run: tech_saas
+        note: Technology hardware; AI apps may still flag in tech_saas
+      - gics_prefix: "4530"
+        template: tech_saas
+        confidence: high
+      - gics_prefix: "4540"
+        template: manufacturing
+        confidence: ambiguous_union
+        also_run: cyclicals
+        note: Semiconductors
+      - gics_prefix: "5010"
+        template: tech_saas
+        confidence: ambiguous_union
+        also_run: consumer
+      - gics_prefix: "5020"
+        template: tech_saas
+        confidence: high
+      - gics_prefix: "5510"
+        template: cyclicals
+        confidence: high
+      - gics_prefix: "6010"
+        template: cyclicals
+        confidence: high
+        note: Funnel only; Deep may downgrade if structure unclear
+    industry_proxy_map:
+      - keywords:
+          - bank
+          - 银行
+          - commercial bank
+        template: financials
+        sub_template: banks
+      - keywords:
+          - insurance
+          - 保险
+          - life insurance
+          - property insurance
+        template: financials
+        sub_template: insurance
+      - keywords:
+          - broker
+          - 券商
+          - 证券
+          - securities
+          - asset management
+        template: financials
+        sub_template: other_financials
+      - keywords:
+          - software
+          - saas
+          - 软件
+          - cloud
+        template: tech_saas
+      - keywords:
+          - semiconductor
+          - 半导体
+          - chip
+        template: manufacturing
+        also_run:
+          - cyclicals
+      - keywords:
+          - oil
+          - gas
+          - 石油
+          - 煤炭
+          - mining
+          - 钢铁
+          - chemical
+        template: cyclicals
+      - keywords:
+          - retail
+          - beverage
+          - food
+          - apparel
+        template: consumer
+      - keywords:
+          - machinery
+          - industrial
+          - 制造
+          - hardware
+        template: manufacturing
+    ambiguous_union_rules:
+      dedupe: by_ticker_highest_rank
+      audit_hint_on_union: Routed via ambiguous_union; verify sector classification in Deep audit
+  cn:
+    taxonomy: eastmoney_shenwan_hierarchy
+    legacy_l1_aliases:
+      信息技术: 计算机
+      电气设备: 电力设备
+      交运设备: 汽车
+      电子设备: 电子
+      纺织服装: 纺织服饰
+      文化传媒: 传媒
+      建材: 建筑材料
+      建筑: 建筑装饰
+      家电: 家用电器
+      国防与装备: 国防军工
+    l1_defaults:
+      银行:
+        template: financials
+        sub_template: banks
+      非银金融:
+        template: financials
+        sub_template: other_financials
+      金融:
+        template: financials
+        sub_template: other_financials
+      石油石化:
+        template: cyclicals
+      煤炭:
+        template: cyclicals
+      钢铁:
+        template: cyclicals
+      有色金属:
+        template: cyclicals
+      基础化工:
+        template: cyclicals
+      化石能源:
+        template: cyclicals
+      建筑材料:
+        template: cyclicals
+      建筑装饰:
+        template: cyclicals
+      房地产:
+        template: cyclicals
+      公用事业:
+        template: cyclicals
+      交通运输:
+        template: cyclicals
+      环保:
+        template: cyclicals
+      食品饮料:
+        template: consumer
+      商贸零售:
+        template: consumer
+      纺织服饰:
+        template: consumer
+      家用电器:
+        template: consumer
+      社会服务:
+        template: consumer
+      美容护理:
+        template: consumer
+      轻工制造:
+        template: consumer
+      农林牧渔:
+        template: consumer
+      计算机:
+        template: tech_saas
+      通信:
+        template: tech_saas
+      传媒:
+        template: tech_saas
+      互联网:
+        template: tech_saas
+      信息技术:
+        template: tech_saas
+      医药生物:
+        template: healthcare
+        confidence: high
+      电子:
+        template: manufacturing
+        confidence: high
+      电力设备:
+        template: manufacturing
+      机械设备:
+        template: manufacturing
+      汽车:
+        template: manufacturing
+      国防军工:
+        template: manufacturing
+      综合:
+        template: manufacturing
+    l2_overrides:
+      - match:
+          l1: 电子
+          l2: 半导体
+        template: manufacturing
+        confidence: ambiguous_union
+        also_run:
+          - cyclicals
+      - match:
+          l1: 电子
+          l2: 消费电子
+          l3: 品牌消费电子
+        template: consumer
+        confidence: high
+      - match:
+          l1: 电子
+          l2: 消费电子
+          l3: 消费电子零部件及组装
+        template: manufacturing
+        confidence: high
+      - match:
+          l1: 电子
+          l2: 消费电子
+        template: manufacturing
+        confidence: high
+      - match:
+          l1: 医药生物
+          l2: 中药Ⅱ
+        template: consumer
+        confidence: high
+      - match:
+          l1: 医药生物
+          l2: 医疗器械
+        template: manufacturing
+        confidence: high
+      - match:
+          l1: 医药生物
+          l2: 医药商业
+        template: consumer
+        confidence: high
+      - match:
+          l1: 非银金融
+          l2: 证券Ⅱ
+        template: financials
+        sub_template: other_financials
+        confidence: high
+    proxy_keyword_excludes:
+      - keyword: 消费
+        exclude_if_contains:
+          - 消费电子
+      - keyword: 制造
+        exclude_if_contains:
+          - 智能制造
+    proxy_keyword_additions:
+      - keywords:
+          - 银行
+        template: financials
+        sub_template: banks
+      - keywords:
+          - 证券
+          - 券商
+        template: financials
+        sub_template: other_financials
+      - keywords:
+          - 软件开发
+          - 软件
+          - saas
+        template: tech_saas
+      - keywords:
+          - 白酒
+          - 啤酒
+          - 乳品
+        template: consumer
+# 各行业模板的必要条件和辅助条件
+templates:
+  financials:
+    template: financials
+    tracks:
+      - quality
+      - mispricing
+    sub_templates:
+      banks:
+        gics_codes:
+          - "401010"
+          - "401020"
+        quality_track:
+          pass_if: all_required_and_supporting_min_4_of_6
+          required:
+            roe_ttm:
+              min: 0.125
+              market_overrides:
+                CN: 0.11
+                US: 0.125
+            roa:
+              default: 0.009
+              market_overrides:
+                CN: 0.0075
+                US: 0.009
+            npl_ratio:
+              max: 0.025
+            provision_coverage:
+              min: 1.5
+            capital_adequacy:
+              min: 0.115
+          supporting:
+            - metric: pb_tangible
+              max: 2.5
+              missing: skip
+            - metric: rotce
+              min: 0.13
+              missing: skip
+            - metric: rotce_3y_avg
+              min: 0.12
+              missing: skip
+            - metric: npl_ratio_yoy_change
+              max: 0.005
+              missing: skip
+            - metric: nim
+              min: 0.015
+              missing: skip
+            - metric: dividend_yield
+              min: 0.03
+              market_overrides:
+                CN: 0.03
+                US: 0.02
+            - metric: roe_vs_industry_median
+              min: 0
+              missing: skip
+        mispricing_track:
+          pass_if: all_required_and_supporting_min_3_of_5
+          required:
+            roe_ttm:
+              min: 0.108
+              market_overrides:
+                CN: 0.1
+                US: 0.108
+            roa:
+              default: 0.007
+              market_overrides:
+                CN: 0.006
+                US: 0.007
+            npl_ratio:
+              max: 0.035
+            npl_ratio_yoy_change:
+              max: 0.01
+              missing: skip
+            capital_adequacy:
+              min: 0.105
+          supporting:
+            - metric: pb_tangible_vs_5y_median
+              max: 0.85
+              missing: skip
+            - metric: pb_tangible
+              max: 0.8
+              missing: skip
+            - metric: rotce
+              min: 0.12
+              missing: skip
+            - metric: dividend_yield
+              min: 0.05
+            - metric: price_vs_52w_high
+              max: 0.7
+      insurance:
+        gics_codes:
+          - "403010"
+          - "403020"
+        quality_track:
+          pass_if: all_required_and_supporting_min_5_of_6
+          required:
+            roe_ttm:
+              min: 0.1
+            combined_ratio:
+              max: 1
+            solvency_ratio:
+              CN:
+                min: 1.5
+              US:
+                field: rbc_ratio
+                min: 200
+                missing: data_confidence_low
+          supporting:
+            - metric: pb
+              max: 1.5
+            - metric: roe_3y_avg
+              min: 0.08
+            - metric: embedded_value_growth_3y
+              min: 0.05
+              missing: skip
+            - metric: dividend_yield
+              min: 0.03
+            - metric: loss_ratio_3y_volatility
+              max: 0.05
+              missing: skip
+            - metric: investment_yield
+              min: 0.04
+              missing: skip
+        mispricing_track:
+          pass_if: all_required_and_supporting_min_4_of_5
+          required:
+            roe_ttm:
+              min: 0.08
+            combined_ratio:
+              max: 1.05
+            solvency_ratio:
+              CN:
+                min: 1.2
+              US:
+                field: rbc_ratio
+                min: 150
+                missing: data_confidence_low
+          supporting:
+            - metric: pb_vs_5y_median
+              max: 0.85
+            - metric: pb
+              max: 0.7
+            - metric: graham_composite
+              max: 22.5
+            - metric: roe_ttm
+              min: 0.1
+            - metric: dividend_yield
+              min: 0.04
+            - metric: price_vs_52w_high
+              max: 0.75
+      banks_proxy:
+        funnel_flags:
+          - bank_routed_via_other_financials_proxy
+        audit_hints:
+          - verify_credit_quality_in_deep_not_funnel
+          - bank_proxy_template_active
+        quality_track:
+          pass_if: all_required_and_supporting_min_4_of_5
+          required:
+            roe_ttm:
+              min: 0.12
+              market_overrides:
+                CN: 0.1
+            pb:
+              max: 2
+          supporting:
+            - metric: roe_3y_avg
+              min: 0.1
+            - metric: net_debt_to_equity
+              max: 1
+              missing: skip
+            - metric: revenue_3y_cagr
+              min: 0.05
+              missing: skip
+            - metric: dividend_yield
+              min: 0.02
+            - metric: roe_vs_industry_median
+              min: 0
+        mispricing_track:
+          pass_if: all_required_and_supporting_min_3_of_4
+          required:
+            roe_ttm:
+              min: 0.08
+            pb:
+              max: 1.5
+          supporting:
+            - metric: pb_vs_5y_median
+              max: 0.8
+              missing: skip
+            - metric: graham_composite
+              max: 22.5
+              missing: skip
+            - metric: price_vs_52w_high
+              max: 0.7
+              missing: skip
+            - metric: revenue_yoy
+              min: 0
+              missing: skip
+            - metric: roe_ttm
+              min: 0.12
+      other_financials:
+        gics_codes:
+          - "402030"
+          - "404020"
+        quality_track:
+          pass_if: all_required_and_supporting_min_4_of_5
+          required:
+            roe_ttm:
+              min: 0.12
+            pb:
+              max: 2
+          supporting:
+            - metric: roe_3y_avg
+              min: 0.1
+            - metric: net_debt_to_equity
+              max: 1
+            - metric: revenue_3y_cagr
+              min: 0.05
+            - metric: dividend_yield
+              min: 0.02
+            - metric: roe_vs_industry_median
+              min: 0
+        mispricing_track:
+          pass_if: all_required_and_supporting_min_3_of_4
+          required:
+            roe_ttm:
+              min: 0.08
+            pb:
+              max: 1.5
+          supporting:
+            - metric: pb_vs_5y_median
+              max: 0.8
+            - metric: graham_composite
+              max: 22.5
+            - metric: price_vs_52w_high
+              max: 0.7
+            - metric: roe_ttm
+              min: 0.12
+            - metric: revenue_yoy
+              min: 0
+  tech_saas:
+    template: tech_saas
+    tracks:
+      - quality
+      - mispricing
+    quality_track:
+      pass_if: all_required_and_supporting_min_5_of_6
+      required:
+        rule_of_40:
+          min: 35
+        gross_margin:
+          min: 0.5
+        revenue_growth_yoy:
+          min: 0.1
+      supporting:
+        - metric: rule_of_40
+          min: 40
+        - metric: gross_margin
+          min: 0.55
+        - metric: roic
+          min: 0.15
+          if_unprofitable: skip
+        - metric: sbc_to_revenue
+          max: 0.2
+          market_overrides:
+            CN: 0.1
+            US: 0.2
+          market_missing_overrides:
+            CN: skip
+        - metric: share_dilution_3y
+          max: 0.1
+          market_missing_overrides:
+            CN: skip
+        - metric: fcf_margin
+          min: 0.15
+          if_fcf_negative: skip
+      funnel_flags:
+        - rule_of_40_between_35_and_40
+        - ai_platform_dependency_check_required
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_4_of_5
+      required:
+        gross_margin:
+          min: 0.42
+        rule_of_40:
+          min: 25
+        revenue_growth_yoy:
+          min: 0
+        net_debt_to_ebitda:
+          max: 2.5
+      supporting:
+        - metric: ps_vs_5y_median
+          max: 0.75
+          missing: use_ps_vs_peer
+        - metric: ps_vs_peer_median
+          max: 0.8
+        - metric: revenue_yield_vs_peer
+          min: 1
+        - metric: price_vs_52w_high
+          max: 0.65
+        - metric: forward_peg
+          max: 1.5
+          if_unprofitable: skip
+    audit_hints:
+      - ai_platform_dependency_check_required
+      - verify_rule_of_40_components_if_data_confidence_low
+    notes:
+      rule_of_40: revenue_growth_pct + fcf_margin_pct; use operating_margin_proxy if
+        fcf unavailable with data_confidence_low
+      ai_applications: no separate template in MVP; flag for Deep profit-pool and
+        platform dependency checks
+  consumer:
+    template: consumer
+    tracks:
+      - quality
+      - mispricing
+    quality_track:
+      pass_if: all_required_and_supporting_min_5_of_7
+      required:
+        roe_5y_avg:
+          min: 0.13
+        gross_margin_3y_max_decline_pp:
+          max: 5
+        fcf_conversion_5y:
+          min: 0.85
+        net_debt_to_ebitda:
+          max: 2.5
+      supporting:
+        - metric: roe_5y_avg
+          min: 0.15
+        - metric: roic_5y_avg
+          min: 0.12
+        - metric: gross_margin_vs_industry
+          min: 0.05
+        - metric: operating_margin_vs_industry
+          min: 0
+        - metric: revenue_3y_cagr
+          min: 0.03
+        - metric: debt_to_equity
+          max: 0.5
+        - metric: dividend_yield
+          min: 0.02
+          missing: skip
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_4_of_5
+      required:
+        roe_ttm:
+          min: 0.1
+        gross_margin:
+          min: 0.25
+        fcf_yield:
+          min: 0.05
+      supporting:
+        - metric: graham_composite
+          max: 22.5
+        - metric: pe_vs_5y_median
+          max: 0.85
+        - metric: fcf_yield_vs_risk_free
+          min: 0.04
+        - metric: price_vs_52w_high
+          max: 0.7
+        - metric: inventory_growth_minus_revenue
+          max: 0.1
+    graham_composite:
+      formula: pe_3y_avg_times_pb
+      max: 22.5
+  cyclicals:
+    template: cyclicals
+    tracks:
+      - mispricing
+    normalization:
+      window_years: 7
+      metrics:
+        - mid_cycle_eps
+        - mid_cycle_ebitda
+        - mid_cycle_fcf
+        - mid_cycle_operating_margin
+      negative_eps_years: exclude_from_average
+      all_negative: data_confidence_low_do_not_prekill
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_4_of_6
+      required:
+        mid_cycle_pe:
+          max: 12
+        net_debt_to_ebitda:
+          max: 2.5
+        revenue_10y_cagr:
+          min: 0
+      supporting:
+        - metric: mid_cycle_pe_vs_10y_median
+          max: 0.85
+          missing: skip
+        - metric: pe_vs_5y_median
+          max: 0.85
+          missing: skip
+        - metric: mid_cycle_ev_ebitda_vs_peer
+          max: 0.9
+        - metric: pb
+          max: 1.5
+        - metric: mid_cycle_fcf_yield
+          min: 0.06
+        - metric: price_vs_52w_high
+          max: 0.75
+        - metric: operating_margin_vs_10y_median
+          min: -0.05
+    funnel_flags:
+      - verify_cycle_position_in_deep
+      - commodity_price_sensitivity_when_applicable
+    audit_hints:
+      - verify_cycle_position_in_deep
+      - use_mid_cycle_not_trailing_for_valuation
+  manufacturing:
+    template: manufacturing
+    tracks:
+      - quality
+      - mispricing
+    gics_overrides:
+      semiconductors:
+        gics_codes:
+          - "453010"
+          - "453020"
+        capex_to_revenue_max: 0.25
+    quality_track:
+      pass_if: all_required_and_supporting_min_5_of_5
+      required:
+        roic_5y_avg:
+          min: 0.13
+        fcf_conversion_5y:
+          min: 0.7
+        gross_margin_3y_max_decline_pp:
+          max: 5
+        net_debt_to_ebitda:
+          max: 2.5
+      supporting:
+        - metric: capex_to_revenue
+          max: 0.15
+          gics_override_semiconductors: 0.25
+          missing: skip
+        - metric: inventory_turnover_vs_industry
+          min: 0
+          missing: skip
+        - metric: roe_5y_avg
+          min: 0.12
+        - metric: revenue_3y_cagr
+          min: 0.03
+        - metric: gross_margin
+          min: 0.25
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_4_of_6
+      required:
+        roic_ttm:
+          min: 0.1
+        net_debt_to_ebitda:
+          max: 3
+        gross_margin:
+          min: 0.2
+      supporting:
+        - metric: ev_ebitda_vs_5y_median
+          max: 0.8
+          missing: skip
+        - metric: pb_vs_peer_median
+          max: 0.85
+        - metric: fcf_yield
+          min: 0.05
+        - metric: mid_cycle_pe
+          max: 12
+          when_cyclical: true
+        - metric: price_vs_52w_high
+          max: 0.7
+        - metric: capex_to_revenue
+          max: 0.2
+    funnel_flags:
+      - cyclical_manufacturing_check
+      - technology_iteration_risk
+    ambiguous_union_note: When also_run cyclicals, either track passing retains candidate
+    audit_hints:
+      - technology_iteration_risk
+      - cyclical_manufacturing_check
+  healthcare:
+    template: healthcare
+    tracks:
+      - quality
+      - mispricing
+    quality_track:
+      pass_if: all_required_and_supporting_min_5_of_8
+      required:
+        gross_margin_3y_max_decline_pp:
+          max: 5
+        net_debt_to_ebitda:
+          max: 3
+        gross_margin:
+          min: 0.45
+      supporting:
+        - metric: gross_margin
+          min: 0.55
+        - metric: gross_margin_vs_industry
+          min: 0.03
+        - metric: revenue_3y_cagr
+          min: 0.05
+        - metric: debt_to_equity
+          max: 0.55
+        - metric: operating_margin_vs_industry
+          min: -0.08
+        - metric: roe_5y_avg
+          min: 0.12
+          if_unprofitable: skip
+        - metric: fcf_conversion_5y
+          min: 0.8
+          if_fcf_negative: skip
+        - metric: roic_5y_avg
+          min: 0.12
+          if_unprofitable: skip
+      funnel_flags:
+        - biotech_unprofitable_quality_exception_when_roe_fcf_skipped
+    mispricing_track:
+      pass_if: all_required_and_supporting_min_4_of_6
+      required:
+        roe_ttm:
+          min: 0.08
+        gross_margin:
+          min: 0.35
+        fcf_yield:
+          min: 0.04
+        net_debt_to_ebitda:
+          max: 3
+      supporting:
+        - metric: graham_composite
+          max: 22.5
+        - metric: pe_vs_5y_median
+          max: 0.8
+          missing: skip
+        - metric: fcf_yield_vs_risk_free
+          min: 0.04
+          missing: skip
+        - metric: price_vs_52w_high
+          max: 0.7
+        - metric: gross_margin_3y_max_decline_pp
+          max: 8
+        - metric: operating_margin_vs_industry
+          min: -0.05
+    audit_hints:
+      - verify_rd_runway_and_dilution_in_deep
+      - verify_patent_cliff_if_margin_declining
+      - verify_margin_collapse_risk
+      - verify_revenue_sustainability_not_structural_decline
+      - apply_classification_biotech_sector_exception

@@ -4,13 +4,16 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "dist",
-    "rootDir": ".",
+    "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "declaration": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "bin/**/*", "scripts/**/*"],
-  "exclude": ["test/**/*", "dist/**/*", "node_modules/**/*"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

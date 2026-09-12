@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
-import { loadSpecBundle } from "../../src/spec/loader.js";
-import type { SpecBundle } from "../../src/spec/types.js";
-import { routeSecurity } from "../../src/funnel/router.js";
-import { listTemplateTrackResults } from "../../src/funnel/run.js";
-import { templateLiveViability } from "../../src/spec/policy.js";
+import { loadSpecBundle } from "../../src/policy/loader.js";
+import type { SpecBundle } from "../../src/policy/loader.js";
+import { routeSecurity } from "../../src/us/template-rules.js";
+import { listTemplateTrackResults } from "../../src/us/template-rules.js";
+import { templateLiveViability } from "../../src/policy/loader.js";
 
-const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../src/policy");
 
 describe("routeSecurity", () => {
   let bundle: SpecBundle;
@@ -16,7 +16,9 @@ describe("routeSecurity", () => {
   });
 
   it("routes GICS 4010 to financials/banks", () => {
-    expect(routeSecurity(bundle.routing.us, bundle.routing.cn, { gicsCode: "401010" })).toMatchObject({
+    expect(
+      routeSecurity(bundle.routing.us, bundle.routing.cn, { gicsCode: "401010" }),
+    ).toMatchObject({
       templates: [{ id: "financials", subTemplate: "banks" }],
       routingConfidence: "high",
       routingMethod: "gics",
@@ -34,7 +36,7 @@ describe("routeSecurity", () => {
   it("falls back to industry proxy keywords", () => {
     expect(
       routeSecurity(bundle.routing.us, bundle.routing.cn, { industryProxy: "Commercial Bank" })
-        .templates[0]
+        .templates[0],
     ).toEqual({
       id: "financials",
       subTemplate: "banks",
@@ -43,7 +45,7 @@ describe("routeSecurity", () => {
 
   it("returns routing_too_hard with no templates when unmatched", () => {
     expect(
-      routeSecurity(bundle.routing.us, bundle.routing.cn, { industryProxy: "Unknown Widget Corp" })
+      routeSecurity(bundle.routing.us, bundle.routing.cn, { industryProxy: "Unknown Widget Corp" }),
     ).toMatchObject({
       templates: [],
       routingConfidence: "low",

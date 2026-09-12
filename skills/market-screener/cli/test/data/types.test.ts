@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createFixtureAdapter } from "../../src/data/fixture.js";
+import { createFixtureAdapter } from "../../src/us/screening.js";
 
 describe("MarketDataAdapter enrichRecords", () => {
   it("fixture adapter enrichRecords is optional no-op", async () => {

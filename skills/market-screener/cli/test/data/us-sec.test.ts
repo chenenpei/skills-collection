@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseTickerMap } from "../../src/data/us/sec.js";
-import { parseSubmissionsIndustry } from "../../src/data/us/sec.js";
+import { parseTickerMap } from "../../src/us/sources/fundamentals.js";
+import { parseSubmissionsIndustry } from "../../src/us/sources/fundamentals.js";
 
 describe("SEC adapters", () => {
   it("parses company_tickers.json", () => {

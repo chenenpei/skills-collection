@@ -1,15 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createUsYahooAdapter } from "../../src/data/us/quotes.js";
-import { yahooFetch } from "../../src/data/us/yahoo-session.js";
+const curlExec = vi.hoisted(() => vi.fn());
 
-vi.mock("../../src/data/us/yahoo-session.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/data/us/yahoo-session.js")>();
-  return {
-    ...actual,
-    yahooFetch: vi.fn(),
-    resetYahooSessionForTests: vi.fn(),
-  };
-});
+vi.mock("node:child_process", () => ({ execFile: curlExec }));
+
+import {
+  createUsYahooAdapter,
+  fetchUsQuoteSnapshot,
+} from "../../src/us/sources/market-data.js";
+
+const yahooFetch = vi.fn();
 
 function mockScreenerResponse(quotes: unknown[], total?: number) {
   return {
@@ -29,7 +28,7 @@ function mockScreenerResponse(quotes: unknown[], total?: number) {
 
 describe("createUsYahooAdapter", () => {
   beforeEach(() => {
-    vi.mocked(yahooFetch).mockReset();
+    yahooFetch.mockReset();
   });
 
   it("maps screener response to SecurityRecord shape", async () => {
@@ -47,7 +46,7 @@ describe("createUsYahooAdapter", () => {
       ]) as Response
     );
 
-    const adapter = createUsYahooAdapter({ cacheDir: "/tmp/screener-cache" });
+    const adapter = createUsYahooAdapter(yahooFetch);
     const records = await adapter.loadUniverse(["US"]);
 
     expect(records).toHaveLength(1);
@@ -78,7 +77,7 @@ describe("createUsYahooAdapter", () => {
         ) as Response
       );
 
-    const adapter = createUsYahooAdapter({ cacheDir: "/tmp/screener-cache" });
+    const adapter = createUsYahooAdapter(yahooFetch);
     const records = await adapter.loadUniverse(["US"]);
 
     expect(records.map((r) => r.ticker)).toEqual(["AAPL", "MSFT", "GOOG"]);
@@ -93,7 +92,7 @@ describe("createUsYahooAdapter", () => {
       ]) as Response
     );
 
-    const adapter = createUsYahooAdapter({ cacheDir: "/tmp/screener-cache" });
+    const adapter = createUsYahooAdapter(yahooFetch);
     const records = await adapter.loadUniverse(["US"]);
 
     expect(records).toHaveLength(1);
@@ -106,7 +105,41 @@ describe("createUsYahooAdapter", () => {
       status: 503,
     } as Response);
 
-    const adapter = createUsYahooAdapter({ cacheDir: "/tmp/screener-cache" });
+    const adapter = createUsYahooAdapter(yahooFetch);
     await expect(adapter.loadUniverse(["US"])).rejects.toThrow("Yahoo screener failed: 503");
+  });
+});
+
+describe("Yahoo session", () => {
+  it("single-flights cold cookie and crumb bootstrap across concurrent quote requests", async () => {
+    curlExec.mockImplementation((_file, args, _opts, callback) => {
+      const url = args.at(-1) as string;
+      if (url.startsWith("https://fc.yahoo.com")) {
+        callback(null, { stdout: "404", stderr: "" });
+        return;
+      }
+      if (url.startsWith("https://query1.finance.yahoo.com/v1/test/getcrumb")) {
+        callback(null, { stdout: "crumb\n__CURL_HTTP_CODE__:200", stderr: "" });
+        return;
+      }
+      callback(null, {
+        stdout: JSON.stringify({
+          quoteSummary: {
+            result: [{ summaryDetail: { trailingPE: { raw: 20 }, dividendYield: { raw: 0.01 } } }],
+          },
+        }) + "\n__CURL_HTTP_CODE__:200",
+        stderr: "",
+      });
+    });
+
+    const [first, second] = await Promise.all([
+      fetchUsQuoteSnapshot("AAPL"),
+      fetchUsQuoteSnapshot("MSFT"),
+    ]);
+
+    expect(first).toMatchObject({ metrics: { pe_ttm: { value: 20 } }, dividendYield: 0.01 });
+    expect(second).toMatchObject({ metrics: { pe_ttm: { value: 20 } }, dividendYield: 0.01 });
+    expect(curlExec.mock.calls.filter(([, args]) => (args.at(-1) as string).startsWith("https://fc.yahoo.com"))).toHaveLength(1);
+    expect(curlExec.mock.calls.filter(([, args]) => (args.at(-1) as string).includes("/v1/test/getcrumb"))).toHaveLength(1);
   });
 });

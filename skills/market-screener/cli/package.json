@@ -4,20 +4,17 @@
   "private": true,
   "type": "module",
   "bin": {
-    "screener": "./bin/screener.ts"
+    "screener": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "dev": "tsx bin/screener.ts",
-    "validate": "tsx bin/screener.ts validate ../spec",
-    "e2e:fixture": "tsx scripts/e2e/fixture.ts",
-    "e2e:live": "tsx scripts/e2e/live.ts",
-    "e2e:live:full": "tsx scripts/e2e/live.ts --markets CN,US --quarter 2026-Q1"
+    "dev": "node --import tsx src/cli.ts",
+    "validate": "node --import tsx src/cli.ts validate src/policy"
   },
   "dependencies": {
     "commander": "^13.1.0",
+    "p-queue": "^9.3.3",
     "pdf-parse": "^2.4.5",
     "undici": "^7.27.2",
     "yaml": "^2.8.0",

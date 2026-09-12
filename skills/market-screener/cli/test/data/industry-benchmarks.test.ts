@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { applyIndustryBenchmarks } from "../../src/data/metrics.js";
-import type { SecurityRecord } from "../../src/domain/types.js";
+import { applyIndustryBenchmarks } from "../../src/us/sources/fundamentals.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
 
 describe("applyIndustryBenchmarks", () => {
   it("sets gross_margin_vs_industry relative to industry median", () => {

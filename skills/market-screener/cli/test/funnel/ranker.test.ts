@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import type { PassingCandidate } from "../../src/funnel/run.js";
-import { compareInPool, compareNorthStar, poolKeyForCandidate } from "../../src/funnel/ranker.js";
-import { parseNorthStar } from "../../src/spec/policy.js";
+import type { PassingCandidate } from "../../src/us/template-rules.js";
+import { compareInPool, compareNorthStar, poolKeyForCandidate } from "../../src/us/screening.js";
+import { parseNorthStar } from "../../src/policy/loader.js";
 
 function passingCandidate(opts: {
   ticker: string;
@@ -25,7 +25,7 @@ function passingCandidate(opts: {
       Object.entries(opts.snapshot).map(([k, v]) => [
         k,
         { value: v, dataConfidence: "high" as const },
-      ])
+      ]),
     ),
     data_confidence: "high",
     funnel_flags: [],
@@ -53,9 +53,7 @@ describe("compareInPool north-star tie-break", () => {
       pool_score: 7,
       snapshot: { roe_5y_avg: 0.151 },
     });
-    const sorted = [ganYuan, bull].sort((a, b) =>
-      compareInPool(a, b, "consumer_quality", lookup)
-    );
+    const sorted = [ganYuan, bull].sort((a, b) => compareInPool(a, b, "consumer_quality", lookup));
     expect(sorted[0].ticker).toBe("603195");
   });
 

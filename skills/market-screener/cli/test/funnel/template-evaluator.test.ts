@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import path from "node:path";
-import { loadSpecBundle } from "../../src/spec/loader.js";
-import type { SectorTemplateSpec } from "../../src/spec/types.js";
-import { evaluateTemplateTrack, evaluateTemplateTrackDiagnostic } from "../../src/funnel/template-evaluator.js";
-import type { SecurityRecord } from "../../src/domain/types.js";
+import { loadSpecBundle } from "../../src/policy/loader.js";
+import type { SectorTemplateSpec } from "../../src/policy/loader.js";
+import { evaluateTemplateTrack, evaluateTemplateTrackDiagnostic } from "../../src/us/template-rules.js";
+import type { SecurityRecord } from "../../src/shared/financial-model.js";
 import { loadCnFixtureRecord } from "../helpers/universe-fixture.js";
 
-const SPEC_DIR = path.resolve(import.meta.dirname, "../../../spec");
+const SPEC_DIR = path.resolve(import.meta.dirname, "../../src/policy");
 
 const strongSaasRecord = (): SecurityRecord => ({
   ticker: "SaaS",

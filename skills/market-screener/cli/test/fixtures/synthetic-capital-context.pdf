@@ -1,0 +1,101 @@
+%PDF-1.4
+% Synthetic regulatory-context regression fixture.
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 3 /Kids [5 0 R 7 0 R 9 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /Identity-H /ToUnicode 11 0 R /DescendantFonts [4 0 R] >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /FontDescriptor 12 0 R /DW 1000 /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 700 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 180 >>
+stream
+BT /F1 10 Tf 40 780 Td 20 TL
+<00530079006e00740068006500740069006300200036003000300036003600300020003200300032003500200061006e006e00750061006c0020007200650070006f00720074> Tj T*
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 700 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 882 >>
+stream
+BT /F1 10 Tf 40 780 Td 20 TL
+<4e03300100208d44672c7ba17406> Tj T*
+<81ea00320030003200345e748d77ff0c672c96c656e263097167300a55464e1a94f6884c8d44672c7ba17406529e6cd5300b89c45b9aff0c8fdb884c8d44672c51458db373874fe1606f> Tj T*
+<62ab97325de54f5c5e7663017eed5b8c55844fe1606f62ab973251855bb930026839636e4e0a8ff089816c42ff0c51766838> Tj T*
+<5fc34e007ea78d44672c51458db373874e0d5f974f4e4e8e0037002e003700350025ff0c4e007ea78d44672c51458db373874e0d5f974f4e4e8e0038002e003700350025ff0c8d44672c51458db37387> Tj T*
+<4e0d5f974f4e4e8e00310030002e0037003500253002672c62a5544a671f5185ff0c672c96c656e290755b884e8676d17ba190e895e889c45b9a76848d44672c89816c423002> Tj T*
+<672c96c656e263097167300a55464e1a94f6884c8d44672c7ba17406529e6cd5300b53ca51764ed676f8517389c45b9a8ba17b97768468385fc34e007ea78d44672c51458db3> Tj T*
+<738730014e007ea78d44672c51458db3738753ca8d44672c51458db3738759824e0bff1a> Tj T*
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 700 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 496 >>
+stream
+BT /F1 10 Tf 40 780 Td 20 TL
+<4e03300100208d44672c7ba17406002000287eed0029> Tj T*
+<003200300032003500205e7400200031003200206708002000330031002065e50020003200300032003400205e7400200031003200206708002000330031002065e5> Tj T*
+<68385fc34e007ea78d44672c51458db3738700200039002e00330034002500200039002e003800340025> Tj T*
+<4e007ea78d44672c51458db37387002000310030002e003400300025002000310031002e003000330025> Tj T*
+<8d44672c51458db37387002000310034002e003300300025002000310035002e003300320025> Tj T*
+ET
+endstream
+endobj
+11 0 obj
+<< /Length 340 >>
+stream
+/CIDInit /ProcSet findresource begin
+12 dict begin
+begincmap
+/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def
+/CMapName /Identity-UCS def
+/CMapType 2 def
+1 begincodespacerange
+<0000> <FFFF>
+endcodespacerange
+1 beginbfrange
+<0000> <FFFF> <0000>
+endbfrange
+endcmap
+CMapName currentdict /CMap defineresource pop
+end
+end
+endstream
+endobj
+12 0 obj
+<< /Type /FontDescriptor /FontName /STSong-Light /Flags 4 /FontBBox [0 -200 1000 900] /ItalicAngle 0 /Ascent 900 /Descent -200 /CapHeight 700 /StemV 80 >>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000060 00000 n 
+0000000109 00000 n 
+0000000178 00000 n 
+0000000316 00000 n 
+0000000497 00000 n 
+0000000623 00000 n 
+0000000854 00000 n 
+0000000980 00000 n 
+0000001913 00000 n 
+0000002040 00000 n 
+0000002588 00000 n 
+0000002980 00000 n 
+trailer
+<< /Size 13 /Root 1 0 R >>
+startxref
+3151
+%%EOF

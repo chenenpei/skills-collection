@@ -11,12 +11,10 @@
 skills-lock.json
 
 # Market screener CLI
+# Local plans, tickets, raw responses and reproducible run archives are not source.
+/.scratch/market-screener/
 skills/market-screener/cli/node_modules/
 skills/market-screener/cli/dist/
-skills/market-screener/cli/data/cache/
-skills/market-screener/cli/funnel-output/
-skills/market-screener/cli/scripts/__pycache__/
-skills/market-screener/docs/plans/
 
 # Editor / IDE
 .idea/
