@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1",
+  "layoutsVersion": "1",
+  "ratios": {
+    "3:4": { "width": 1080, "height": 1440 },
+    "1:1": { "width": 1080, "height": 1080 },
+    "16:9": { "width": 1600, "height": 900 }
+  },
+  "layouts": {
+    "photo-led": { "requiredRegions": ["background", "image", "title", "body"], "blocks": [1, 2] },
+    "narrative": { "requiredRegions": ["background", "image", "title", "body"], "blocks": [1, 2] },
+    "comparison": { "requiredRegions": ["background", "title", "columns"], "columns": [2, 2] },
+    "sections": { "requiredRegions": ["background", "title", "sections"], "sections": [2, 4] },
+    "list": { "requiredRegions": ["background", "title", "list"], "items": [2, 6] },
+    "reading": { "requiredRegions": ["background", "sheet", "title", "body"], "blocks": [1, 5] }
+  }
+}
