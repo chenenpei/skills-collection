@@ -27,3 +27,6 @@ skills/market-screener/cli/dist/
 *~
 
 /docs/
+
+# Local generated work, previews, and verification output
+/scratch/

@@ -1,0 +1,22 @@
+{
+  "name": "material-continuum-export",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "design:sync": "node scripts/sync-design-tokens.mjs",
+    "design:check": "node scripts/sync-design-tokens.mjs --check",
+    "render": "node scripts/render-brief.mjs",
+    "validate": "node scripts/validate-brief.mjs",
+    "icons": "node scripts/material-icons.mjs",
+    "themes:sync": "node scripts/color-themes.mjs",
+    "themes:check": "node scripts/color-themes.mjs --check"
+  },
+  "dependencies": {
+    "playwright": "^1.62.1"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.1"
+  }
+}
