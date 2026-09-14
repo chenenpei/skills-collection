@@ -532,7 +532,7 @@ it('uses a current fine business profile to request the two-year tail only for a
   const cyclic=await collect(await write('cyclic','半导体芯片研发、生产和销售'));
   expect(cyclic.input.companies[0].facts.find(f=>f.field==='business.profile')).toBeDefined();
   expect(cyclic.input.companies[0].checks.cycle).toMatchObject({state:'applies',reason:'verified_fine_business_cycle_mapping'});
-  const sevenYearIndex=cyclic.urls.findIndex(url=>new URL(url).searchParams.get('filter')?.includes("2019-12-31"));
+  const sevenYearIndex=cyclic.urls.findIndex(url=>new URL(url).searchParams.get('dates')?.includes("2019-12-31"));
   const quoteIndex=cyclic.urls.findIndex(url=>new URL(url).hostname==='proxy.finance.qq.com'&&new URL(url).searchParams.get('param')?.startsWith('sh600660,'));
   expect(sevenYearIndex).toBeGreaterThan(-1);
   // A current quote is a required independent operand; optional history must
@@ -541,7 +541,8 @@ it('uses a current fine business profile to request the two-year tail only for a
   expect(cyclic.input.companies[0].facts.filter(f=>f.field==='weightedRoe'&&f.state==='observed').map(f=>f.year)).toEqual(expect.arrayContaining([2019,2020]));
   const ordinary=await collect(await write('ordinary','电子产品研发、生产和销售'));
   expect(ordinary.input.companies[0].checks.cycle).toMatchObject({state:'not_applicable',reason:'standard_nonfinancial_window'});
-  expect(ordinary.urls.some(url=>new URL(url).searchParams.get('filter')?.includes("2019-12-31"))).toBe(false);
+  expect(ordinary.urls.some(url=>new URL(url).searchParams.get('filter')?.includes("2019-12-31"))).toBe(true);
+  expect(ordinary.urls.some(url=>new URL(url).searchParams.get('dates')?.includes("2019-12-31"))).toBe(false);
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });
 
@@ -1072,3 +1073,42 @@ it('supplements frozen research qualifiers only, preserves annual decisions on f
   }
  }finally{await fs.rm(dir,{recursive:true,force:true});}
 },20000);
+
+it.each([false,true])('requests seven-year repair and quotes after a reliable quality failure, then reuses cache (existing balance: %s)',async(existingBalance)=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'cn-independent-repair-'));
+ try {
+  const asOf='2026-09-10T03:00:00Z',ticker='600660',file=await writeQuoteReadyInput(dir,[ticker],asOf);
+  const seed=JSON.parse(await fs.readFile(file,'utf8')),source=seed.sources.find((s:any)=>s.mapping==='indicators');
+  const bytes=JSON.stringify({data:quoteReadyRows(ticker).map(r=>({...r,ROEJQ:2,ROEKCJQ:2}))});
+  await fs.writeFile(path.join(dir,source.path),bytes);source.sha256=sha256(bytes);await fs.writeFile(file,JSON.stringify(seed));
+  if (existingBalance) {
+   // A known balance lets repair reach price before unrelated statement refreshes.
+   const url='https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/zcfzbAjaxNew?'+new URLSearchParams({type:'0',code:'SH'+ticker,dates:'2025-12-31',companyType:'4'});
+   const body=await quoteReadyStatementResponse(url).json();body.data[0].TOTAL_CURRENT_ASSETS=5;body.data[0].TOTAL_LIABILITIES=10;
+   const balanceBytes=JSON.stringify(body),balancePath='balance-'+ticker+'.json';
+   await fs.writeFile(path.join(dir,balancePath),balanceBytes);
+   seed.sources.push({id:'balance-'+ticker,mapping:'balance',path:balancePath,url,mediaType:'application/json',fetchedAt:'2026-03-01',sha256:sha256(balanceBytes)});
+   await fs.writeFile(file,JSON.stringify(seed));
+  }
+  const urls:string[]=[];
+  const options={asOf,strategy:'all' as const,pdfFallback:false,concurrency:1,budget:{attempts:1,requestMs:1000,companyRequests:existingBalance?4:10,companyMs:15000,globalRequests:existingBalance?4:10,globalMs:15000}};
+  const first=await collectCnEvidence(file,path.join(dir,'first'),options,{now:()=>Date.parse(asOf),fetch:async(url,init)=>{
+   urls.push(url);const u=new URL(url);
+   if(u.searchParams.get('reportName')==='RPT_F10_FINANCE_MAINFINADATA'&&u.searchParams.get('filter')?.includes('REPORT_TYPE')) {
+    expect(u.searchParams.get('filter')).toContain('2019-12-31');
+    return Response.json({data:quoteReadyRows(ticker,[2019,2020,2021,2022,2023,2024,2025]).map(r=>({...r,NOTICE_DATE:'2026-03-02',ROEJQ:2,ROEKCJQ:2}))});
+   }
+   return u.hostname==='emweb.securities.eastmoney.com'?quoteReadyStatementResponse(url,init):completeResponse(url,init);
+  }});
+  const {input}=await loadEvidenceInput(first.inputFile),policy=await loadCnPolicy(new URL('../../src/policy/cn-screening.yaml',import.meta.url).pathname);
+  const result=evaluateCompany(input.companies[0],policy,{strategy:'all'});
+  expect(result.quality).toBe('fail');
+  expect(result.strategies!.earnings_repair!.conditions.find(c=>c.id==='ER.history')?.state).toBe('pass');
+  expect(result.strategies!.earnings_repair!.conditions.find(c=>c.id==='ER.price')?.state).toBe('fail');
+  expect(urls.some(url=>new URL(url).hostname==='proxy.finance.qq.com')).toBe(true);
+  expect(urls.some(url=>url.includes('cninfo'))).toBe(false);
+  if(existingBalance) expect(urls.some(url=>url.includes('AjaxNew'))).toBe(false);
+  let calls=0;await collectCnEvidence(first.inputFile,path.join(dir,'second'),options,{now:()=>Date.parse(asOf),fetch:async()=>{calls++;throw Error('cache expected');}});
+  expect(calls).toBe(0);
+ } finally {await fs.rm(dir,{recursive:true,force:true});}
+});

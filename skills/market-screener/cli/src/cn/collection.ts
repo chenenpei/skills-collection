@@ -1321,7 +1321,8 @@ export async function collectCnEvidence(
         : options.strategy === "ncav"
           ? ncavTerminal
           : options.strategy === "all"
-            ? qualityTerminal && financialTerminal && ncavTerminal && leadTerminal
+            ? qualityTerminal && financialTerminal && ncavTerminal && leadTerminal &&
+              (!result.strategies?.earnings_repair || ["pass", "fail", "not_applicable"].includes(result.strategies.earnings_repair.state))
             : qualityTerminal;
     };
     const assess = async () => {
@@ -1368,6 +1369,12 @@ export async function collectCnEvidence(
           ? "BJ"
           : "SZ";
     let quotesAttempted = false;
+    const repairNeedsQuote = (evaluation: ReturnType<typeof evaluateCompany>) => {
+      const repair = evaluation.strategies?.earnings_repair;
+      return repair?.state === "unknown" &&
+        repair.conditions.some(c => c.id === "ER.price" && c.state === "unknown") &&
+        repair.conditions.filter(c => c.id !== "ER.price").every(c => c.state === "pass");
+    };
     const collectQuotes = async (evaluation: ReturnType<typeof evaluateCompany>) => {
       const priorityFailure = evaluation.conditions.some(
         (condition) => ["P1", "P2", "P3"].includes(condition.id) && condition.state === "fail",
@@ -1391,6 +1398,7 @@ export async function collectCnEvidence(
           (evaluation.quality === "pass" && !priorityFailure) ||
           financialNeedsQuote ||
           leadNeedsQuote ||
+          repairNeedsQuote(evaluation) ||
           ncavNeedsQuote
         ) ||
         ["budget_exhausted", "interrupted"].includes(company.collection!.state)
@@ -1462,7 +1470,10 @@ export async function collectCnEvidence(
       if (ncavOnly && terminalForEnabledStrategy(await assess())) {
         return;
       }
-      const indicatorStart = ncavOnly ? `${lastYear}-12-31` : `${lastYear - 4}-12-31`;
+      // Independent repair needs seven years even when the quality funnel fails.
+      // Extend the same structured request, not a company-specific enrichment loop.
+      const repairSelected = options.strategy === "all" && !!policy.strategies?.earningsRepair;
+      const indicatorStart = ncavOnly ? `${lastYear}-12-31` : `${lastYear - (repairSelected ? 6 : 4)}-12-31`;
       const indicatorsUrl =
         "https://datacenter-web.eastmoney.com/api/data/v1/get?" +
         new URLSearchParams({
@@ -1511,7 +1522,8 @@ export async function collectCnEvidence(
       // Independent leads reserve their price operands before specialist statement
       // enrichment can spend the company's remaining request budget.
       const afterProfile = assessment ?? (await assess());
-      if (afterProfile.strategies?.financial_discount?.conditions.some((c) => c.id === "FD.quote")) {
+      if (afterProfile.strategies?.financial_discount?.conditions.some((c) => c.id === "FD.quote") ||
+        repairNeedsQuote(afterProfile)) {
         const afterLeadQuotes = await collectQuotes(afterProfile);
         if (terminalForEnabledStrategy(afterLeadQuotes)) {
           return;
@@ -1641,7 +1653,7 @@ export async function collectCnEvidence(
             sortTypes: "-1",
             sortColumns: "REPORT_DATE",
           });
-        await capture(company, "indicators", olderIndicators, companyStarted);
+        if (!repairSelected) await capture(company, "indicators", olderIndicators, companyStarted);
         for (const [kind, endpoint] of [
           ["income", "lrbAjaxNew"],
           ["cashflow", "xjllbAjaxNew"],

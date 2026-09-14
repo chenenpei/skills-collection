@@ -172,6 +172,7 @@ export const cnPolicySchema = z
           })
           .strict()
           .optional(),
+        earningsRepair: z.object({ earningsHaircut: ratio, minEarningsYield: positive }).strict().optional(),
         ncav: z
           .object({ marketCapRatio: ratio.refine((n) => n > 0) })
           .strict()
