@@ -147,7 +147,7 @@ export async function runEvidenceSnapshot(
   const strategy = options.strategy ?? "quality";
   const limit = options.displayLimit ?? policy.priority.displayLimit,
     backupLimit =
-      options.backupLimit ?? policy.priority.backupLimit ?? policy.strategies?.financialDiscount?.displayLimit ?? 5,
+      options.backupLimit ?? policy.priority.backupLimit ?? policy.strategies?.financialDiscount?.displayLimit ?? 30,
     accumulator = createEvaluationAccumulator(limit, strategy, backupLimit);
   await fs.mkdir(path.dirname(path.resolve(outputDir)), { recursive: true });
   await fs.mkdir(outputDir); // Never overwrite a saved run.

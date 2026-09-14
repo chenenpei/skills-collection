@@ -124,7 +124,7 @@ export interface CalculationStep {
 }
 export interface ConditionResult {
   id: string;
-  layer: "quality" | "priority" | "financial" | "ncav";
+  layer: "quality" | "priority" | "financial" | "ncav" | "repair";
   state: ConditionState;
   reason: string;
   factIds: string[];
@@ -143,6 +143,7 @@ export type StrategyId =
   | "financial_research"
   | "financial_value"
   | "financial_discount"
+  | "earnings_repair"
   | "ncav";
 /** Independent opportunity results.  Legacy quality/research/priority fields remain intact. */
 export interface StrategyResult {

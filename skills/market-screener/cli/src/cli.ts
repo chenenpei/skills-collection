@@ -263,7 +263,7 @@ export async function runCli(argv: string[]): Promise<void> {
     )
     .option(
       "--backup-limit <n>",
-      "Independent CN NCAV/financial backup seats (default: 5)",
+      "Independent CN NCAV/book/earnings repair seats (default: 30)",
     )
     .option("--financial-lead-limit <n>", "Deprecated alias for --backup-limit; applies to all backups")
     .option("--input <path>", "Saved CN evidence snapshot JSON")
@@ -400,6 +400,9 @@ export async function runCli(argv: string[]): Promise<void> {
             selection: run.summary.candidateQueue?.find((r) => r.id === id),
             // Surface archived changes without interpreting missing data as stability.
             ...(result.recentFinancials ? { recentFinancials: result.recentFinancials } : {}),
+            discountSignals: Object.values(result.strategies ?? {})
+              .filter(s => ["ncav", "financial_discount", "earnings_repair"].includes(s.id) && s.state === "pass")
+              .map(s => ({ strategy: s.id, ...s.signal })),
             qualifications: Object.values(result.strategies ?? {})
               .filter((s) => s.state === "pass")
               .map((s) => s.id),

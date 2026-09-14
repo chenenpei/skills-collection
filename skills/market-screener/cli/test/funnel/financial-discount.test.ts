@@ -114,16 +114,18 @@ it("admits a reliable 0.75 PB research lead independently of the unsupported lea
   });
   expect(lead(c).conditions.find((x) => x.id === "FD.pb")).toMatchObject({
     value: 0.75,
-    threshold: { operator: "<=", value: 0.75 },
+    threshold: { operator: "<=", value: 1 },
   });
-  c.facts.find((f) => f.field === "price")!.value = 7.5001;
+  c.facts.find((f) => f.field === "price")!.value = 10;
+  expect(lead(c).state).toBe("pass");
+  c.facts.find((f) => f.field === "price")!.value = 10.001;
   expect(lead(c).state).toBe("fail");
 });
-it("keeps the independent PE <= 7 condition when the book discount qualifies", () => {
+it("keeps the independent PE <= 10 condition when the book discount qualifies", () => {
   const c = company();
-  c.facts.find((f) => f.field === "casOrdinaryBasicEps" && f.year === 2025)!.value = 7.5 / 7;
+  c.facts.find((f) => f.field === "casOrdinaryBasicEps" && f.year === 2025)!.value = 7.5 / 10;
   expect(lead(c).state).toBe("pass");
-  c.facts.find((f) => f.field === "casOrdinaryBasicEps" && f.year === 2025)!.value = 1;
+  c.facts.find((f) => f.field === "casOrdinaryBasicEps" && f.year === 2025)!.value = 0.74;
   expect(lead(c).conditions.find((x) => x.id === "FD.earningsYield")?.state).toBe("fail");
 });
 it.each([
@@ -413,21 +415,23 @@ it('keeps known adverse insurance ratings out of the independent bargain route',
   expect(lead(c).state).toBe('fail');
 });
 
-it('shares five independent backup seats between NCAV and financial leads after a full main list', () => {
-  const acc = createEvaluationAccumulator(30, 'all', 5);
+it.each([5, 30])('shares %i backup seats between NCAV and financial leads independently of the main list', (limit) => {
+  // Exercise the new default as well as the explicit legacy/custom capacity.
+  const acc = createEvaluationAccumulator(30, 'all', limit === 30 ? undefined : limit);
   for (let i=0;i<32;i++) acc.accept(ranked(`S${i}`, 2));
-  for (let i=0;i<6;i++) acc.accept(ranked(`W${i}`, 3));
+  for (let i=0;i<32;i++) acc.accept(ranked(`W${String(i).padStart(2, '0')}`, 3));
   for (let i=0;i<2;i++) {
     const r=ranked(`N${i}`, 3); r.strategies = {ncav:{id:'ncav', applicability:'pass', state:'pass', conditions:[], signal:{name:'ncav_to_market_cap',unit:'ratio',direction:'higher_is_better',value:2+i}}};
     acc.accept(r);
   }
   const out=acc.finish();
   expect(out.researchDisplayed).toHaveLength(30);
-  expect(out.backupDisplayed).toEqual(['CN:N1','CN:N0','CN:W0','CN:W1','CN:W2']);
-  expect(out.displayCount).toBe(35);
-  expect(out.backupCandidates).toHaveLength(8);
+  const order=['CN:N1','CN:N0',...Array.from({length:32},(_,i)=>`CN:W${String(i).padStart(2,'0')}`)];
+  expect(out.backupDisplayed).toEqual(order.slice(0, limit));
+  expect(out.displayCount).toBe(30 + limit);
+  expect(out.backupCandidates).toHaveLength(34);
   expect(out.candidateQueue.find(r=>r.id==='CN:N1')).toMatchObject({tier:3,backupStrategy:'ncav'});
-  expect(out.candidateQueue.find(r=>r.id==='CN:W3')?.reason).toBe('backup_limit');
+  expect(out.candidateQueue.find(r=>r.id===order[limit])?.reason).toBe('backup_limit');
 });
 
 it('does not let an undisplayed qualified company borrow a backup seat through a second strategy', () => {
@@ -438,4 +442,20 @@ it('does not let an undisplayed qualified company borrow a backup seat through a
   expect(out.displayed).toEqual(['CN:A']);
   expect(out.backupCandidates).toEqual([]);
   expect(out.candidateQueue.find(r=>r.id==='CN:OTHER_SHARE')?.reason).toBe('duplicate_company');
+});
+
+it('mixes book and earnings repair by yield while keeping NCAV first and main overflow out', () => {
+ const a=createEvaluationAccumulator(1,'all',3);
+ const cheap=ranked('CHEAP',3), profitable=ranked('PROFIT',3), repair=ranked('REPAIR',3), asset=ranked('ASSET',3);
+ cheap.strategies!.financial_discount!.conditions[0].value=.2;
+ cheap.strategies!.financial_discount!.conditions[1].value=.08;
+ profitable.strategies!.financial_discount!.conditions[0].value=.9;
+ profitable.strategies!.financial_discount!.conditions[1].value=.12;
+ repair.strategies={earnings_repair:{id:'earnings_repair',applicability:'pass',state:'pass',conditions:[],signal:{name:'seven_year_discounted_earnings_yield',unit:'ratio',direction:'higher_is_better',value:.1}}};
+ asset.strategies={ncav:{id:'ncav',applicability:'pass',state:'pass',conditions:[],signal:{name:'ncav_to_market_cap',unit:'ratio',direction:'higher_is_better',value:2}}};
+ for(const r of [cheap,repair,profitable,asset])a.accept(r);
+ const s=a.finish();expect(s.backupCandidates).toEqual(['CN:ASSET','CN:PROFIT','CN:REPAIR','CN:CHEAP']);
+ expect(s.backupDisplayed).toEqual(['CN:ASSET','CN:PROFIT','CN:REPAIR']);
+ expect(s.strategies!.financial_discount!.qualified).toEqual(['CN:PROFIT','CN:CHEAP']);
+ expect(s.candidateQueue.find(r=>r.id==='CN:REPAIR')?.backupStrategy).toBe('earnings_repair');
 });

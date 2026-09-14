@@ -38,7 +38,9 @@
 
 ## 独立策略与研究
 
-**Financial Discount Lead（金融折价线索）**：可靠基本财务数字与显著账面折价同时成立，但专门业务风险仍待核验的研究线索。其研究优先级低于证据充分的候选，不等同于清算价值折价。slug: `financial_discount_lead`
+**Financial Discount Lead（金融破净修复线索）**：可靠基本财务数字与破净修复条件同时成立，但专门业务风险仍待核验的研究线索。其研究优先级低于证据充分的候选，不等同于清算价值折价。slug: `financial_discount_lead`
+
+**Earnings Repair（盈利修复）**：以保守历史盈利相对价格的吸引力取得独立研究资格，不要求先证明好生意或破净。slug: `earnings_repair`
 
 **Research Queue（研究队列）**：质量研究资格成立的公司按价格吸引力及可解释回报信号排列的集合；价格偏贵或待判断不取消研究资格。slug: `research_queue`
 

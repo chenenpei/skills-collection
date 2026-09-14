@@ -58,7 +58,7 @@ type EvaluationSummary = {
     displayed: boolean;
     reason: "selected" | "main_limit" | "backup_limit" | "duplicate_company";
     ranking?: CompanyEvaluation["researchRanking"];
-    backupStrategy?: "ncav" | "financial_discount";
+    backupStrategy?: "ncav" | "financial_discount" | "earnings_repair";
   }>;
   terminalCounts: Record<string, number>;
   coverage: {
@@ -102,13 +102,13 @@ const emptyCoverage = (): CoverageCounts => ({
 export function createEvaluationAccumulator(
   limit: number,
   strategy: StrategySelector = "quality",
-  backupLimit = 5,
+  backupLimit = 30,
 ) {
   if (!Number.isInteger(limit) || limit < 0)
     throw new Error("Display limit must be a nonnegative integer");
   if (!Number.isInteger(backupLimit) || backupLimit < 0)
     throw new Error("Backup display limit must be a nonnegative integer");
-  const weak: Array<{ id: string; pb: number; earningsYield: number }> = [];
+  const weak: Array<{ id: string; pb: number; earningsYield: number; strategy: "financial_discount" | "earnings_repair" }> = [];
   const assetBackups: Array<{ id: string; value: number }> = [];
   const rankings = new Map<string, CompanyEvaluation["researchRanking"]>();
   const qualityPool: string[] = [];
@@ -220,11 +220,14 @@ export function createEvaluationAccumulator(
       const lead = r.strategies?.financial_discount;
       if ((strategy === "all" || strategy === "financial") && lead?.state === "pass")
         weak.push({
-          id,
+          id, strategy: "financial_discount",
           pb: lead.conditions.find((c) => c.id === "FD.pb")?.value ?? Infinity,
           earningsYield:
             lead.conditions.find((c) => c.id === "FD.earningsYield")?.value ?? -Infinity,
         });
+      const repair = r.strategies?.earnings_repair;
+      if (strategy === "all" && repair?.state === "pass")
+        weak.push({ id, strategy: "earnings_repair", pb: Infinity, earningsYield: repair.signal?.value ?? -Infinity });
       const financialResearch = r.strategies?.financial_research;
       const financialValue = r.strategies?.financial_value;
       const { research: selectedResearch, value: selectedValue } = selected(r);
@@ -247,6 +250,8 @@ export function createEvaluationAccumulator(
         selectedResearch !== "pass" &&
         lead?.state === "pass"
           ? "financial_discount_pass"
+          : strategy === "all" && selectedResearch !== "pass" && repair?.state === "pass"
+            ? "earnings_repair_pass"
           : strategy === "ncav"
             ? `ncav_${selectedValue}`
             : strategy === "all"
@@ -313,12 +318,13 @@ export function createEvaluationAccumulator(
       const weakIds = [...weak]
         .sort(
           (a, b) =>
-            a.pb - b.pb || b.earningsYield - a.earningsYield || a.id.localeCompare(b.id, "en"),
+            b.earningsYield - a.earningsYield || (a.pb === b.pb ? 0 : a.pb - b.pb) || a.id.localeCompare(b.id, "en"),
         )
         .map((r) => r.id);
       const assetIds = [...assetBackups].sort((a, b) => b.value - a.value || a.id.localeCompare(b.id, "en")).map(r => r.id);
       const backupIds = [...assetIds, ...weakIds];
       const assetSet = new Set(assetIds);
+      const repairStrategies = new Map(weak.map(r => [r.id, r.strategy]));
       const seenCompanies = new Set<string>();
       const queuedIds = new Set<string>();
       const candidateQueue: EvaluationSummary["candidateQueue"] = [];
@@ -334,7 +340,7 @@ export function createEvaluationAccumulator(
             tier,
             displayed: false,
             reason: duplicate ? "duplicate_company" : tier === 3 ? "backup_limit" : "main_limit",
-            ...(tier < 3 ? (rankings.get(id) ? { ranking: rankings.get(id) } : {}) : { backupStrategy: assetSet.has(id) ? "ncav" as const : "financial_discount" as const }),
+            ...(tier < 3 ? (rankings.get(id) ? { ranking: rankings.get(id) } : {}) : { backupStrategy: assetSet.has(id) ? "ncav" as const : repairStrategies.get(id)! }),
           });
         }
       };
@@ -366,6 +372,7 @@ export function createEvaluationAccumulator(
               "financial_research",
               "financial_value",
               "financial_discount",
+              "earnings_repair",
               "ncav",
             ] as const)
           : strategy === "ncav"
@@ -376,12 +383,12 @@ export function createEvaluationAccumulator(
       const displayedCompanies = new Set(displayed.map((id) => companyKeys.get(id) ?? id));
       for (const id of enabled) {
         const qualified =
-            id === "financial_discount"
-              ? dedupeCompanies(weakIds)
+            (id === "financial_discount" || id === "earnings_repair")
+              ? dedupeCompanies(weakIds.filter(key => repairStrategies.get(key) === id))
               : [...(strategyRows.get(id) ?? [])]
                   .sort((a, b) => b.value - a.value || a.id.localeCompare(b.id, "en"))
                   .map((r) => r.id),
-          ownDisplay = qualified.slice(0, id === "financial_discount" ? backupLimit : limit);
+          ownDisplay = qualified.slice(0, id === "financial_discount" || id === "earnings_repair" ? backupLimit : limit);
         strategies[id] = {
           qualified,
           displayed: ownDisplay,
@@ -3369,6 +3376,33 @@ function evaluateQualityCompany(
   };
 }
 
+/** Reject known adverse audit evidence without treating an absent opinion as failure. */
+function knownAuditFailures(c: CompanyFacts, year: number, conditionId: string): ConditionResult[] {
+  const failures: ConditionResult[] = [];
+  for (const f of eligibleFacts(c, "auditOpinion", year)) {
+    if (
+      f.state === "observed" &&
+      f.unit === "text" &&
+      f.evidence.length &&
+      [
+        "qualified",
+        "adverse",
+        "disclaimer",
+        "nonstandard",
+        "保留意见",
+        "否定意见",
+        "无法表示意见",
+        "非标准无保留意见",
+      ].includes(String(f.value))
+    )
+      failures.push({
+        ...pending(conditionId, "known_nonstandard_audit", "fail"),
+        factIds: [f.id],
+      });
+  }
+  return failures;
+}
+
 /** Financial bargain leads use a separate hypothesis, not a relaxed specialist risk pass. */
 function financialDiscountStrategy(input: CompanyFacts, policy: CnPolicy): StrategyResult {
   const finish = (
@@ -3559,27 +3593,7 @@ function financialDiscountStrategy(input: CompanyFacts, policy: CnPolicy): Strat
     const rating = insuranceRating(c, insurance, "FD.core.insuranceRating");
     if (rating.state === "fail" || rating.state === "unknown") core.push(rating);
   }
-  for (const f of eligibleFacts(c, "auditOpinion", year)) {
-    if (
-      f.state === "observed" &&
-      f.unit === "text" &&
-      f.evidence.length &&
-      [
-        "qualified",
-        "adverse",
-        "disclaimer",
-        "nonstandard",
-        "保留意见",
-        "否定意见",
-        "无法表示意见",
-        "非标准无保留意见",
-      ].includes(String(f.value))
-    )
-      core.push({
-        ...pending("FD.core.audit", "known_nonstandard_audit", "fail"),
-        factIds: [f.id],
-      });
-  }
+  core.push(...knownAuditFailures(c, year, "FD.core.audit"));
   const conditions = [
     method,
     group("FD.profits", profits),
@@ -3776,6 +3790,67 @@ function financialPerSharePrice(
     facts: ids,
     missing: [],
   };
+}
+
+/** Seven-year earnings repair is independent of quality, cash and cycle gates.
+ * Reuses ordinary-ownership, annual-context and quote guards; it is a research
+ * price signal, not an assertion that reported earnings are distributable cash.
+ */
+function earningsRepairStrategy(input: CompanyFacts, policy: CnPolicy): StrategyResult {
+  const finish = (conditions: ConditionResult[], applicability: ConditionState = "pass"): StrategyResult => ({
+    id: "earnings_repair", applicability,
+    state: applicability === "pass" ? aggregateConditions(conditions) : applicability,
+    conditions: conditions.map(c => ({ ...c, layer: "repair" })),
+  });
+  const unavailable = (reason: string, state: ConditionState = "unknown") =>
+    finish([pending("ER.method", reason, state)], state);
+  const config = policy.strategies?.earningsRepair;
+  if (!config) return unavailable("earnings_repair_not_enabled", "not_evaluated");
+  if (input.identity?.state === "not_yet_listed" ||
+    (input.collection && ["pending", "interrupted"].includes(input.collection.state)))
+    return unavailable("collection_not_evaluated", "not_evaluated");
+  const c = { ...input, latestFiscalYear: latestDisclosedFiscalYear(input) }, year = c.latestFiscalYear;
+  if (c.market !== "CN") return unavailable("earnings_repair_market_not_applicable", "not_applicable");
+  if (c.method.state !== "applies" || c.method.reason?.includes("conflict"))
+    return unavailable("nonfinancial_method_unresolved");
+  if (c.method.value !== "nonfinancial") return unavailable("financial_earnings_repair_not_applicable", "not_applicable");
+  if (!c.method.coverage || c.method.coverage.start > `${year}-12-31` ||
+    c.method.coverage.end < `${year}-12-31` || !c.method.evidence.length ||
+    Date.parse(c.asOf) > Date.parse(`${year + 2}-06-30T23:59:59Z`))
+    return unavailable("method_or_annual_period_unverified");
+  const years = Array.from({ length: 7 }, (_, i) => year - 6 + i);
+  const earnings = years.map(y => minimum([reportedEarnings(c, y), reportedEarnings(c, y, true)]));
+  const reference = minimum([median(earnings), median(earnings.slice(-5)), median(earnings.slice(-3)), earnings.at(-1)!]);
+  const history = guardedReturns(c, years,
+    compare("ER.history", sum(earnings.map(e => mapExact(e, () => 1))), ">=", 7, "seven complete annual ordinary PNI/ANI observations"),
+    () => pending("ER.history", "annual_earnings_basis_unresolved"));
+  history.calculations = years.map((y, i) => ({ id: `ER.earnings.${y}`, year: y,
+    formula: "min(ordinary parent profit, ordinary adjusted parent profit)", unit: c.currency,
+    ...(isExact(earnings[i]) ? { value: earnings[i].low } : {}),
+    factIds: earnings[i].facts, missing: earnings[i].missing }));
+  const latestYear = (field: string) => c.facts.filter(f => f.field === field && f.entity === c.companyId &&
+    f.basis === c.basis && Date.parse(f.period.end) <= Date.parse(c.asOf) &&
+    Date.parse(f.publishedAt) <= Date.parse(c.asOf)).sort((a, b) => b.period.end.localeCompare(a.period.end))[0]?.year ?? Number(c.asOf.slice(0, 4));
+  const price = read(c, "price", latestYear("price"), `${c.currency}/share`);
+  const shares = read(c, "ordinaryShares", latestYear("ordinaryShares"), "shares");
+  const factor = 1 - config.earningsHaircut;
+  const discounted = { ...reference, low: reference.low * factor, high: reference.high * factor };
+  let priceCondition = guardedQuote(c, shares, compare("ER.price", ratio(ratio(discounted, shares), price), ">=",
+    config.minEarningsYield, `${factor} * min(median(E,7y),median(E,5y),median(E,3y),latest E) / ordinary market cap`));
+  if (!c.quoteDate || c.quoteDate !== c.lastCompletedTradingDay ||
+    !c.facts.some(f => f.field === "price" && f.period.end === c.quoteDate && f.state === "observed"))
+    priceCondition = { ...pending("ER.price", "quote_date_unverified"), factIds: priceCondition.factIds,
+      missing: distinct([...priceCondition.missing, "quote_date_unverified"]) };
+  priceCondition.calculations = [{ id: "ER.reference", year, formula: "min(median(E,7y),median(E,5y),median(E,3y),latest E)",
+    unit: c.currency, ...(isExact(reference) ? { value: reference.low } : {}), factIds: reference.facts,
+    missing: reference.missing, assumptions: { earningsHaircut: config.earningsHaircut } }];
+  const conditions = [history, compare("ER.positive", positives(earnings), ">=", 5, "count(E>0,7y)"),
+    compare("ER.latest", earnings.at(-1)!, ">", 0, "latest E>0"),
+    compare("ER.parentEquity", read(c, "parentEquity", year), ">", 0, "parent equity>0"),
+    compare("ER.equity", read(c, "equity", year), ">", 0, "consolidated equity>0"), priceCondition];
+  conditions.push(...knownAuditFailures(c, year, "ER.audit"));
+  return { ...finish(conditions), signal: { name: "seven_year_discounted_earnings_yield", unit: "ratio",
+    direction: "higher_is_better", ...(priceCondition.state !== "unknown" && priceCondition.value !== undefined ? { value: priceCondition.value } : {}) } };
 }
 
 /** Independent reported-book NCAV; quality/cycle/cash gates are deliberately absent. */
@@ -4126,6 +4201,8 @@ export function evaluateCompany(
       ...result.strategies,
       financial_discount: financialDiscountStrategy(c, policy),
     };
+  if (options.strategy === "all" && policy.strategies?.earningsRepair)
+    result.strategies = { ...result.strategies, earnings_repair: earningsRepairStrategy(c, policy) };
   if (options.strategy === "ncav" || options.strategy === "all") {
     result.strategies = { ...result.strategies, ncav: ncavStrategy(c, policy) };
     if (options.strategy === "all") {
