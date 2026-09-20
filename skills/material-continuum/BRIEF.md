@@ -56,7 +56,7 @@ Layout-specific fields:
 | Layout | Required content | Intended relationship |
 | --- | --- | --- |
 | `photo-led` | `image`, 1–2 `blocks`; or `cover: true` with `blocks: []` | Full image, overlapping title sheet, supporting prose or title-only cover |
-| `narrative` | `image`, 1–2 `blocks` | Illustration field followed by a distinct narrative plane |
+| `narrative` | `image`, 1–2 `blocks` | Illustration field crossed by one narrative paper containing the title, copy, and optional emphasis |
 | `comparison` | exactly 2 `columns` | Parallel evidence; both columns use a visual, or both use the text-only variant |
 | `sections` | 2–4 `sections`; optional top-level `image` and `notes` | Repeated sections, optionally organized beneath one shared illustration and followed by secondary notes |
 | `list` | 2–6 `items` | Compact rows on one paper surface |
@@ -68,13 +68,13 @@ The sections family may add one top-level `image` directly below its header. Thi
 
 When choosing a structural page, state the shared comparison dimensions or the sequence of explanations before selecting artwork. A detail label names a dimension; its text supplies the answer. Use paragraphs for continuous explanation, and details for additional scanable dimensions. In portrait output, detail labels use 18px and answers 26px; test the resulting column height with the final images in place.
 
-For individual explanatory image rows in 3:4, the visual occupies a 420px column with a 64px gutter and a 245px image area. Supply a composed scene or a diagram containing the relationship being explained. A labeled record progressing through writing, tagging, and retrieval is an explanatory diagram; a large generic document symbol contributes only recognition. For paired comparison artwork, square or moderately landscape scenes preserve visual weight better than a panoramic banner reduced to half-page width. Recompose the artwork when needed, preserving the complete relevant action.
+For individual explanatory image rows in 3:4, the visual occupies a 420px column with a 64px gutter and a 245px image area. In 1:1, image rows use one vertical sequence with a 220px visual column, a 32px gutter, and the text track aligned to the image top; this prevents a final item from being stranded in an unbalanced grid. Supply a composed scene or a diagram containing the relationship being explained. A labeled record progressing through writing, tagging, and retrieval is an explanatory diagram; a large generic document symbol contributes only recognition. For paired comparison artwork, square or moderately landscape scenes preserve visual weight better than a panoramic banner reduced to half-page width. Recompose the artwork when needed, preserving the complete relevant action.
 
 List and reading cards automatically place a small accent dot before every supplied kicker. No per-page opt-in is needed, and a card without a kicker receives no dot. The mark is non-interactive and hidden from assistive technology. The optional `"accent": "dot"` field selects the same marker. `data-reading-density` describes copy density but does not change paper height. Fixed paper depths share the bottom anchor described in DESIGN.md; list rows retain natural flow. Web mode uses content height.
 
 Raster and SVG image paths must stay inside the input JSON directory and are embedded as data URLs. SVGs containing active elements, event attributes, or external references are rejected. Icons resolve from `assets/icon-library.json` or the verified default download cache and are also embedded. Missing assets fail clearly.
 
-The fixed families reject too few, too many, or clearly excessive entries with a request to regroup or split content. These are structural guardrails, not a promise that every accepted string fits: the validator still measures the rendered DOM for overflow at each target ratio. It also requires list and reading paper to leave at least 24px before a supplied footer. The limits prevent empty templates and unbounded type shrinking; they do not replace editorial judgment.
+The fixed families reject too few, too many, or clearly excessive entries with a request to regroup or split content. These are structural guardrails, not a promise that every accepted string fits: the validator still measures the rendered DOM for overflow at each target ratio. In 16:9, list and reading share the same page gutter and left content baseline; reading keeps a maximum text measure for comfortable line length. It also requires list and reading paper to leave at least 24px before a supplied footer. The limits prevent empty templates and unbounded type shrinking; they do not replace editorial judgment.
 
 ## Output and source review
 
@@ -87,5 +87,7 @@ For final copy, record every supplied block in order. Titles, headings and parag
 ## Production themes and narrative emphasis
 
 `theme` accepts `A`, `B-bright`, `C-bright`, `D-light`, `D-dark`, `E-owl`, `F-slate`. Values come from `assets/color-themes.json`; the renderer embeds all theme CSS and canonicalizes the selected ID.
+
+The narrative sheet is the only fixed-page layout whose paper crosses an illustration boundary. It owns the kicker, title, body and optional emphasis as one reading surface; comparison, sections, list and reading keep their own restrained MD1 surfaces and do not inherit the narrative overlap.
 
 Narrative pages may add `"emphasis": "提炼重点 / 组织叙事 / 安排版式"` as plain text up to 160 characters. It follows the body, uses `emphasisText`, and is 27px on fixed pages / 24px on web. In final-copy mode, include this text as a paragraph in the source ledger in its actual reading order. Never infer this role from colors inside an illustration. List/reading dots use `readingMarker`, not generic `accent`. F's yellow marker and pink emphasis are intentionally different.
