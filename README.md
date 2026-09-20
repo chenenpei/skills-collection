@@ -7,7 +7,7 @@
 
 | Skill                   | 用途                                                                                                                                                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **[material-continuum](skills/material-continuum/README.md)** | 为活动介绍、产品说明、服务对照和观点文章制作图文排版。提供六组主题、六类版式，可导出独立 HTML 与 PNG；README 含主题和版式速览。 |
+| **[material-continuum](skills/material-continuum/README.md)** | 为活动介绍、产品说明、服务对照和观点文章制作图文排版。提供六组主题、六类版式，可导出独立 HTML 与 PNG；附有[交互式六页展示](showcase/material-continuum/index.html)。 |
 | **code-simplify**       | 针对近期改动做复用、质量与效率审查，并直接落地修复；适用于「简化这次改动」「清理 diff」「检查复用与性能」等场景。实现思路参考 Claude Code 的 `/simplify` 类工作流，可参考外部实现 [simplify.ts](https://github.com/yasasbanukaofficial/claude-code/blob/main/src/skills/bundled/simplify.ts)。 |
 | **code-research**       | 只读深度梳理代码库业务与实现，按模板产出中文研究报告到 `docs/research/`；适用于「研究某模块实现」「理解调用链」「交接前摸底」等，不负责顺手改业务代码。                                                                                                                               |
 | **figma-design-review** | 对照 Figma 设计稿（或截图降级）走查实现与设计的一致性，关注布局、间距、字体颜色与设计 token / 组件复用；缺少设计稿或代码范围时不强行评审。**完整走查 Figma 节点时需在 Agent 环境中配置 Figma MCP**（以便通过 MCP 读取设计上下文）；仅有截图时仍可按 SKILL 中的降级流程做有限评审。                                              |
@@ -59,6 +59,14 @@ npx skills add . --skill material-continuum -y
 ```
 
 浏览器导出依赖及使用方法见 [Material Continuum README](skills/material-continuum/README.md)。
+
+Material Continuum 的展示页属于仓库文档，不会随单独安装的 skill 一起安装。维护展示页时运行：
+
+```bash
+node showcase/material-continuum/build.mjs
+node showcase/material-continuum/build.mjs --check
+node --test showcase/material-continuum/showcase.test.mjs
+```
 
 **单独安装**：
 

@@ -157,21 +157,39 @@ async function inspectPage(page, contract, viewport, web) {
     const keylines = new Map();
     const tolerance = 1;
     const visible = (el) => { const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) !== 0; };
+    const checkLeadingMarker = (row, kicker, pageId) => {
+      const dots = row?.querySelectorAll(".mc-reading-accent-dot") ?? [];
+      const dot = dots[0];
+      const dotRect = dot?.getBoundingClientRect(), kickerRect = kicker.getBoundingClientRect();
+      if (dots.length !== 1 || !visible(dot) || dotRect.width <= 0 || dotRect.height <= 0 || !(dot.compareDocumentPosition(kicker) & Node.DOCUMENT_POSITION_FOLLOWING) || dotRect.right > kickerRect.left + 1) {
+        add("THEME_READING_MARKER", "Every reading/list/narrative kicker needs exactly one visible leading circle before its text.", { pageId });
+      }
+      if (dot) checkColor(dot, "backgroundColor", "readingMarker", pageId);
+    };
     for (const pageEl of pageEls) {
       const pageId = pageEl.dataset.pageId;
+      const layout = pageEl.dataset.layout;
       const sheet = pageEl.querySelector(".mc-list-sheet,.mc-article-sheet");
-      if (sheet) {
+      if (sheet && (layout === "list" || layout === "reading")) {
         checkColor(sheet, "backgroundColor", "surface", pageId);
         for (const text of sheet.querySelectorAll("h1,p:not(.mc-intro),.mc-intro,.mc-detail-text")) checkColor(text, "color", "onSurface", pageId);
         for (const kicker of sheet.querySelectorAll(".mc-kicker")) {
-          const row = kicker.closest(".mc-reading-kicker-row");
-          const dots = row?.querySelectorAll(".mc-reading-accent-dot") ?? [];
-          const dot = dots[0];
-          const dotRect = dot?.getBoundingClientRect(), kickerRect = kicker.getBoundingClientRect();
-          if (dots.length !== 1 || !visible(dot) || dotRect.width <= 0 || dotRect.height <= 0 || !(dot.compareDocumentPosition(kicker) & Node.DOCUMENT_POSITION_FOLLOWING) || dotRect.right > kickerRect.left + 1) {
-            add("THEME_READING_MARKER", "Every reading/list kicker needs exactly one visible leading circle before its text.", { pageId });
+          checkLeadingMarker(kicker.closest(".mc-reading-kicker-row"), kicker, pageId);
+        }
+      }
+      if (layout === "narrative") {
+        const kicker = pageEl.querySelector(".mc-narrative-sheet .mc-kicker");
+        if (kicker) checkLeadingMarker(kicker.closest(".mc-reading-kicker-row"), kicker, pageId);
+        checkColor(pageEl.querySelector(".mc-narrative-sheet .mc-page-title"), "color", "coloredHeading", pageId);
+        for (const paragraph of pageEl.querySelectorAll(".mc-narrative-sheet .mc-body-region p:not(.mc-narrative-emphasis)")) checkColor(paragraph, "color", "onSurface", pageId);
+      }
+      if (!web && layout === "comparison" && pageEl.dataset.visualMode !== "text") {
+        for (const column of pageEl.querySelectorAll(".mc-column")) {
+          const heading = column.querySelector("h2")?.getBoundingClientRect();
+          const paragraph = column.querySelector("p")?.getBoundingClientRect();
+          if (heading && paragraph && (paragraph.left < heading.left - tolerance || paragraph.top < heading.bottom - tolerance)) {
+            add("COMPARISON_TEXT_ORDER", "Comparison prose must remain in the text track below its column heading, beside the image track.", { pageId });
           }
-          if (dot) checkColor(dot, "backgroundColor", "readingMarker", pageId);
         }
       }
       for (const field of pageEl.querySelectorAll(".mc-header,.mc-title-sheet")) {
@@ -180,7 +198,6 @@ async function inspectPage(page, contract, viewport, web) {
         checkColor(field.querySelector(".mc-kicker"), "color", "onDisplayField", pageId);
       }
       for (const heading of pageEl.querySelectorAll(".mc-column h2,.mc-section-row h2,.mc-list-item h2,.mc-article-sheet h2")) checkColor(heading, "color", "coloredHeading", pageId);
-      for (const paragraph of pageEl.querySelectorAll(".mc-stable-narrative .mc-body-region p:not(.mc-narrative-emphasis)")) checkColor(paragraph, "color", "onNeutral", pageId);
       for (const emphasis of pageEl.querySelectorAll(".mc-narrative-emphasis")) {
         checkColor(emphasis, "color", "emphasisText", pageId);
         const size = parseFloat(getComputedStyle(emphasis).fontSize);
@@ -268,8 +285,9 @@ async function inspectPage(page, contract, viewport, web) {
         direct(byName.get("body")?.[0], copyPlane, "body");
       } else if (layout === "narrative") {
         direct(byName.get("image")?.[0], pageEl, "image");
-        const copyPlane = [...pageEl.children].find((element) => element.classList.contains("mc-copy-plane"));
-        direct(title, copyPlane, "title"); direct(byName.get("body")?.[0], copyPlane, "body");
+        const sheet = byName.get("sheet")?.[0];
+        direct(sheet, pageEl, "sheet");
+        direct(title, sheet, "title"); direct(byName.get("body")?.[0], sheet, "body");
       } else if (layout === "comparison" || layout === "sections") {
         const header = [...pageEl.children].find((element) => element.classList.contains("mc-header"));
         direct(title, header, "title");
@@ -293,6 +311,11 @@ async function inspectPage(page, contract, viewport, web) {
             const titleSheet = title?.closest(".mc-title-sheet")?.getBoundingClientRect();
             const overlapsPainted = titleSheet && titleSheet.left < painted.right - tolerance && titleSheet.right > painted.left + tolerance && titleSheet.top < painted.bottom - tolerance && titleSheet.bottom > painted.top + tolerance;
             if (!overlapsPainted) add("PHOTO_TITLE_IMAGE_OVERLAP", "Photo-led title paper must overlap the image's painted pixels, not only its reserved image slot.", { pageId });
+          }
+          if (layout === "narrative") {
+            const narrativeSheet = byName.get("sheet")?.[0]?.getBoundingClientRect();
+            const overlapsPainted = narrativeSheet && narrativeSheet.left < painted.right - tolerance && narrativeSheet.right > painted.left + tolerance && narrativeSheet.top < painted.bottom - tolerance && narrativeSheet.bottom > painted.top + tolerance;
+            if (!overlapsPainted) add("NARRATIVE_SHEET_IMAGE_OVERLAP", "Narrative paper must cross the painted illustration boundary, not only touch its reserved image slot.", { pageId });
           }
         }
       }
@@ -343,6 +366,13 @@ async function inspectPage(page, contract, viewport, web) {
           const textHeight = [...range.getClientRects()].reduce((sum, r) => sum + r.height, 0);
           const emptyRatio = rect.height ? Math.max(0, 1 - Math.min(rect.height, textHeight) / rect.height) : 0;
           if (rect.height > 120 && emptyRatio > 0.82) add("SPARSE_LIST_ITEM", `List item reserves excessive empty height (${Math.round(emptyRatio * 100)}%).`, { pageId });
+        }
+      }
+      if (!web && layout === "list" && document.body.dataset.mcRatio === "16:9") {
+        const list = byName.get("list")?.[0];
+        const columnCount = list ? getComputedStyle(list).gridTemplateColumns.split(/\s+/).filter(Boolean).length : 0;
+        if (columnCount > 1) for (const item of [...(byName.get("list-item") ?? [])].slice(-columnCount)) {
+          if (getComputedStyle(item).borderBottomWidth !== "0px") add("LIST_COLUMN_TAIL_DIVIDER", "A 16:9 list column must end without a divider when no item follows below it.", { pageId });
         }
       }
 

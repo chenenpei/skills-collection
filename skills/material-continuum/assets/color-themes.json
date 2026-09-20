@@ -8,7 +8,8 @@
   "themes": [
     {
       "id": "A",
-      "label": "默认靛蓝与珊瑚",
+      "label": "靛蓝珊瑚",
+      "recommendation": "图文均衡的作品",
       "colorScheme": "light",
       "roles": {
         "displayField": "#3F51B5",
@@ -34,7 +35,8 @@
     },
     {
       "id": "B-bright",
-      "label": "明亮青绿与琥珀",
+      "label": "青绿琥珀",
+      "recommendation": "生活、服务与社区类内容",
       "colorScheme": "light",
       "roles": {
         "displayField": "#00796B",
@@ -60,7 +62,8 @@
     },
     {
       "id": "C-bright",
-      "label": "明紫与鲜薄荷",
+      "label": "明紫薄荷",
+      "recommendation": "文化、阅读和创意类内容",
       "colorScheme": "light",
       "roles": {
         "displayField": "#7C4DFF",
@@ -86,7 +89,8 @@
     },
     {
       "id": "D-light",
-      "label": "经典黑白灰 · 浅色",
+      "label": "黑白灰 · 浅色",
+      "recommendation": "偏阅读的照片与文字作品",
       "colorScheme": "light",
       "roles": {
         "displayField": "#212121",
@@ -112,7 +116,8 @@
     },
     {
       "id": "D-dark",
-      "label": "经典黑白灰 · 深色",
+      "label": "黑白灰 · 深色",
+      "recommendation": "沉浸式的照片与文字展示",
       "colorScheme": "dark",
       "roles": {
         "displayField": "#303030",
@@ -138,7 +143,8 @@
     },
     {
       "id": "E-owl",
-      "label": "明黄、电蓝与亮粉",
+      "label": "Owl 活泼",
+      "recommendation": "短内容、课程介绍与推广",
       "colorScheme": "light",
       "roles": {
         "displayField": "#0336FF",
@@ -164,7 +170,8 @@
     },
     {
       "id": "F-slate",
-      "label": "深蓝灰、洋红与明黄",
+      "label": "深蓝灰",
+      "recommendation": "有照片或精炼图示的专题",
       "colorScheme": "light",
       "roles": {
         "displayField": "#202033",

@@ -43,7 +43,9 @@ test("renders all six registered families with stable markers and escaped plain 
   assert.match(html, /data-mc-css-sha256="[a-f0-9]{64}"/);
   assert.equal((html.match(/class="mc-page /g) ?? []).length, 6);
   for (const layout of ["photo-led", "narrative", "comparison", "sections", "list", "reading"]) assert.match(html, new RegExp(`data-layout="${layout}"`));
-  assert.match(html, /<span>reading<\/span><span>layout<\/span>/);
+  assert.equal((html.match(/data-region="sheet"/g) ?? []).length, 3);
+  assert.match(html, /mc-stable-narrative[\s\S]*?mc-narrative-sheet" data-region="sheet"/);
+  assert.match(html, /<span>reading<\/span>\s*<span>layout<\/span>/);
   assert.ok(html.includes("Literal &lt;em&gt;plain text&lt;/em&gt; stays text."));
   assert.ok(!html.includes("<em>plain text</em>"));
   assert.equal((html.match(/data-region="list-item"/g) ?? []).length, 2);
@@ -188,7 +190,7 @@ test("every family places supplied kickers and image fit is explicit", async () 
   ]), { baseDir: temp });
   for (const expected of ["PHOTO KICKER", "NARRATIVE KICKER", "COMPARISON KICKER", "SECTIONS KICKER", "LIST KICKER", "READ KICKER", "PHOTO INTRO", "PHOTO FOOTER", "PHOTO PURPOSE", "Exact alt", "Exact credit", "PHOTO BODY", "READ INTRO", "READ FOOTER", "READ PURPOSE", "READ META", "READ BODY"]) assert.ok(html.includes(expected), expected);
   assert.equal((html.match(/<figure\b[^>]*data-image-fit="contain"/g) ?? []).length, 2);
-  assert.match(html, /mc-stable-narrative[\s\S]*?mc-copy-plane"><header class="mc-title-region"[\s\S]*?NARRATIVE KICKER[\s\S]*?<h1/);
+  assert.match(html, /mc-stable-narrative[\s\S]*?mc-copy-plane mc-narrative-sheet" data-region="sheet"><header class="mc-title-region"[\s\S]*?NARRATIVE KICKER[\s\S]*?<h1/);
   assert.match(html, /mc-stable-comparison[\s\S]*?mc-header"><header class="mc-title-region"[\s\S]*?COMPARISON KICKER/);
   assert.match(html, /mc-stable-list[\s\S]*?mc-list-sheet[\s\S]*?LIST KICKER/);
 });
@@ -234,6 +236,7 @@ test("browser layout gives text-only rows and mobile sections the full content w
     page("comparison", { columns: [icon("灯光", "lightbulb"), icon("文档")] }),
     page("sections", { sections: [plain("完整文字行"), icon("图文行")] }),
     page("list", { items: [plain("完整列表行"), icon("图文列表行")] }),
+    page("reading", { title: "阅读标题", blocks: [{ paragraphs: ["窄屏下标题与正文应该共享同一条左侧文字轨道。"] }] }),
   ]);
   const browser = await chromium.launch({ executablePath, headless: true });
   try {
@@ -244,6 +247,9 @@ test("browser layout gives text-only rows and mobile sections the full content w
       const textSection = document.querySelector('.mc-section-row[data-has-visual="false"]');
       const textList = document.querySelector('.mc-list-item[data-has-visual="false"]');
       const columns = document.querySelector(".mc-columns");
+      const reading = document.querySelector(".mc-stable-reading");
+      const readingTitle = reading.querySelector(".mc-title-region h1").getBoundingClientRect();
+      const readingBody = reading.querySelector(".mc-body-region p").getBoundingClientRect();
       const nonePath = document.querySelector('.mc-column-image .mc-icon [fill="none"]');
       const slot = document.querySelector(".mc-column-image").getBoundingClientRect();
       const iconBox = document.querySelector(".mc-column-image .mc-icon").getBoundingClientRect();
@@ -252,6 +258,7 @@ test("browser layout gives text-only rows and mobile sections the full content w
         textSectionDisplay: getComputedStyle(textSection).display,
         textListColumns: getComputedStyle(textList).gridTemplateColumns,
         columnsWidth: columns.getBoundingClientRect().width,
+        readingTextLeftDelta: Math.abs(readingTitle.left - readingBody.left),
         transparentFill: nonePath && getComputedStyle(nonePath).fill,
         iconCenterDelta: Math.abs((slot.left + slot.width / 2) - (iconBox.left + iconBox.width / 2)),
       };
@@ -260,6 +267,7 @@ test("browser layout gives text-only rows and mobile sections the full content w
     assert.equal(mobileGeometry.textSectionDisplay, "block");
     assert.ok(!mobileGeometry.textListColumns.includes("90px"));
     assert.ok(mobileGeometry.columnsWidth >= 340, JSON.stringify(mobileGeometry));
+    assert.ok(mobileGeometry.readingTextLeftDelta < 1, JSON.stringify(mobileGeometry));
     assert.equal(mobileGeometry.transparentFill, "none");
     assert.ok(mobileGeometry.iconCenterDelta < 1, JSON.stringify(mobileGeometry));
 
@@ -282,6 +290,23 @@ test("browser layout gives text-only rows and mobile sections the full content w
       assert.ok(geometry.clearance >= 24, JSON.stringify(geometry));
       assert.deepEqual(geometry.footerEdges, [110, 110]);
     }
+
+    await wide.setContent(await renderBrief(source([
+      page("comparison", { columns: [icon("甲"), icon("乙")] }),
+      page("list", { footer: "List footer", items: [plain("甲"), plain("乙"), plain("丙")] }),
+    ]), { mode: "pages", ratio: "16:9" }), { waitUntil: "load" });
+    const visualWide = await wide.evaluate(() => {
+      const columns = [...document.querySelectorAll(".mc-stable-comparison .mc-column")];
+      const comparisonTextUnderHeading = columns.every((column) => {
+        const heading = column.querySelector("h2").getBoundingClientRect();
+        const paragraph = column.querySelector("p").getBoundingClientRect();
+        return paragraph.left >= heading.left && paragraph.top >= heading.bottom;
+      });
+      const listBorders = [...document.querySelectorAll(".mc-stable-list .mc-list-item")].map((item) => getComputedStyle(item).borderBottomWidth);
+      return { comparisonTextUnderHeading, listBorders };
+    });
+    assert.equal(visualWide.comparisonTextUnderHeading, true, JSON.stringify(visualWide));
+    assert.deepEqual(visualWide.listBorders, ["1px", "0px", "0px"]);
   } finally {
     await browser.close();
   }
