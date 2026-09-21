@@ -8,7 +8,7 @@
   },
   "layouts": {
     "photo-led": { "requiredRegions": ["background", "image", "title", "body"], "blocks": [1, 2] },
-    "narrative": { "requiredRegions": ["background", "image", "title", "body"], "blocks": [1, 2] },
+    "narrative": { "requiredRegions": ["background", "image", "sheet", "title", "body"], "blocks": [1, 2] },
     "comparison": { "requiredRegions": ["background", "title", "columns"], "columns": [2, 2] },
     "sections": { "requiredRegions": ["background", "title", "sections"], "sections": [2, 4] },
     "list": { "requiredRegions": ["background", "title", "list"], "items": [2, 6] },

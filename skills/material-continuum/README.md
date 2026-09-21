@@ -2,11 +2,17 @@
 
 用于活动介绍、产品说明、服务对照和观点文章的图文排版 skill。以 Material Design 的色块、纸面层次与字体层级组织内容，生成可编辑的独立 HTML 和可分享的 PNG 图片。
 
-提供六类版式与六组主题，支持 3:4、1:1、16:9 图片和响应式网页。默认图片尺寸为 1080 × 1440，页数由内容决定。
+提供六类版式与六组配色（黑白灰含浅色、深色两个 theme 值），支持 3:4、1:1、16:9 图片和响应式网页。默认图片尺寸为 1080 × 1440，页数由内容决定。
+
+## 主题与版式展示
+
+打开仓库中的[交互式展示页](../../showcase/material-continuum/index.html)，可以在同一页面查看一套完整的六页案例，并切换七个主题值和三种画幅。六页版式固定同时展示，方便先看整套作品的节奏，再比较主题和比例。展示页属于仓库文档，不随单独安装的 skill 一起分发。
+
+展示页使用 `showcase/material-continuum/source.html` 中的统一示例。建筑照片使用中性版本，概念图示使用 SVG 颜色角色重新着色，因此切换主题时，页面的纸面、文字、强调色和插图能保持同一套关系。
+
+主题注册表或统一示例更新后，在仓库根目录运行 `node showcase/material-continuum/build.mjs` 重新生成展示页；用 `node showcase/material-continuum/build.mjs --check` 检查展示页是否同步。
 
 ## 主题速览
-
-![六组主题：靛蓝珊瑚、青绿琥珀、明紫薄荷、黑白灰、Owl 活泼、深蓝灰](assets/themes-overview.png)
 
 黑白灰提供浅色与深色两个版本，共七个可选 theme 值。
 
@@ -23,8 +29,6 @@
 
 ## 版式速览
 
-![照片引领、叙事插画、结构对照、结构展开、卡片列表、文字阅读](assets/layouts-overview.png)
-
 | 想让读者做什么 | 版式 | layout |
 |---|---|---|
 | 进入场景、认识主题 | 照片引领 | `photo-led` |
@@ -36,6 +40,14 @@
 
 按内容关系选择和组合版式。配色控制文字、纸面和点缀；位图保持自己的颜色，黑白灰主题也可使用彩色照片。需要随主题变化的概念配图可用 SVG。
 
+下面是三张版式参照图，帮助快速理解结构对照、结构展开和文字阅读的纸面关系；完整六页案例和主题、画幅切换请打开上面的交互展示页。
+
+![结构对照版式参照](assets/reference-comparison.jpg)
+
+![结构展开版式参照](assets/reference-development.jpg)
+
+![文字阅读版式参照](assets/reference-reading.jpg)
+
 ## 目录
 
 ```text
@@ -44,7 +56,7 @@ material-continuum/
 ├── README.md             使用和维护入口
 ├── DESIGN.md             视觉规则、基础设计值
 ├── BRIEF.md              内容 JSON 格式
-├── assets/               配色、版式、图标库、参照与速览图
+├── assets/               配色、版式契约、图标库与参照
 ├── scripts/              渲染、校验、导出、图标与设计同步
 ├── tests/                对应的行为与回归测试
 ├── package.json
@@ -98,7 +110,7 @@ node scripts/material-icons.mjs fetch recycling --offline
 - 修改文字和图片：改作品的 brief / assets，重新渲染。
 - 修改配色：改 `assets/color-themes.json`，运行 `npm run themes:sync` 和 `npm run themes:check`。
 - 修改基础设计值：改 DESIGN.md frontmatter，运行 `npm run design:sync` 和 `npm run design:check`。
-- 新增版式：按 DESIGN.md 同步修改渲染、版式契约和 CSS，使用实际内容与 PNG 验证。
+- 新增版式：按 DESIGN.md 同步修改渲染、版式契约和 CSS，使用实际内容与 PNG 验证。仓库级 showcase 是维护与验收用的展示资产，不属于生成运行时。
 
 ```bash
 npm test

@@ -230,7 +230,7 @@ function escapeHtml(value) {
 }
 
 function titleHtml(value) {
-  return value.split("\n").map((line) => `<span>${escapeHtml(line)}</span>`).join("");
+  return value.split("\n").map((line) => `<span>${escapeHtml(line)}</span>`).join("\n");
 }
 
 function safeLocalPath(baseDir, relative, at) {
@@ -296,8 +296,8 @@ function detailsHtml(items) {
   return `<dl class="mc-details">${items.map((detail) => `<div class="mc-detail"><dt class="mc-detail-label">${escapeHtml(detail.label)}</dt><dd class="mc-detail-text">${escapeHtml(detail.text)}</dd></div>`).join("")}</dl>`;
 }
 
-function titleRegion(page, { kicker = false } = {}) {
-  const label = kicker && page.kicker ? `<div class="mc-kicker">${escapeHtml(page.kicker)}</div>` : "";
+function titleRegion(page, { kicker = false, marker = false } = {}) {
+  const label = kicker && page.kicker ? (marker ? cardKicker(page) : `<div class="mc-kicker">${escapeHtml(page.kicker)}</div>`) : "";
   const heading = page.title === undefined ? "" : `<h1 class="mc-page-title">${titleHtml(page.title)}</h1>`;
   return `<header class="mc-title-region" data-region="title">${label}${heading}${page.intro ? `<p class="mc-intro">${escapeHtml(page.intro)}</p>` : ""}</header>`;
 }
@@ -323,9 +323,9 @@ function pageHtml(page) {
   if (page.layout === "photo-led") {
     body = `<div class="mc-image-region" data-region="image">${imageHtml(page.image)}</div><div class="mc-copy-plane"><div class="mc-title-sheet">${titleRegion(page, { kicker: true })}</div><div class="mc-body-region" data-region="body" data-mc-check>${blocksHtml(page.blocks)}</div></div>`;
   } else if (page.layout === "narrative") {
-    body = `<div class="mc-image-region" data-region="image">${imageHtml(page.image)}</div><div class="mc-copy-plane">${titleRegion(page, { kicker: true })}<div class="mc-body-region" data-region="body" data-mc-check>${blocksHtml(page.blocks)}${page.emphasis ? `<p class="mc-narrative-emphasis">${escapeHtml(page.emphasis)}</p>` : ""}</div></div>`;
+    body = `<div class="mc-image-region" data-region="image">${imageHtml(page.image)}</div><article class="mc-copy-plane mc-narrative-sheet" data-region="sheet">${titleRegion(page, { kicker: true, marker: true })}<div class="mc-body-region" data-region="body" data-mc-check>${blocksHtml(page.blocks)}${page.emphasis ? `<p class="mc-narrative-emphasis">${escapeHtml(page.emphasis)}</p>` : ""}</div></article>`;
   } else if (page.layout === "comparison") {
-    body = `<div class="mc-header">${titleRegion({ ...page, intro: undefined }, { kicker: true })}</div>${page.intro ? `<p class="mc-composition-intro">${escapeHtml(page.intro)}</p>` : ""}<div class="mc-columns" data-region="columns" data-mc-check>${page.columns.map((item) => `<section class="mc-column" data-visual-kind="${item.image ? "image" : item.iconSvg ? "icon" : "none"}">${item.image ? `<div class="mc-column-image mc-visual-image">${imageHtml(item.image)}</div>` : item.iconSvg ? `<div class="mc-column-image mc-visual-icon">${item.iconSvg}</div>` : ""}<h2>${escapeHtml(item.heading)}</h2>${item.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${detailsHtml(item.details)}</section>`).join("")}</div>`;
+    body = `<div class="mc-header">${titleRegion({ ...page, intro: undefined }, { kicker: true })}</div>${page.intro ? `<p class="mc-composition-intro">${escapeHtml(page.intro)}</p>` : ""}<div class="mc-columns" data-region="columns" data-mc-check>${page.columns.map((item) => `<section class="mc-column" data-visual-kind="${item.image ? "image" : item.iconSvg ? "icon" : "none"}">${item.image ? `<div class="mc-column-image mc-visual-image">${imageHtml(item.image)}</div>` : item.iconSvg ? `<div class="mc-column-image mc-visual-icon">${item.iconSvg}</div>` : ""}<div class="mc-column-copy"><h2>${escapeHtml(item.heading)}</h2>${item.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${detailsHtml(item.details)}</div></section>`).join("")}</div>`;
   } else if (page.layout === "sections") {
     const hero = page.image ? `<div class="mc-sections-image" data-region="image">${imageHtml(page.image)}</div>` : "";
     const notes = page.notes ? `<aside class="mc-sections-notes" data-region="notes" data-mc-check>${page.notes.heading ? `<h2>${escapeHtml(page.notes.heading)}</h2>` : ""}${page.notes.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}</aside>` : "";
