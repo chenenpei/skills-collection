@@ -11,6 +11,8 @@
 | [SKILL.md](SKILL.md) | Agent 入口、模式路由、能力分支与停止条件 |
 | [CONTEXT.md](CONTEXT.md) | 共享词汇、模式同义表达与兼容口径 |
 | [chatbot.md](chatbot.md) | 可直接复制给通用 Chatbot 的自包含提示词 |
+| [references/equity.md](references/equity.md) | 所有单一股票的市场命题、普通股传导、证据、管理层与重估路径 |
+| [references/financial.md](references/financial.md) | 银行、保险、券商、资管和综合金融的行业补充 |
 | [references/company.md](references/company.md) | 个股轻量与深度审计方法、报告组织 |
 | [references/data.md](references/data.md) | 取证、财务口径、计算与来源纪律 |
 | [references/fund.md](references/fund.md) | 基金轻量与深度审计方法、报告组织 |
