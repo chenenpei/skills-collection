@@ -871,6 +871,7 @@ export async function collectCnEvidence(
         if (
           reason === "source_no_records" ||
           reason?.startsWith("Invalid/empty financial response:") ||
+          /^PDF (?:cover identity\/year mismatch|identity\/year unverified):/.test(reason ?? "") ||
           reason?.startsWith("Statement ") ||
           reason?.startsWith("recent_financials_")
         )

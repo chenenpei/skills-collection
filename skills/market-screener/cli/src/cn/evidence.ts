@@ -73,6 +73,9 @@ const universe = z
           expected: z.number().int().nonnegative().optional(),
           received: z.number().int().nonnegative(),
           reason: z.string().optional(),
+          snapshotDate: date.optional(),
+          expectedDate: date.optional(),
+          calendarSource: z.string().url().optional(),
         })
         .strict(),
     ),
@@ -2151,6 +2154,13 @@ export async function readDisclosurePdf(
     );
     const name = entry.secName?.normalize("NFKC").replace(/\s/g, "");
     const frontmatter = text.pages.filter((p) => p.num <= 10).sort((a, b) => a.num - b.num);
+    const chineseYear = [...year]
+      .map((d) => d === "0" ? "[零〇]" : "零一二三四五六七八九"[Number(d)])
+      .join("");
+    const reportYearPattern = new RegExp(
+      `(?:${year}|${chineseYear})年?(?:年度(?:报告|報告)|年[报報])|${year}annualreport|annualreport${year}`,
+      "i",
+    );
     const explicitCodes = (value: string) =>
       [...value.matchAll(/(?:股票|证券)代码[：:｜|]?([0-9]{6})/g)].map((m) => m[1]);
     const firstCover = frontmatter.find((p) => p.num === 1)?.text.replace(/\s/g, "") ?? "";
@@ -2161,15 +2171,14 @@ export async function readDisclosurePdf(
         namedIssuer = !!name && name.length >= 4 && value.includes(name);
       // A decorative first page is common. Later pages must explicitly identify a report
       // cover or the issuer's own stock table; an incidental mention in the body is insufficient.
-      const chineseYear = [...year].map((d) => "零一二三四五六七八九"[Number(d)]).join("");
-      const reportYear = new RegExp(
-        `${year}年年度报告|${year}annualreport|${chineseYear}年年报`,
-        "i",
-      ).test(value);
+      const reportYear = reportYearPattern.test(value);
+      // Newer company-information tables may omit the exchange row. The issuer's
+      // stock code, named company, and report year remain mandatory on this page.
       const companyTable =
         value.includes("公司信息") &&
         value.includes("公司的中文名称") &&
-        /股票上市(?:证券)?交易所[：:]?(?:上海|深圳|北京)证券交易所/.test(value);
+        value.includes("股票简称") &&
+        value.includes("股票代码");
       const stockTable =
         value.includes("公司股票简况") && /A股(?:上海|深圳|北京)证券交易所[^\d]{0,40}/.test(value);
       const introduction = value.includes("关于我们") && value.includes("我们是谁");
@@ -2180,20 +2189,18 @@ export async function readDisclosurePdf(
         /(?:上海|深圳|北京)证券交易所[（(](\d{6})\.(?:SH|SZ|BJ)[）)]/,
       )?.[1];
       const location =
-        p.num === 1 ||
-        (p.num === 2 && reportYear) ||
-        ((stockTable || companyTable || introductionCode) && reportYear);
+        p.num <= 2 || stockTable || companyTable || introductionCode;
       const codes = explicitCodes(value);
       const tableCode = stockTable
         ? value.match(/A股(?:上海|深圳|北京)证券交易所[^\d]{0,40}(\d{6})/)?.[1]
         : undefined;
       return (
         location &&
-        (p.num === 1 ? value.includes(year) : reportYear) &&
+        reportYear &&
         !codes.some((code) => code !== entry.secCode) &&
         (!tableCode || tableCode === entry.secCode) &&
         (companyTable
-          ? codes.length === 1 && codes[0] === entry.secCode && namedIssuer
+          ? codes.length === 1 && codes[0] === entry.secCode && !!name && value.includes(name)
           : stockTable
             ? tableCode === entry.secCode
             : introduction
@@ -2213,7 +2220,6 @@ export async function readDisclosurePdf(
           partial: [...new Set([...text.pages.map((p) => p.num), ...closingPages])],
         });
       }
-      const chineseYear = [...year].map((d) => "零一二三四五六七八九"[Number(d)]).join("");
       identity = text.pages
         .filter((p) => p.num <= 10 || closingPages.includes(p.num))
         .find((p) => {
@@ -2224,7 +2230,7 @@ export async function readDisclosurePdf(
             !value.includes(name) ||
             !value.includes("公司信息") ||
             !value.includes("法定名称") ||
-            !new RegExp(`${year}年年度报告|${chineseYear}年年报`).test(value)
+            !reportYearPattern.test(value)
           )
             return false;
           const venue = value.match(/证券类别及上市地点A股(上海|深圳|北京)证券交易所/);
@@ -2236,7 +2242,7 @@ export async function readDisclosurePdf(
           );
         });
     }
-    if (!identity) throw new Error(`PDF cover identity/year mismatch: ${source.id}`);
+    if (!identity) throw new Error(`PDF identity/year unverified: ${source.id}`);
     // Preserve geometric cells for dense monthly regulatory tables; never join
     // line-wrapped numbers across columns or invoke OCR/LLM to guess their values.
     const tablePages = [

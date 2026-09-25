@@ -209,7 +209,7 @@ it('accepts an annual report with a matching issuer name but no stock code on it
   expect((await save()).input.companies[0].facts.some(f=>f.field==='annualReportYear')).toBe(true);
   index.announcements[0].announcementTitle='Synthetic股份有限公司2025年年度报告摘要';await expect(save()).rejects.toThrow(/announcement mismatch/);
   index.announcements[0].announcementTitle='2025年年度报告';
-  index.announcements[0].secName='Another issuer';await expect(save()).rejects.toThrow(/identity\/year mismatch/);
+  index.announcements[0].secName='Another issuer';await expect(save()).rejects.toThrow(/identity\/year (?:mismatch|unverified)/);
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });
 
@@ -229,33 +229,43 @@ it('finds a second-page report cover and preserves its actual evidence location 
   expect((await loadEvidenceInput(file)).input.companies[0].facts).toEqual(loaded.input.companies[0].facts);
   // A matching year mentioned in a capital note cannot repair a wrong-year report cover.
   pdf=Buffer.from(pdf.toString('latin1').replace('003200300032003500200061006e006e00750061006c','003200300032003400200061006e006e00750061006c'),'latin1');
-  await expect(save()).rejects.toThrow(/identity\/year mismatch/);
+  await expect(save()).rejects.toThrow(/identity\/year (?:mismatch|unverified)/);
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });
 
-it('verifies an issuer introduction with a Chinese-numbered annual header and explicit exchange ticker',async()=>{
- const dir=await fs.mkdtemp(path.join(os.tmpdir(),'cn-issuer-intro-'));
+it.each<{
+ label:string; layout:'introduction'|'legal'|'table'|'cover';
+ name?:string; title?:string; code?:string; venue?:boolean; reject?:boolean;
+}>([
+ {label:'issuer introduction',layout:'introduction'},
+ {label:'introduction with a different ticker',layout:'introduction',code:'600661',reject:true},
+ {label:'legal company information',layout:'legal'},
+ {label:'legal information with a different ticker',layout:'legal',code:'600661',reject:true},
+ {label:'standard issuer table',layout:'table'},
+ {label:'three-character short name',layout:'table',name:'示例股'},
+ {label:'issuer table without exchange row',layout:'table',venue:false},
+ {label:'annual title without duplicate year suffix',layout:'table',title:'2025年度报告'},
+ {label:'Chinese year with circle zero',layout:'table',title:'二〇二五年度报告'},
+ {label:'issuer table with a different ticker',layout:'table',code:'600661',reject:true},
+ {label:'wrong-year cover mentioning the requested year in its outlook',layout:'cover',title:'2024年年度报告；2025年经营展望',reject:true},
+])('checks PDF identity: $label',async({layout,name='示例公司',title='2025年年度报告',code='600660',venue=true,reject=false})=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'cn-pdf-identity-'));
  try {
   const original=(await fs.readFile(new URL('../fixtures/synthetic-capital-context.pdf',import.meta.url))).toString('latin1');
   const objects=[...original.matchAll(/(\d+) 0 obj\n([\s\S]*?)\nendobj/g)].map(m=>m[2]);
   const stream=(lines:string[])=>{const data='BT /F1 10 Tf 40 780 Td 20 TL\n'+lines.map(line=>'<'+Buffer.from(line,'utf16le').swap16().toString('hex')+'> Tj T*\n').join('')+'ET\n';return `<< /Length ${Buffer.byteLength(data)} >>\nstream\n${data}endstream`;};
-  objects[5]=stream([]);
-  const index=JSON.stringify({announcements:[{secCode:'600660',secName:'示例公司',announcementTitle:'2025年年度报告',announcementTime:Date.parse('2026-03-01'),adjunctUrl:'finalpage/2026-03-01/report.PDF'}]});await fs.writeFile(path.join(dir,'index.json'),index);
-  const save=async(code:string,companyInformation:boolean|'standard'=false)=>{
-   objects[7]=stream(['关于我们','我们是谁','二零二五年年报 示例公司','公司在香港联合交易所主板(1234.HK)及上海证券交易所('+code+'.SH)两地上市。']);
-   if(companyInformation) {objects[7]=stream([]);objects[9]=stream(['其他信息','公司信息','二零二五年年报 示例公司','法定名称','中文 ╱ 英文全称','示例公司股份有限公司','证券类别及上市地点','A股 上海证券交易所','H股 香港联合交易所有限公司','证券简称及代码','A股 示例公司 '+code,'H股 示例公司 2318']);}
-   if(companyInformation==='standard') objects[9]=stream(['2025年年度报告','第二节 公司简介和主要财务指标','一、公司信息','股票简称 示例公司 股票代码 '+code,'股票上市证券交易所 深圳证券交易所','公司的中文名称 示例公司股份有限公司']);
-   let pdf='%PDF-1.4\n';const offsets=[0];objects.forEach((object,i)=>{offsets.push(Buffer.byteLength(pdf));pdf+=`${i+1} 0 obj\n${object}\nendobj\n`;});const xref=Buffer.byteLength(pdf);pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`+offsets.slice(1).map(n=>`${String(n).padStart(10,'0')} 00000 n \n`).join('')+`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-   await fs.writeFile(path.join(dir,'report.pdf'),pdf);
-   const sources=[{id:'index',mapping:'cninfo-announcements',path:'index.json',url:'https://www.cninfo.com.cn/new/hisAnnouncement/query',mediaType:'application/json',fetchedAt:'2026-05-01',sha256:sha256(index)},{id:'pdf',mapping:'cninfo-annual-pdf',path:'report.pdf',url:'https://static.cninfo.com.cn/finalpage/2026-03-01/report.PDF',mediaType:'application/pdf',fetchedAt:'2026-05-01',sha256:sha256(pdf),disclosure:{sourceId:'index',locator:'/announcements/0'}}];
-   const file=path.join(dir,'input.json');await fs.writeFile(file,JSON.stringify({schemaVersion:1,sources,companies:[{ticker:'600660',companyId:'600660',companyName:'示例公司',market:'CN',currency:'CNY',asOf:'2026-05-01',basis:'test',latestFiscalYear:2025,method:{state:'unresolved',evidence:[]},checks:{},facts:[]}]}));return loadEvidenceInput(file);
-  };
-  expect((await save('600660')).input.companies[0].facts.find(f=>f.field==='annualReportYear')).toMatchObject({value:2025,evidence:[{locator:'/pages/2/text'}]});
-  await expect(save('600661')).rejects.toThrow(/identity\/year mismatch/);
-  expect((await save('600660',true)).input.companies[0].facts.find(f=>f.field==='annualReportYear')).toMatchObject({value:2025,evidence:[{locator:'/pages/3/text'}]});
-  await expect(save('600661',true)).rejects.toThrow(/identity\/year mismatch/);
-  expect((await save('600660','standard')).input.companies[0].facts.find(f=>f.field==='annualReportYear')).toMatchObject({value:2025,evidence:[{locator:'/pages/3/text'}]});
-  await expect(save('600661','standard')).rejects.toThrow(/identity\/year mismatch/);
+  objects[5]=stream([]);objects[7]=stream([]);objects[9]=stream([]);
+  if(layout==='introduction') objects[7]=stream(['关于我们','我们是谁','二零二五年年报 '+name,'公司在香港联合交易所主板(1234.HK)及上海证券交易所('+code+'.SH)两地上市。']);
+  if(layout==='legal') objects[9]=stream(['其他信息','公司信息','二零二五年年报 '+name,'法定名称','中文 ╱ 英文全称',name+'股份有限公司','证券类别及上市地点','A股 上海证券交易所','H股 香港联合交易所有限公司','证券简称及代码','A股 '+name+' '+code,'H股 '+name+' 2318']);
+  if(layout==='table') objects[9]=stream([title,'第二节 公司简介和主要财务指标','一、公司信息','股票简称 '+name+' 股票代码 '+code,...(venue?['股票上市证券交易所 上海证券交易所']:[]),'公司的中文名称 '+name+'股份有限公司']);
+  if(layout==='cover') objects[5]=stream([title,name+'股份有限公司','股票代码 '+code]);
+  let pdf='%PDF-1.4\n';const offsets=[0];objects.forEach((object,i)=>{offsets.push(Buffer.byteLength(pdf));pdf+=`${i+1} 0 obj\n${object}\nendobj\n`;});const xref=Buffer.byteLength(pdf);pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`+offsets.slice(1).map(n=>`${String(n).padStart(10,'0')} 00000 n \n`).join('')+`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  const index=JSON.stringify({announcements:[{secCode:'600660',secName:name,announcementTitle:'2025年年度报告',announcementTime:Date.parse('2026-03-01'),adjunctUrl:'finalpage/2026-03-01/report.PDF'}]});
+  await fs.writeFile(path.join(dir,'index.json'),index);await fs.writeFile(path.join(dir,'report.pdf'),pdf);
+  const sources=[{id:'index',mapping:'cninfo-announcements',path:'index.json',url:'https://www.cninfo.com.cn/new/hisAnnouncement/query',mediaType:'application/json',fetchedAt:'2026-05-01',sha256:sha256(index)},{id:'pdf',mapping:'cninfo-annual-pdf',path:'report.pdf',url:'https://static.cninfo.com.cn/finalpage/2026-03-01/report.PDF',mediaType:'application/pdf',fetchedAt:'2026-05-01',sha256:sha256(pdf),disclosure:{sourceId:'index',locator:'/announcements/0'}}];
+  const file=path.join(dir,'input.json');await fs.writeFile(file,JSON.stringify({schemaVersion:1,sources,companies:[{ticker:'600660',companyId:'600660',companyName:name,market:'CN',currency:'CNY',asOf:'2026-05-01',basis:'test',latestFiscalYear:2025,method:{state:'unresolved',evidence:[]},checks:{},facts:[]}]}));
+  if(reject) await expect(loadEvidenceInput(file)).rejects.toThrow(/PDF identity\/year unverified/);
+  else expect((await loadEvidenceInput(file)).input.companies[0].facts.find(f=>f.field==='annualReportYear')).toMatchObject({value:2025,evidence:[{locator:`/pages/${layout==='introduction'?2:3}/text`}]});
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });
 

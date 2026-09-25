@@ -711,7 +711,7 @@ export async function diagnoseEvidenceRun(run: Awaited<ReturnType<typeof openEvi
     // establish a parser defect without a reproducible validation result.
     if (
       reason?.startsWith("annual_cache_invalid:") ||
-      /PDF cover identity\/year mismatch|Statement entity mismatch|Statement missing publication date or currency/i.test(
+      /PDF (?:cover identity\/year mismatch|identity\/year unverified)|Statement entity mismatch|Statement missing publication date or currency/i.test(
         reason ?? "",
       ) ||
       /pdf[ _/-]*(?:cover[ _/-]*)?(?:issuer|identity|year|unit)[ _/-]*mismatch/i.test(reason ?? "")

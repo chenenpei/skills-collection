@@ -722,7 +722,7 @@ it.each(['wrong-issuer','pdf-fallback-disabled','pdf-budget-disabled'] as const)
   const collected=await collectCnEvidence(file,path.join(dir,'collected'),{
    asOf:'2026-09-10',
    ...(mode==='pdf-fallback-disabled'?{pdfFallback:false}:{}),
-   budget:{attempts:1,requestMs:1000,companyRequests:20,companyMs:20_000,globalRequests:20,globalMs:30_000,pdfReports:mode==='pdf-budget-disabled'?0:1},
+   budget:{attempts:3,requestMs:1000,companyRequests:20,companyMs:20_000,globalRequests:20,globalMs:30_000,pdfReports:mode==='pdf-budget-disabled'?0:1},
   },{now:()=>Date.parse('2026-09-10'),fetch:lifeInsuranceFetch(urls)});
   const company=(await loadEvidenceInput(collected.inputFile)).input.companies[0];
   expect(company.method).toMatchObject({state:'applies',value:'life_insurance'});
@@ -734,7 +734,7 @@ it.each(['wrong-issuer','pdf-fallback-disabled','pdf-budget-disabled'] as const)
   expect(downloaded).toHaveLength(mode==='wrong-issuer'?1:0);
   expect(urls.some(url=>url.includes('/hisAnnouncement/query'))).toBe(mode==='wrong-issuer');
   if(mode==='wrong-issuer') {
-   expect(company.collection?.errors.some(error=>error.startsWith('cninfo-annual-pdf:PDF cover identity/year mismatch:'))).toBe(true);
+   expect(company.collection?.errors.some(error=>/^cninfo-annual-pdf:PDF (?:cover identity\/year mismatch|identity\/year unverified):/.test(error))).toBe(true);
    expect(company.collection?.errors).toContain('annual_report_pdf_unavailable');
    expect(company.collection?.errors).toContain('annual_report_supplement_unresolved');
   } else expect(company.collection?.errors.some(error=>error.startsWith('cninfo-annual-pdf:'))).toBe(false);
