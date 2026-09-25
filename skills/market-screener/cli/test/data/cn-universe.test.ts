@@ -2,6 +2,28 @@ import {expect,it} from 'vitest';
 import {parseCnListingPage,reconcileCnUniverse} from '../../src/cn/sources/listings.js';
 const sse=(page=1,total=2)=>({result:[{A_STOCK_CODE:page===1?'600660':'600276',SEC_NAME_CN:page===1?'福耀玻璃':'恒瑞医药',STOCK_TYPE:'1',LIST_DATE:'19930610',DELIST_DATE:'-',CSRC_CODE:'C',CSRC_CODE_DESC:'制造业'}],pageHelp:{pageNo:page,pageSize:1,pageCount:total,total}});
 const source=(page=1)=>({id:`sse-${page}`,mapping:'sse-list' as const,url:`https://query.sse.com.cn/sseQuery/commonQuery.do?sqlId=COMMON_SSE_CP_GPJCTPZ_GPLB_GP_L&STOCK_TYPE=1&COMPANY_STATUS=2%2C4%2C5%2C7%2C8&pageHelp.pageNo=${page}`,fetchedAt:'2026-09-10T01:00:00Z'});
+it('retains a previous-date current SZSE list with its actual snapshot date instead of dropping the entire exchange',()=>{
+ const src={id:'szse-holiday',mapping:'szse-list' as const,url:'https://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1110&TABKEY=tab1&PAGENO=1',fetchedAt:'2026-09-25T06:00:00Z'};
+ const body=[{metadata:{catalogid:'1110',name:'A股列表',tabkey:'tab1',subname:'2026-09-24',pagesize:20,pageno:1,pagecount:1,recordcount:1},data:[{agdm:'000001',agjc:'平安银行',agssrq:'1991-04-03',bk:'主板',sshymc:'J 金融业'}]}];
+ const page=parseCnListingPage(body,src);
+ expect(page.reportDate).toBe('2026-09-24');
+ expect(page.identities.map(c=>c.ticker)).toEqual(['000001']);
+ expect(reconcileCnUniverse([page],src.fetchedAt).universe.coverage.find(c=>c.board==='SZSE')).toMatchObject({state:'complete',received:1,snapshotDate:'2026-09-24',expectedDate:'2026-09-24',calendarSource:expect.stringContaining('szse.cn')});
+ const tradingDaySource={...src,fetchedAt:'2026-09-28T01:00:00Z'};
+ const stale=parseCnListingPage(body,tradingDaySource);
+ expect(reconcileCnUniverse([stale],tradingDaySource.fetchedAt).universe.coverage.find(c=>c.board==='SZSE')).toMatchObject({state:'partial',received:1,reason:'listing_snapshot_stale_or_unverified',expectedDate:'2026-09-28'});
+});
+it.each([
+ ['2026-09-27T06:00:00Z','2026-09-24','complete'],
+ ['2026-09-25T06:00:00Z','2026-09-23','partial'],
+ ['2026-10-07T06:00:00Z','2026-09-30','complete'],
+ ['2026-01-02T06:00:00Z','2025-12-31','partial'],
+ ['2027-01-02T06:00:00Z','2026-12-31','partial'],
+] as const)('checks listing freshness at %s without assuming weekday holidays or accepting older sessions', (observedAt,reportDate,state)=>{
+ const src={id:'szse-calendar',mapping:'szse-list' as const,url:'https://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1110&TABKEY=tab1&PAGENO=1',fetchedAt:observedAt};
+ const body=[{metadata:{catalogid:'1110',name:'A股列表',tabkey:'tab1',subname:reportDate,pagesize:20,pageno:1,pagecount:1,recordcount:1},data:[{agdm:'000001',agjc:'平安银行',agssrq:'1991-04-03',bk:'主板',sshymc:'J 金融业'}]}];
+ expect(reconcileCnUniverse([parseCnListingPage(body,src)],observedAt).universe.coverage.find(c=>c.board==='SZSE')).toMatchObject({state,snapshotDate:reportDate,received:1});
+});
 it('verifies the BSE current-list POST contract and preserves its selected-tier date qualification',()=>{
  const src={id:'bse-1',mapping:'bse-list' as const,url:'https://www.bse.cn/nqxxController/nqxxCnzq.do',fetchedAt:'2026-09-10T01:00:00Z',request:{method:'POST' as const,contentType:'application/x-www-form-urlencoded' as const,body:'page=0&typejb=T&xxfcbj%5B%5D=2&xxzqdm=&sortfield=xxzqdm&sorttype=asc'}};
  const raw=[{content:[{xxzqdm:'920000',xxzqjc:'安徽凤凰',xxzqjb:'T',xxfcbj:'2',fxssrq:'20201223',xxjsrq:'20260910',xxhyzl:'汽车制造业'}],firstPage:true,lastPage:true,number:0,numberOfElements:1,size:20,totalElements:1,totalPages:1}];
@@ -10,7 +32,10 @@ it('verifies the BSE current-list POST contract and preserves its selected-tier 
  expect(reconcileCnUniverse([page],src.fetchedAt).universe.coverage.find(c=>c.board==='BSE')).toMatchObject({state:'complete',received:1});
  expect(()=>parseCnListingPage(raw,{...src,request:{...src.request,body:src.request.body+'&xxhyzl=汽车制造业'}})).toThrow(/Unfiltered/);
  expect(()=>parseCnListingPage(raw,{...src,request:{...src.request,body:src.request.body.replace('page=0','page=1')}})).toThrow(/page number/);
- raw[0].content[0].xxjsrq='20260909';expect(()=>parseCnListingPage(raw,src)).toThrow(/snapshot date/);
+ raw[0].content[0].xxjsrq='20260909';
+ const stale=parseCnListingPage(raw,src);
+ expect(reconcileCnUniverse([stale],src.fetchedAt).universe.coverage.find(c=>c.board==='BSE')).toMatchObject({state:'partial',received:1,snapshotDate:'2026-09-09',reason:'listing_snapshot_stale_or_unverified'});
+ raw[0].content[0].xxjsrq='20260911';expect(()=>parseCnListingPage(raw,src)).toThrow(/snapshot date/);
 });
 it('keeps identities without quotes and distinguishes complete board coverage from whole-market coverage',()=>{
  const pages=[1,2].map(p=>parseCnListingPage(sse(p),source(p)));
@@ -105,7 +130,8 @@ it('accepts an explicit development sample only when archived exchange pages sti
   await expect(openEvidenceRun(output)).rejects.toThrow(/selection does not match input/);
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });
-it('collects every BSE page as original JSONP bytes and replays the complete four-board universe',async()=>{
+it('collects every BSE page as original JSONP bytes and replays the complete four-board universe across a holiday',async()=>{
+ const observedDay='2026-09-25',snapshotDay='2026-09-24';
  const fs=await import('node:fs/promises'),path=await import('node:path'),os=await import('node:os');
  const {collectCnUniverse}=await import('../../src/cn/sources/listings.js');
  const {loadEvidenceInput}=await import('../../src/cn/evidence.js');
@@ -113,21 +139,25 @@ it('collects every BSE page as original JSONP bytes and replays the complete fou
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'cn-bse-universe-'));
  try {
   const bodies:string[]=[];
-  const collected=await collectCnUniverse(path.join(dir,'universe'),{maxRequests:5,maxMs:15000,requestMs:1000},{now:()=>Date.parse('2026-09-10T01:00:00Z'),fetch:async(url,init)=>{
+  const collected=await collectCnUniverse(path.join(dir,'universe'),{maxRequests:5,maxMs:15000,requestMs:1000},{now:()=>Date.parse(`${observedDay}T01:00:00Z`),fetch:async(url,init)=>{
    if(url.includes('sse.com.cn')) {const body=sse(1,1);if(new URL(url).searchParams.get('STOCK_TYPE')==='8') Object.assign(body.result[0],{A_STOCK_CODE:'688001',STOCK_TYPE:'8'});return new Response(JSON.stringify(body));}
-   if(url.includes('szse.cn')) return new Response(JSON.stringify([{metadata:{catalogid:'1110',name:'A股列表',tabkey:'tab1',subname:'2026-09-10',pageno:1,pagesize:20,pagecount:1,recordcount:1},data:[{agdm:'000001',agjc:'平安银行',agssrq:'1991-04-03',bk:'主板',sshymc:'金融业'}]}]));
+   if(url.includes('szse.cn')) return new Response(JSON.stringify([{metadata:{catalogid:'1110',name:'A股列表',tabkey:'tab1',subname:snapshotDay,pageno:1,pagesize:20,pagecount:1,recordcount:1},data:[{agdm:'000001',agjc:'平安银行',agssrq:'1991-04-03',bk:'主板',sshymc:'金融业'}]}]));
    expect(init?.method).toBe('POST');expect(new Headers(init?.headers).get('Origin')).toBe('https://www.bse.cn');
    const body=String(init?.body);bodies.push(body);const page=Number(new URLSearchParams(body).get('page'));
-   return new Response('null('+JSON.stringify([{content:[{xxzqdm:page?'920001':'920000',xxzqjc:page?'纬达光电':'安徽凤凰',xxzqjb:'T',xxfcbj:'2',fxssrq:'20221227',xxjsrq:'20260910',xxhyzl:'制造业'}],firstPage:page===0,lastPage:page===1,number:page,numberOfElements:1,size:1,totalElements:2,totalPages:2}])+')');
+   return new Response('null('+JSON.stringify([{content:[{xxzqdm:page?'920001':'920000',xxzqjc:page?'纬达光电':'安徽凤凰',xxzqjb:'T',xxfcbj:'2',fxssrq:'20221227',xxjsrq:snapshotDay.replaceAll('-',''),xxhyzl:'制造业'}],firstPage:page===0,lastPage:page===1,number:page,numberOfElements:1,size:1,totalElements:2,totalPages:2}])+')');
   }});
   expect(collected).toMatchObject({status:'complete',count:5});expect(bodies.map(b=>new URLSearchParams(b).get('page'))).toEqual(['0','1']);
   const {input}=await loadEvidenceInput(collected.inputFile),bse=input.sources.filter(s=>s.mapping==='bse-list');
+  expect(input.universe?.coverage.find(c=>c.board==='BSE')).toMatchObject({state:'complete',snapshotDate:snapshotDay,expectedDate:snapshotDay});
+  const tampered=structuredClone(input);tampered.universe!.coverage.find(c=>c.board==='BSE')!.snapshotDate=observedDay;
+  const file=path.join(dir,'universe/tampered.json');await fs.writeFile(file,JSON.stringify(tampered));
+  await expect(loadEvidenceInput(file)).rejects.toThrow(/coverage/);
   expect(bse).toHaveLength(2);expect(bse[1].request?.body).toBe(bodies[1]);
   expect(await fs.readFile(path.join(path.dirname(collected.inputFile),bse[0].path),'utf8')).toMatch(/^null\(\[/);
   const output=path.join(dir,'run');await runEvidenceSnapshot(collected.inputFile,output,{policyFile:new URL('../../src/policy/cn-screening.yaml',import.meta.url).pathname});
   expect(await replayEvidenceRun(output)).toMatchObject({matches:true,count:5});
   const {collectCnEvidence}=await import('../../src/cn/collection.js');
-  const financial=await collectCnEvidence(collected.inputFile,path.join(dir,'financial'),{asOf:'2026-09-10T02:00:00Z',budget:{attempts:1,requestMs:1000,companyRequests:1,companyMs:10000,globalRequests:1,globalMs:10000},concurrency:1},{now:()=>Date.parse('2026-09-10T02:00:00Z'),fetch:async()=>new Response('unavailable',{status:503})});
+  const financial=await collectCnEvidence(collected.inputFile,path.join(dir,'financial'),{asOf:`${observedDay}T02:00:00Z`,budget:{attempts:1,requestMs:1000,companyRequests:1,companyMs:10000,globalRequests:1,globalMs:10000},concurrency:1},{now:()=>Date.parse(`${observedDay}T02:00:00Z`),fetch:async()=>new Response('unavailable',{status:503})});
   expect(financial.status).toBe('partial');expect((await loadEvidenceInput(financial.inputFile)).input.companies).toHaveLength(5);
  } finally {await fs.rm(dir,{recursive:true,force:true});}
 });

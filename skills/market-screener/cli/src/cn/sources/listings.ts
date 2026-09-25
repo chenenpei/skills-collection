@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { type CompanyFacts, type SecurityIdentity } from "../../shared/financial-model.js";
+import calendarData from "./exchange-calendar.json" with { type: "json" };
 
 const boards = ["SSE_MAIN", "SSE_STAR", "SZSE", "BSE"] as const;
 type Board = (typeof boards)[number];
@@ -34,6 +35,9 @@ export interface CnUniverse {
     expected?: number;
     received: number;
     reason?: string;
+    snapshotDate?: string;
+    expectedDate?: string;
+    calendarSource?: string;
   }>;
 }
 const count = z.number().int().nonnegative(),
@@ -96,6 +100,42 @@ const bseSchema = z
   .length(1);
 const chinaDate = (timestamp: string) =>
   new Date(Date.parse(timestamp) + 8 * 3600_000).toISOString().slice(0, 10);
+// Validate maintained data once, so a malformed new year cannot silently imply an open market.
+const exchangeCalendars = z.record(
+  z.string().regex(/^\d{4}$/),
+  z.object({
+    publishedAt: z.string().date(),
+    sources: z.object({ SSE: z.string().url(), SZSE: z.string().url(), BSE: z.string().url() }),
+    closed: z.array(z.tuple([z.string().date(), z.string().date()])),
+  }),
+).refine(
+  (calendars) => Object.entries(calendars).every(([year, calendar]) =>
+    calendar.closed.every(([start, end]) => start.startsWith(`${year}-`) && end.startsWith(`${year}-`) && start <= end),
+  ),
+  "Exchange closure ranges must be ordered dates within their calendar year",
+).parse(calendarData);
+// Identity lists should include today's listings on a trading day, even before close.
+// Only a verified exchange holiday/weekend can justify the previous session's list.
+function expectedListingDate(
+  observedDate: string,
+  board: Board,
+): { date: string; source: string } | undefined {
+  const exchange = board === "SSE_MAIN" || board === "SSE_STAR" ? "SSE" : board;
+  let date = observedDate;
+  for (let days = 0; days < 32; days++) {
+    const calendar = exchangeCalendars[date.slice(0, 4)];
+    if (!calendar || calendar.publishedAt > observedDate) return undefined;
+    const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+    if (
+      weekday !== 0 &&
+      weekday !== 6 &&
+      !calendar.closed.some(([start, end]) => start <= date && date <= end)
+    )
+      return { date, source: calendar.sources[exchange] };
+    date = new Date(Date.parse(date) - 86_400_000).toISOString().slice(0, 10);
+  }
+  return undefined;
+}
 function listingDate(value: string): string {
   const iso = /^\d{8}$/.test(value)
     ? `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`
@@ -216,6 +256,9 @@ export function parseCnListingPage(raw: unknown, source: ListingSource): Listing
       p.lastPage !== (p.number === p.totalPages - 1)
     )
       throw new Error("Inconsistent BSE pagination flags");
+    const reportDates = [...new Set(p.content.map((row) => listingDate(row.xxjsrq)))];
+    if (reportDates.length > 1 || reportDates.some(date => date > observedDate))
+      throw new Error("BSE listing snapshot dates are mixed or future dated");
     result = {
       board: "BSE",
       page: p.number + 1,
@@ -223,10 +266,8 @@ export function parseCnListingPage(raw: unknown, source: ListingSource): Listing
       pageCount: p.totalPages,
       total: p.totalElements,
       observedAt: source.fetchedAt,
-      reportDate: observedDate,
+      reportDate: reportDates[0],
       identities: p.content.map((row, i) => {
-        if (listingDate(row.xxjsrq) !== observedDate)
-          throw new Error("BSE listing snapshot date differs from observation date");
         const listedAt = listingDate(row.fxssrq);
         return {
           ticker: row.xxzqdm,
@@ -268,9 +309,9 @@ export function parseCnListingPage(raw: unknown, source: ListingSource): Listing
       throw new Error("Missing unambiguous SZSE A-share tab");
     const { tab, index } = tabs[0],
       m = tab.metadata,
-      reportDate = m.subname.trim();
-    if (reportDate !== observedDate)
-      throw new Error("SZSE listing snapshot date differs from observation date");
+      reportDate = listingDate(m.subname.trim());
+    if (reportDate > observedDate)
+      throw new Error("SZSE listing snapshot date is in the future");
     if (Number(url.searchParams.get("PAGENO") ?? "1") !== m.pageno)
       throw new Error("Listing page number mismatch");
     result = {
@@ -355,14 +396,27 @@ export function reconcileCnUniverse(
       }
     }
     const received = group.reduce((n, p) => n + p.identities.length, 0),
-      complete =
-        pageNumbers.size === first.pageCount && received === first.total && first.total > 0;
+      pagesComplete =
+        pageNumbers.size === first.pageCount && received === first.total && first.total > 0,
+      observedDate = chinaDate(asOf),
+      earlierSnapshot = first.reportDate !== undefined && first.reportDate < observedDate,
+      calendar = earlierSnapshot ? expectedListingDate(observedDate, board) : undefined,
+      current = !earlierSnapshot || calendar?.date === first.reportDate,
+      complete = pagesComplete && current;
     return {
       board,
       state: complete ? "complete" : "partial",
       expected: first.total,
       received,
-      ...(complete ? {} : { reason: "listing_pages_incomplete" }),
+      ...(earlierSnapshot
+        ? {
+            snapshotDate: first.reportDate,
+            ...(calendar ? { expectedDate: calendar.date, calendarSource: calendar.source } : {}),
+          }
+        : {}),
+      ...(complete
+        ? {}
+        : { reason: !pagesComplete ? "listing_pages_incomplete" : "listing_snapshot_stale_or_unverified" }),
     };
   });
   return {
